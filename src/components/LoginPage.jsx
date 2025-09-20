@@ -11,14 +11,14 @@ export default function LoginPage({ onLogin = () => {} }) {
     { value: "faculty", label: "Faculty Coordinator" },
   ];
 
-  const [role, setRole] = useState("guest");
+  const [role, setRole] = useState("admin");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login , guestLogin } = useAuth();
-  const requiresCredentials = role !== "guest";
+
+  const { login, guestLogin } = useAuth();
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const handleRoleChange = (e) => {
@@ -34,20 +34,12 @@ export default function LoginPage({ onLogin = () => {} }) {
     setError("");
     setSuccess("");
 
-    // Guest path (no credentials required)
-    if (!requiresCredentials) {
-      guestLogin();
-      setSuccess("Guest login successful");
-      onLogin("guest");
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch(`${backendUrl}/api/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // send/receive cookies (CORS required server-side)
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
 
@@ -62,22 +54,20 @@ export default function LoginPage({ onLogin = () => {} }) {
         let message = data?.message || "Login failed";
         if (res.status === 401) message = "Invalid username or password";
         else if (res.status === 404) message = "User not found";
-        else if (res.status === 403)
-          message = "Not authorized for this section";
+        else if (res.status === 403) message = "Not authorized for this section";
         throw new Error(message);
       }
 
       // Validate server role vs selected role
       const serverRole = data?.user?.role;
-
-      if (role !== "guest" && role !== serverRole) {
+      if (role !== serverRole) {
         throw new Error("Not authorized for this section");
       }
 
       login(data.user, data.token);
       setSuccess("Login successful");
       setPassword("");
-      onLogin(serverRole || "guest");
+      onLogin(serverRole);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -94,6 +84,7 @@ export default function LoginPage({ onLogin = () => {} }) {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          {/* Role Selector */}
           <div>
             <label
               htmlFor="role"
@@ -115,79 +106,71 @@ export default function LoginPage({ onLogin = () => {} }) {
             </select>
           </div>
 
-          {requiresCredentials ? (
-            <>
-              <div>
-                <label
-                  htmlFor="username"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username (demo: 1234)"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  autoComplete="username"
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password (demo: 1234)"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
-              >
-                {loading
-                  ? "Logging in..."
-                  : `Login as ${roles.find((r) => r.value === role)?.label}`}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
-              >
-                {loading ? "Logging in..." : "Login as Guest"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  guestLogin();
-                  setError("");
-                  setSuccess("Guest login successful");
-                  onLogin("guest");
-                }}
-                className="w-full mt-3 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-              >
-                Quick Guest Access
-              </button>
-            </>
-          )}
+          {/* Credentials Inputs */}
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username (demo: 1234)"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              autoComplete="username"
+              required
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password (demo: 1234)"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          {/* Login Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
+          >
+            {loading
+              ? "Logging in..."
+              : `Login as ${roles.find((r) => r.value === role)?.label}`}
+          </button>
+
+          {/* Quick Guest Access - Always visible */}
+          <button
+            type="button"
+            onClick={() => {
+              guestLogin();
+              setError("");
+              setSuccess("Guest login successful");
+              onLogin("guest");
+            }}
+            className="w-full mt-3 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+          >
+            Quick Guest Access
+          </button>
         </form>
 
+        {/* Messages */}
         {success && (
           <p
             className="text-sm text-green-700 mt-4"
