@@ -31,6 +31,12 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  const guestLogin = () => {
+  setUser({ name: "Guest User" });
+  setRole("guest");
+  setToken(null);
+};
+
   // Save whenever state changes
   useEffect(() => {
     console.log("Auth state changed:", { user, role, token });
@@ -72,6 +78,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!token,
         login,
         logout,
+         guestLogin,
       }}
     >
       {children}

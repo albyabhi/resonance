@@ -53,6 +53,6 @@ export const roleConfig = {
   guest: {
     title: "Guest",
     actions: [],
-    modules: { standings: true, events: true, stats: false },
+    modules: { standings: true, events: true, stats: true },
   },
 };

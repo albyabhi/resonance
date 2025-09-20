@@ -9,7 +9,6 @@ export default function LoginPage({ onLogin = () => {} }) {
     { value: "captain", label: "House Captain" },
     { value: "student_coordinator", label: "Student Coordinator" },
     { value: "faculty", label: "Faculty Coordinator" },
-    { value: "guest", label: "Guest" },
   ];
 
   const [role, setRole] = useState("guest");
@@ -18,7 +17,7 @@ export default function LoginPage({ onLogin = () => {} }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login , guestLogin } = useAuth();
   const requiresCredentials = role !== "guest";
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
@@ -37,6 +36,7 @@ export default function LoginPage({ onLogin = () => {} }) {
 
     // Guest path (no credentials required)
     if (!requiresCredentials) {
+      guestLogin();
       setSuccess("Guest login successful");
       onLogin("guest");
       return;
@@ -175,7 +175,7 @@ export default function LoginPage({ onLogin = () => {} }) {
               <button
                 type="button"
                 onClick={() => {
-                  setRole("guest");
+                  guestLogin();
                   setError("");
                   setSuccess("Guest login successful");
                   onLogin("guest");
