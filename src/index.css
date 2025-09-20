@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+/* Use a .dark class to control dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme tokens (OKLCH channel values) */
+@theme {
+  /* Main Brand Colors */
+  --color-background: 98% 0.01 240;
+  --color-foreground: 8% 0.01 240;
+
+  /* Primary Brand - Deep Blue */
+  --color-primary: 25% 0.1 220;
+  --color-primary-foreground: 100% 0 0;
+  --color-primary-glow: 45% 0.1 220;
+
+  /* Secondary - Light Blue */
+  --color-secondary: 96% 0.02 210;
+  --color-secondary-foreground: 25% 0.1 220;
+
+  /* Card System */
+  --color-card: 100% 0 0;
+  --color-card-foreground: 8% 0.01 240;
+  --color-card-border: 91% 0.01 220;
+
+  /* Interactive Elements */
+  --color-muted: 96% 0.02 210;
+  --color-muted-foreground: 45% 0.005 240;
+  --color-accent: 95% 0.02 220;
+  --color-accent-foreground: 25% 0.1 220;
+
+  /* House Colors */
+  --color-house-red: 55% 0.15 0;
+  --color-house-blue: 55% 0.15 220;
+  --color-house-green: 45% 0.15 142;
+  --color-house-yellow: 58% 0.18 45;
+  --color-house-purple: 55% 0.15 260;
+  --color-house-orange: 58% 0.18 25;
+
+  /* Status Colors */
+  --color-success: 36% 0.15 142;
+  --color-success-foreground: 100% 0 0;
+  --color-warning: 50% 0.18 38;
+  --color-warning-foreground: 100% 0 0;
+  --color-destructive: 60% 0.2 0;
+  --color-destructive-foreground: 100% 0 0;
+
+  /* Input & Border */
+  --color-border: 91% 0.01 220;
+  --color-input: 91% 0.01 220;
+  --color-ring: 25% 0.1 220;
+
+  /* Sidebar */
+  --color-sidebar-background: 98% 0 0;
+  --color-sidebar-foreground: 26.1% 0.01 240;
+  --color-sidebar-primary: 10% 0.01 240;
+  --color-sidebar-primary-foreground: 98% 0 0;
+  --color-sidebar-accent: 95.9% 0.01 240;
+  --color-sidebar-accent-foreground: 10% 0.01 240;
+  --color-sidebar-border: 91% 0.01 220;
+  --color-sidebar-ring: 59.8% 0.2 217;
+
+  /* Border Radius */
+  --radius: 0.75rem;
+
+  /* Custom Transitions */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark theme token overrides under a selector */
+@layer theme {
+  .dark {
+    --color-background: 4.9% 0.02 222;
+    --color-foreground: 98% 0.02 210;
+
+    --color-card: 4.9% 0.02 222;
+    --color-card-foreground: 98% 0.02 210;
+
+    --color-primary: 98% 0.02 210;
+    --color-primary-foreground: 11.2% 0.015 222;
+
+    --color-secondary: 17.5% 0.015 217;
+    --color-secondary-foreground: 98% 0.02 210;
+
+    --color-muted: 17.5% 0.015 217;
+    --color-muted-foreground: 65.1% 0.01 215;
+
+    --color-accent: 17.5% 0.015 217;
+    --color-accent-foreground: 98% 0.02 210;
+
+    --color-destructive: 30.6% 0.15 0;
+    --color-destructive-foreground: 98% 0.02 210;
+
+    --color-border: 17.5% 0.015 217;
+    --color-input: 17.5% 0.015 217;
+    --color-ring: 83.9% 0.05 213;
+
+    --color-sidebar-background: 10% 0.01 240;
+    --color-sidebar-foreground: 95.9% 0.01 240;
+    --color-sidebar-primary: 48% 0.15 224;
+    --color-sidebar-primary-foreground: 100% 0 0;
+    --color-sidebar-accent: 15.9% 0.01 240;
+    --color-sidebar-accent-foreground: 95.9% 0.01 240;
+    --color-sidebar-border: 15.9% 0.01 240;
+    --color-sidebar-ring: 59.8% 0.2 217;
+  }
+}
+
+/* Utilities */
+@utility btn-primary {
+  background: linear-gradient(
+    to right,
+    oklch(var(--color-primary)),
+    oklch(var(--color-primary-glow))
+  );
+  color: oklch(var(--color-primary-foreground));
+  box-shadow:
+    0 10px 15px -3px oklch(var(--color-primary) / 0.1),
+    0 4px 6px -4px oklch(var(--color-primary) / 0.1);
+  transition: all 0.3s var(--ease-smooth);
+
+  &:hover {
+    box-shadow:
+      0 20px 25px -5px oklch(var(--color-primary) / 0.1),
+      0 8px 10px -6px oklch(var(--color-primary) / 0.1);
+    transform: scale(1.05);
+  }
+}
+
+@utility btn-success {
+  background: linear-gradient(
+    to right,
+    oklch(var(--color-success)),
+    hsl(142 76% 46%)
+  );
+  color: oklch(var(--color-success-foreground));
+  box-shadow:
+    0 10px 15px -3px oklch(var(--color-success) / 0.1),
+    0 4px 6px -4px oklch(var(--color-success) / 0.1);
+  transition: all 0.3s var(--ease-smooth);
+
+  &:hover {
+    box-shadow:
+      0 20px 25px -5px oklch(var(--color-success) / 0.1),
+      0 8px 10px -6px oklch(var(--color-success) / 0.1);
+  }
+}
+
+@utility card-elevated {
+  background-color: oklch(var(--color-card));
+  border: 1px solid oklch(var(--color-card-border));
+  border-radius: var(--radius);
+  box-shadow:
+    0 4px 6px -1px oklch(var(--color-primary) / 0.1),
+    0 2px 4px -1px oklch(var(--color-primary) / 0.06);
+  transition: all 0.3s var(--ease-smooth);
+}
+
+@utility house-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+/* House color variants */
+@utility house-red {
+  background-color: rgb(254 226 226);
+  color: rgb(153 27 27);
+  border: 1px solid rgb(254 202 202);
+}
+
+@utility house-blue {
+  background-color: rgb(219 234 254);
+  color: rgb(30 64 175);
+  border: 1px solid rgb(191 219 254);
+}
+
+@utility house-green {
+  background-color: rgb(220 252 231);
+  color: rgb(21 128 61);
+  border: 1px solid rgb(187 247 208);
+}
+
+@utility house-yellow {
+  background-color: rgb(254 249 195);
+  color: rgb(133 77 14);
+  border: 1px solid rgb(254 240 138);
+}
+
+@utility house-purple {
+  background-color: rgb(243 232 255);
+  color: rgb(107 33 168);
+  border: 1px solid rgb(221 214 254);
+}
+
+@utility house-orange {
+  background-color: rgb(255 237 213);
+  color: rgb(154 52 18);
+  border: 1px solid rgb(254 215 170);
+}
+
+/* Status variants */
+@utility status-pending {
+  background-color: rgb(254 249 195);
+  color: rgb(133 77 14);
+  border: 1px solid rgb(254 240 138);
+}
+
+@utility status-approved {
+  background-color: rgb(220 252 231);
+  color: rgb(21 128 61);
+  border: 1px solid rgb(187 247 208);
+}
+
+@utility status-rejected {
+  background-color: rgb(254 226 226);
+  color: rgb(153 27 27);
+  border: 1px solid rgb(254 202 202);
+}
+
+/* Safe area helper */
+@utility mobile-safe-area {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Base layer */
+@layer base {
+  *, *::before, *::after {
+    border-color: oklch(var(--color-border));
+  }
+  body {
+    background-color: oklch(var(--color-background));
+    color: oklch(var(--color-foreground));
+  }
+}
