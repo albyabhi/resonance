@@ -10,33 +10,32 @@ const ManageUser = () => {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
+  const [houses, setHouses] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     username: "",
     password: "",
     role: "guest",
-    house: "",
+    house: "", // holds house_id for captain/student_coordinator
   });
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Unified API call function
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
 
     const config = {
+      method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        ...options.headers,
+        ...(options.headers || {}),
       },
-      ...options,
+      body: options.body,
     };
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-    // Debug raw response if needed
     const text = await response.text();
     let data;
     try {
@@ -50,13 +49,83 @@ const ManageUser = () => {
     return data;
   };
 
-  // Fetch all users
+  // Fetch houses for role-based selection
+  const fetchHouses = async () => {
+    try {
+      const resp = await apiCall("/api/house");
+      setHouses(Array.isArray(resp) ? resp : resp.houses || []);
+    } catch (err) {
+      console.warn("Failed to load houses:", err.message);
+      setHouses([]);
+    }
+  };
+
+  // Fetch users
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError("");
-      const { users } = await apiCall("/api/users");
-      setUsers(users);
+      const resp = await apiCall("/api/users");
+      const list = Array.isArray(resp) ? resp : Array.isArray(resp.users) ? resp.users : [];
+      setUsers(list);
+    } catch (err) {
+      setError(err.message);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchUsers();
+      fetchHouses();
+    }
+  }, [token]);
+
+  // Add or edit user
+  const handleAddOrEditUser = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError("");
+
+      const requiresHouse = formData.role === "captain" || formData.role === "student_coordinator";
+
+      // Build payload; for captain or student_coordinator, house must be ObjectId string in formData.house
+      const payload = requiresHouse
+        ? {
+            name: formData.name,
+            username: formData.username,
+            password: formData.password,
+            role: formData.role,
+            house: formData.house || null,
+          }
+        : { ...formData };
+
+      if (editingUserId) {
+        const { user } = await apiCall(`/api/users/${editingUserId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        setUsers((prev) => prev.map((u) => (u._id === editingUserId ? user : u)));
+        setEditingUserId(null);
+      } else {
+        const { user } = await apiCall("/api/users/add", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setUsers((prev) => [user, ...prev]);
+      }
+
+      setFormData({
+        name: "",
+        username: "",
+        password: "",
+        role: "guest",
+        house: "",
+      });
+      setActiveTab("manage");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,59 +133,14 @@ const ManageUser = () => {
     }
   };
 
-  useEffect(() => {
-    if (token) fetchUsers();
-  }, [token]);
-
-  // Add or edit user
-  // Add or edit user
-const handleAddOrEditUser = async (e) => {
-  e.preventDefault();
-  try {
-    setLoading(true);
-    setError("");
-
-    if (editingUserId) {
-      // Edit user
-      const { user } = await apiCall(`/api/users/${editingUserId}`, {
-        method: "PUT",
-        body: JSON.stringify(formData),
-      });
-      setUsers(users.map((u) => (u._id === editingUserId ? user : u)));
-      setEditingUserId(null);
-    } else {
-      // Add user
-      const { user } = await apiCall("/api/users/add", { // <-- Fixed route
-        method: "POST",
-        body: JSON.stringify(formData),
-      });
-      setUsers([user, ...users]);
-    }
-
-    setFormData({
-      name: "",
-      username: "",
-      password: "",
-      role: "guest",
-      house: "",
-    });
-    setActiveTab("manage");
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
   // Edit form
   const handleEdit = (user) => {
     setFormData({
-      name: user.name,
-      username: user.username,
+      name: user.name || "",
+      username: user.username || "",
       password: "",
-      role: user.role,
-      house: user.house?._id || "",
+      role: user.role || "guest",
+      house: user.house?._id || "", // preselect existing house for captain/student_coordinator
     });
     setEditingUserId(user._id);
     setActiveTab("add");
@@ -128,7 +152,7 @@ const handleAddOrEditUser = async (e) => {
     try {
       setLoading(true);
       await apiCall(`/api/users/${userId}`, { method: "DELETE" });
-      setUsers(users.filter((u) => u._id !== userId));
+      setUsers((prev) => prev.filter((u) => u._id !== userId));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -147,18 +171,30 @@ const handleAddOrEditUser = async (e) => {
     return colors[role] || colors.guest;
   };
 
+  const houseLabel = (u) => {
+    if (u?.house && typeof u.house === "object" && u.house.name) return u.house.name;
+    return "-";
+  };
+  const createdLabel = (u) => {
+    const d = u?.createdAt || u?.created_at;
+    try {
+      return d ? new Date(d).toLocaleDateString() : "-";
+    } catch {
+      return "-";
+    }
+  };
+
+  const requiresHouseSelect = (role) => role === "captain" || role === "student_coordinator";
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            User Management
-          </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Manage users, roles, and permissions
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">User Management</h1>
+          <p className="text-gray-600 text-sm md:text-base">Manage users, roles, and permissions</p>
         </div>
+
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -168,7 +204,8 @@ const handleAddOrEditUser = async (e) => {
             </button>
           </div>
         )}
-        {/* Tab Navigation */}
+
+        {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm mb-6 p-1">
           <div className="flex">
             <button
@@ -181,6 +218,7 @@ const handleAddOrEditUser = async (e) => {
                 setActiveTab("manage");
                 setEditingUserId(null);
                 setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
+                fetchUsers();
               }}
             >
               Manage Users
@@ -207,6 +245,9 @@ const handleAddOrEditUser = async (e) => {
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             {/* Mobile */}
             <div className="block md:hidden">
+              {Array.isArray(users) && users.length === 0 && !loading ? (
+                <div className="p-4 text-gray-600">No users found</div>
+              ) : null}
               {users.map((user) => (
                 <div key={user._id} className="p-4 border-b border-gray-100 last:border-b-0">
                   <div className="flex items-start justify-between mb-3">
@@ -221,18 +262,24 @@ const handleAddOrEditUser = async (e) => {
                   <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                     <div>
                       <span className="text-gray-500">House:</span>
-                      <p className="font-medium">{user.house?.name || "-"}</p>
+                      <p className="font-medium">{houseLabel(user)}</p>
                     </div>
                     <div>
                       <span className="text-gray-500">Created:</span>
-                      <p className="font-medium">{new Date(user.createdAt).toLocaleDateString()}</p>
+                      <p className="font-medium">{createdLabel(user)}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleEdit(user)} className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                    >
                       Edit
                     </button>
-                    <button onClick={() => handleDelete(user._id)} className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium">
+                    <button
+                      onClick={() => handleDelete(user._id)}
+                      className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                    >
                       Delete
                     </button>
                   </div>
@@ -252,6 +299,13 @@ const handleAddOrEditUser = async (e) => {
                   </tr>
                 </thead>
                 <tbody>
+                  {Array.isArray(users) && users.length === 0 && !loading ? (
+                    <tr>
+                      <td className="p-4 text-gray-600" colSpan={5}>
+                        No users found
+                      </td>
+                    </tr>
+                  ) : null}
                   {users.map((user) => (
                     <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="p-4">
@@ -265,20 +319,33 @@ const handleAddOrEditUser = async (e) => {
                           {user.role.replace("_", " ")}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-600">{user.house?.name || "-"}</td>
-                      <td className="p-4 text-gray-600">{new Date(user.createdAt).toLocaleDateString()}</td>
+                      <td className="p-4 text-gray-600">{houseLabel(user)}</td>
+                      <td className="p-4 text-gray-600">{createdLabel(user)}</td>
                       <td className="p-4">
                         <div className="flex gap-2">
-                          <button onClick={() => handleEdit(user)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                          >
                             Edit
                           </button>
-                          <button onClick={() => handleDelete(user._id)} className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium">
+                          <button
+                            onClick={() => handleDelete(user._id)}
+                            className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                          >
                             Delete
                           </button>
                         </div>
                       </td>
                     </tr>
                   ))}
+                  {loading ? (
+                    <tr>
+                      <td className="p-4 text-gray-600" colSpan={5}>
+                        Loading…
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
@@ -336,7 +403,14 @@ const handleAddOrEditUser = async (e) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setFormData({
+                      ...formData,
+                      role: newRole,
+                      house: requiresHouseSelect(newRole) ? formData.house : "",
+                    });
+                  }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
                 >
                   {roles.map((r) => (
@@ -346,18 +420,43 @@ const handleAddOrEditUser = async (e) => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  House <span className="text-gray-400 text-xs">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.house}
-                  onChange={(e) => setFormData({ ...formData, house: e.target.value })}
-                  placeholder="Enter house name or ID"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
+
+              {/* House selection behavior */}
+              {requiresHouseSelect(formData.role) ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assign House</label>
+                  <select
+                    required
+                    value={formData.house}
+                    onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="">Select house</option>
+                    {houses.map((h) => (
+                      <option key={h._id} value={h._id}>
+                        {h.name} ({h.code})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This user will be linked to the selected house.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    House <span className="text-gray-400 text-xs">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.house}
+                    onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                    placeholder="Enter house name or ID"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"

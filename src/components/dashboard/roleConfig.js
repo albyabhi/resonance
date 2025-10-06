@@ -12,6 +12,7 @@ export const roleConfig = {
     title: "System Administrator",
     actions: [
       { label: "Manage Users", icon: Users, to: "/users" },
+      { label: "Manage Students", icon: Users, to: "/users" },
       { label: "Notifications", icon: Bell, to: "/notifications" },
       { label: "Add Events", icon: Calendar, to: "/events/new" },
       { label: "Manage House", icon: UserPlus, to: "/houses" },
@@ -22,7 +23,7 @@ export const roleConfig = {
   captain: {
     title: "Captain",
     actions: [
-      { label: "Register Team", icon: UserPlus, to: "/teams/new" },
+      { label: "Event Registration", icon: UserPlus, to: "/teams/new" },
       { label: "House Events", icon: Calendar, to: "/events/house" },
     ],
     modules: { standings: true, events: true, stats: true },
@@ -41,7 +42,7 @@ export const roleConfig = {
     title: "Faculty",
     actions: [
       {
-        label: "Pending Results (1)",
+        label: "Pending Results",
         icon: ClipboardList,
         to: "/results/pending",
       },

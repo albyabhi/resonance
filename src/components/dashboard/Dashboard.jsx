@@ -1,5 +1,5 @@
 // Dashboard.jsx
-import {useState} from 'react';
+import {useState ,useEffect } from 'react';
 import { roleConfig } from './roleConfig';
 import HouseStandings from '../HouseStandings';
 import RecentEvents from '../RecentEvents';
@@ -8,24 +8,57 @@ import { useAuth } from "../AuthContext";
 
 import ManageUsers from '../actions/ManageUser';
 import ManageHouse from '../actions/ManageHouse';
-
-
+import ManageEvents from '../actions/ManageEvents';
+import Register from '../actions/QuickRegister';
+import ManageStudents from '../actions/ManageStudents';
+import ManageResult from '../actions/ManageResult';
+import SubmissionManager from '../actions/SubmissionManager';
+import PendingResult from '../actions/PendingResult';
 
 // Map action labels to components
 const actionComponents = {
+  //admin
   "Manage Users": ManageUsers,
   "Manage House": ManageHouse,
+  "Add Events": ManageEvents,
+
+  //captain
+  "Event Registration" : Register,
+  "Manage Students" : ManageStudents,
+
+  //student coordinator
+  "Enter Results" : ManageResult,
+  "My Submissions" : SubmissionManager,
+  "Pending Results" : PendingResult,
+
+
   
   
   
 };
 
 export default function Dashboard({ data = {}, onLogout = () => {} }) {
-  const { user, role: contextRole } = useAuth();   // get from context
-  // Dashboard.jsx
-const safeRoleKey = (contextRole ? String(contextRole).toLowerCase().trim() : "guest");
-const cfg = roleConfig[safeRoleKey] ?? roleConfig.guest;
+  const { user, role: contextRole, token } = useAuth();
+  const safeRoleKey = (contextRole ? String(contextRole).toLowerCase().trim() : "guest");
+  const cfg = roleConfig[safeRoleKey] ?? roleConfig.guest;
+  const [houseName, setHouseName] = useState(user?.house?.name || "");
 
+  useEffect(() => {
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+    const needFetch = safeRoleKey === "captain" && !user?.house?.name && token;
+    if (!needFetch) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/house/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok && data?.house?.name) setHouseName(data.house.name);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [safeRoleKey, user?.house?.name, token]);
 
   const [activeAction, setActiveAction] = useState(null); // currently clicked action
 
@@ -46,8 +79,16 @@ const cfg = roleConfig[safeRoleKey] ?? roleConfig.guest;
     <div className="min-h-screen flex flex-col bg-gray-50">
       <main className="flex-1 p-6 space-y-6">
         <header className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Welcome back, {cfg.title}!</h1>
-        </header>
+  <div>
+    <h1 className="text-xl font-semibold">Welcome back, {cfg.title}!</h1>
+    {safeRoleKey === "captain" && (
+      <p className="text-sm text-gray-600 mt-1">
+        House: <span className="font-medium">{user?.house?.name || "—"}</span>
+        {user?.house?.code ? ` (${user.house.code})` : ""}
+      </p>
+    )}
+  </div>
+</header>
 
         {/* If an action is active, show the component */}
         {ActiveComponent ? (
