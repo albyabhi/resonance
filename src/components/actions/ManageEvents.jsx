@@ -63,9 +63,12 @@ const ManageEvents = () => {
   const [pointsForm, setPointsForm] = useState([...DEFAULT_POINTS]);
   const [filter, setFilter] = useState({ mode: "all", type: "all", query: "" });
 
-  // Progressive disclosure toggles (UI only)
+  // UI toggles
   const [showSchedule, setShowSchedule] = useState(true);
   const [showPoints, setShowPoints] = useState(false);
+
+  // Client-side validation state
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
@@ -138,6 +141,7 @@ const ManageEvents = () => {
     setEditingEventId(null);
     setShowSchedule(true);
     setShowPoints(false);
+    setFieldErrors({});
   };
 
   const startAdd = () => {
@@ -152,24 +156,34 @@ const ManageEvents = () => {
       const eventId = evt._id || evt.event_id;
       setEditingEventId(eventId);
 
-      const [{ event }, scheduleResp, { points }] = await Promise.all([
-        apiCall(`/api/event/${eventId}`),
-        apiCall(`/api/schedule?event_id=${eventId}`),
-        apiCall(`/api/event/points?event_id=${eventId}`),
-      ]);
+      // Always fetch the core event
+      const { event } = await apiCall(`/api/event/${eventId}`);
 
+      // Try to fetch schedules and points
+      let schedules = [];
+      let points = [];
+      try {
+        const scheduleResp = await apiCall(`/api/schedule?event_id=${eventId}`);
+        schedules = scheduleResp.schedules || scheduleResp.schedule || [];
+      } catch {}
+      try {
+        const pointsResp = await apiCall(`/api/event/points?event_id=${eventId}`);
+        points = pointsResp.points || [];
+      } catch {}
+
+      // Populate forms with safe defaults
       setEventForm({
         name: event.name || "",
         description: event.description || "",
-        rounds: event.rounds || 1,
-        min_team_size: event.min_team_size || 1,
-        max_team_size: event.max_team_size || Math.max(1, event.min_team_size || 1),
+        rounds: event.rounds ?? 1,
+        min_team_size: event.min_team_size ?? 1,
+        max_team_size:
+          event.max_team_size ?? Math.max(1, event.min_team_size ?? 1),
         mode: event.mode || "onstage",
         event_type: event.event_type || "individual",
-        max_per_house: event.max_per_house || 1,
+        max_per_house: event.max_per_house ?? 1,
       });
 
-      const schedules = scheduleResp.schedules || scheduleResp.schedule || [];
       const roundsData = (schedules || [])
         .sort((a, b) => (a.round_no || 0) - (b.round_no || 0))
         .map((r) => ({
@@ -181,12 +195,16 @@ const ManageEvents = () => {
         }));
       setRoundsForm(roundsData.length ? roundsData : [{ ...DEFAULT_ROUND }]);
 
-      const pt = (points || []).map((p) => ({ position: p.position, points: p.points }));
+      const pt = (points || []).map((p) => ({
+        position: p.position,
+        points: p.points,
+      }));
       setPointsForm(pt.length ? pt : [...DEFAULT_POINTS]);
 
       setActiveTab("edit");
       setShowSchedule(true);
       setShowPoints(false);
+      setFieldErrors({});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -208,30 +226,50 @@ const ManageEvents = () => {
     }
   };
 
-  // Form logic
+  // Allow empty string during typing for numeric fields.
+  // Validate but do not force values while user is typing.
   const handleEventChange = (field, value) => {
     setEventForm((prev) => {
-      let next = { ...prev, [field]: value };
+      const numericFields = new Set([
+        "min_team_size",
+        "max_team_size",
+        "rounds",
+        "max_per_house",
+      ]);
+
+      let next = { ...prev };
+
+      if (numericFields.has(field)) {
+        if (value === "") {
+          next[field] = ""; // let it be empty while typing
+        } else {
+          const n = parseInt(value, 10);
+          if (!Number.isNaN(n)) next[field] = n;
+        }
+      } else {
+        next[field] = value;
+      }
+
+      // If switching to individual, lock team sizes to 1
       if (field === "event_type" && value === "individual") {
         next.min_team_size = 1;
         next.max_team_size = 1;
       }
+
+      // Keep max >= min only when both are numeric
       if (field === "min_team_size") {
-        const n = parseInt(value || 0, 10);
-        if (!Number.isNaN(n)) {
-          next.min_team_size = n;
-          if (n > next.max_team_size) next.max_team_size = n;
+        const minVal =
+          typeof next.min_team_size === "number" ? next.min_team_size : null;
+        const maxVal =
+          typeof next.max_team_size === "number" ? next.max_team_size : null;
+        if (minVal != null && maxVal != null && minVal > maxVal) {
+          next.max_team_size = minVal;
         }
       }
-      if (field === "max_team_size") {
-        const n = parseInt(value || 0, 10);
-        if (!Number.isNaN(n)) {
-          next.max_team_size = Math.max(n, next.min_team_size || 1);
-        }
-      }
-      if (field === "rounds") {
-        const r = parseInt(value || 1, 10);
-        next.rounds = Math.max(1, r);
+
+      // Update rounds array only when rounds is a number
+      if (field === "rounds" && typeof next.rounds === "number") {
+        next.rounds = Math.max(1, next.rounds);
         setRoundsForm((old) => {
           let arr = [...old];
           if (arr.length < next.rounds) {
@@ -245,6 +283,10 @@ const ManageEvents = () => {
           return arr;
         });
       }
+
+      // Re-validate on change
+      validateFields(next);
+
       return next;
     });
   };
@@ -278,6 +320,89 @@ const ManageEvents = () => {
     setPointsForm((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // Validation: allow empty ("") or 0; if provided, must be >= 1 except when 0 is explicitly allowed
+  // For this use case, user requested: "user can leave it empty or 0"; treat empty/0 as valid optional.
+  const validateFields = (form) => {
+    const errs = {};
+
+    // Name required
+    if (!form.name || !String(form.name).trim()) {
+      errs.name = "Name is required";
+    }
+
+    // rounds: allow "" or 0 -> interpret later; if provided as number and < 1, flag
+    if (form.rounds !== "" && typeof form.rounds === "number" && form.rounds < 1) {
+      errs.rounds = "Rounds must be at least 1 when provided";
+    }
+
+    // For team sizes when event_type === "team": allow "" or 0, else if number, validate
+    if (form.event_type === "team") {
+      const min = form.min_team_size;
+      const max = form.max_team_size;
+
+      if (min !== "" && typeof min === "number" && min < 1) {
+        errs.min_team_size = "Min team size must be ≥ 1 when provided";
+      }
+      if (max !== "" && typeof max === "number" && max < 1) {
+        errs.max_team_size = "Max team size must be ≥ 1 when provided";
+      }
+      if (
+        typeof min === "number" &&
+        typeof max === "number" &&
+        min >= 1 &&
+        max >= 1 &&
+        max < min
+      ) {
+        errs.max_team_size = "Max team size must be ≥ Min team size";
+      }
+    }
+
+    // max_per_house: allow "" or 0; if number and < 0, flag
+    if (
+      form.max_per_house !== "" &&
+      typeof form.max_per_house === "number" &&
+      form.max_per_house < 0
+    ) {
+      errs.max_per_house = "Max per house cannot be negative";
+    }
+
+    setFieldErrors(errs);
+    return errs;
+  };
+
+  // Sanitize before submit: convert "" to null, keep 0 if user typed 0, and enforce business defaults
+  const sanitizeForSubmit = (form) => {
+    const toNullableNumber = (v) => (v === "" ? null : typeof v === "number" ? v : null);
+
+    const sanitized = {
+      ...form,
+      rounds:
+        form.rounds === "" ? 1 : typeof form.rounds === "number" ? Math.max(1, form.rounds) : 1,
+      max_per_house:
+        form.max_per_house === "" ? null : typeof form.max_per_house === "number" ? form.max_per_house : null,
+    };
+
+    if (form.event_type === "individual") {
+      sanitized.min_team_size = 1;
+      sanitized.max_team_size = 1;
+    } else {
+      const min = toNullableNumber(form.min_team_size);
+      const max = toNullableNumber(form.max_team_size);
+
+      // Allow null or 0 to pass through; if both numeric, enforce max >= min
+      if (typeof min === "number" && typeof max === "number") {
+        sanitized.min_team_size = Math.max(1, min);
+        sanitized.max_team_size = Math.max(sanitized.min_team_size, max);
+      } else {
+        // Keep null or 0 as-is for optional semantics
+        sanitized.min_team_size = form.min_team_size === "" ? null : form.min_team_size ?? null;
+        sanitized.max_team_size = form.max_team_size === "" ? null : form.max_team_size ?? null;
+      }
+    }
+
+    return sanitized;
+  };
+
   // Submit add/edit
   const saveEvent = async (e) => {
     e.preventDefault();
@@ -285,12 +410,21 @@ const ManageEvents = () => {
       setLoading(true);
       setError("");
 
+      // Final validation
+      const errs = validateFields(eventForm);
+      if (Object.keys(errs).length > 0) {
+        throw new Error("Please fix the highlighted fields");
+      }
+
+      // Sanitize payload
+      const sanitizedEventForm = sanitizeForSubmit(eventForm);
+
       // 1) Create or update event
       let savedEvent;
       if (editingEventId) {
         const { event } = await apiCall(`/api/event/${editingEventId}`, {
           method: "PUT",
-          body: JSON.stringify(eventForm),
+          body: JSON.stringify(sanitizedEventForm),
         });
         savedEvent = event;
         setEvents((prev) =>
@@ -301,7 +435,7 @@ const ManageEvents = () => {
       } else {
         const { event } = await apiCall("/api/event", {
           method: "POST",
-          body: JSON.stringify(eventForm),
+          body: JSON.stringify(sanitizedEventForm),
         });
         savedEvent = event;
         setEvents((prev) => [event, ...prev]);
@@ -481,8 +615,14 @@ const ManageEvents = () => {
                           </p>
                         </div>
                         <div className="flex gap-2 shrink-0">
-                          {getChip(e.mode, "bg-blue-50 text-blue-700 border-blue-200")}
-                          {getChip(e.event_type, "bg-purple-50 text-purple-700 border-purple-200")}
+                          {getChip(
+                            e.mode,
+                            "bg-blue-50 text-blue-700 border-blue-200"
+                          )}
+                          {getChip(
+                            e.event_type,
+                            "bg-purple-50 text-purple-700 border-purple-200"
+                          )}
                         </div>
                       </div>
 
@@ -498,7 +638,9 @@ const ManageEvents = () => {
                         <div>
                           <span className="text-gray-500">Team size</span>
                           <p className="font-medium">
-                            {e.event_type === "individual" ? "1" : `${e.min_team_size}–${e.max_team_size}`}
+                            {e.event_type === "individual"
+                              ? "1"
+                              : `${e.min_team_size}–${e.max_team_size}`}
                           </p>
                         </div>
                         <div>
@@ -604,7 +746,7 @@ const ManageEvents = () => {
         {/* Add/Edit Form */}
         {(activeTab === "add" || activeTab === "edit") && (
           <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
-            <form onSubmit={saveEvent} className="space-y-6">
+            <form onSubmit={saveEvent} className="space-y-6" noValidate>
               {/* Event Basics */}
               <section>
                 <h2 className="text-lg font-semibold text-gray-900 mb-3">Event details</h2>
@@ -617,8 +759,13 @@ const ManageEvents = () => {
                       value={eventForm.name}
                       onChange={(e) => handleEventChange("name", e.target.value)}
                       placeholder="Enter event name"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        fieldErrors.name ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
+                    {fieldErrors.name && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
@@ -673,12 +820,23 @@ const ManageEvents = () => {
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       disabled={eventForm.event_type === "individual"}
-                      value={eventForm.event_type === "individual" ? 1 : eventForm.min_team_size}
+                      value={
+                        eventForm.event_type === "individual"
+                          ? 1
+                          : eventForm.min_team_size === 0
+                          ? 0
+                          : eventForm.min_team_size ?? ""
+                      }
                       onChange={(e) => handleEventChange("min_team_size", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 ${
+                        fieldErrors.min_team_size ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
+                    {fieldErrors.min_team_size && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.min_team_size}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -686,12 +844,23 @@ const ManageEvents = () => {
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       disabled={eventForm.event_type === "individual"}
-                      value={eventForm.event_type === "individual" ? 1 : eventForm.max_team_size}
+                      value={
+                        eventForm.event_type === "individual"
+                          ? 1
+                          : eventForm.max_team_size === 0
+                          ? 0
+                          : eventForm.max_team_size ?? ""
+                      }
                       onChange={(e) => handleEventChange("max_team_size", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 ${
+                        fieldErrors.max_team_size ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
+                    {fieldErrors.max_team_size && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_team_size}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -699,11 +868,20 @@ const ManageEvents = () => {
                     </label>
                     <input
                       type="number"
-                      min={1}
-                      value={eventForm.max_per_house}
+                      min={0}
+                      value={
+                        eventForm.max_per_house === 0
+                          ? 0
+                          : eventForm.max_per_house ?? ""
+                      }
                       onChange={(e) => handleEventChange("max_per_house", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        fieldErrors.max_per_house ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
+                    {fieldErrors.max_per_house && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_house}</p>
+                    )}
                   </div>
                 </div>
               </section>
@@ -730,10 +908,15 @@ const ManageEvents = () => {
                         <input
                           type="number"
                           min={1}
-                          value={eventForm.rounds}
+                          value={eventForm.rounds ?? ""}
                           onChange={(e) => handleEventChange("rounds", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            fieldErrors.rounds ? "border-red-300" : "border-gray-200"
+                          }`}
                         />
+                        {fieldErrors.rounds && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.rounds}</p>
+                        )}
                       </div>
                     </div>
 
