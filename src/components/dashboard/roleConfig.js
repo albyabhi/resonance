@@ -25,6 +25,7 @@ export const roleConfig = {
     actions: [
       { label: "Event Registration", icon: UserPlus, to: "/teams/new" },
       { label: "House Events", icon: Calendar, to: "/events/house" },
+      { label: "Manage House Details", icon: UserPlus, to: "/houses" }
     ],
     modules: { standings: true, events: true, stats: true },
   },

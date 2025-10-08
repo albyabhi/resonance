@@ -1,71 +1,95 @@
-// src/context/AuthContext.jsx
+// src/components/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState("guest");
+  const [user, setUser] = useState(null);          // { id, name, username, role, house? }
+  const [role, setRole] = useState("guest");       // lowercased role mirror
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Load from localStorage on first mount
   useEffect(() => {
-    console.log("AuthProvider mounted. Loading auth from localStorage...");
-    const saved = localStorage.getItem("auth");
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem("auth");
+      if (saved) {
         const parsed = JSON.parse(saved);
-        console.log("Loaded from localStorage:", parsed);
         setUser(parsed.user || null);
         setRole(parsed.role || "guest");
         setToken(parsed.token || null);
-      } catch (err) {
-        console.error("Failed to parse auth from localStorage:", err);
-        localStorage.removeItem("auth");
       }
-    } else {
-      console.log("No auth data found in localStorage.");
+    } catch {
+      localStorage.removeItem("auth");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
-  const guestLogin = () => {
-  setUser({ name: "Guest User" });
-  setRole("guest");
-  setToken(null);
-};
-
-  // Save whenever state changes
+  // Persist whenever state changes
   useEffect(() => {
-    console.log("Auth state changed:", { user, role, token });
     if (user && token) {
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({ user, role, token })
-      );
-      console.log("Auth saved to localStorage");
+      localStorage.setItem("auth", JSON.stringify({ user, role, token }));
     } else {
       localStorage.removeItem("auth");
-      console.log("Auth removed from localStorage (logged out or guest)");
     }
   }, [user, role, token]);
 
+  const normalizeRole = (r) => String(r || "").toLowerCase();
+
+  const guestLogin = () => {
+    setUser({ name: "Guest User" });
+    setRole("guest");
+    setToken(null);
+  };
+
+  // Login updates user, role, token, and persists
   const login = (serverUser, jwtToken) => {
-    console.log("Login called with:", serverUser, jwtToken);
-    setUser(serverUser);
-    setRole(serverUser?.role || "guest");
+    const nextRole = normalizeRole(serverUser?.role);
+    const nextUser = { ...serverUser, role: nextRole };
+    setUser(nextUser);
+    setRole(nextRole || "guest");
     setToken(jwtToken || null);
-    console.log("Auth state after login:", { user: serverUser, role: serverUser?.role, token: jwtToken });
   };
 
   const logout = () => {
-    console.log("Logout called");
     setUser(null);
     setRole("guest");
     setToken(null);
-    console.log("Auth state after logout:", { user: null, role: "guest", token: null });
+  };
+
+  // Update only user.house and persist
+  const setUserHouse = (house) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, house };
+      // persist immediately using latest token/role
+      if (token) {
+        try {
+          localStorage.setItem("auth", JSON.stringify({ user: next, role, token }));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+  };
+
+  // General user updater, accepts a partial object or a function(prev)=>next
+  const setUserData = (patch) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = typeof patch === "function" ? patch(prev) : { ...prev, ...patch };
+      if (token) {
+        try {
+          localStorage.setItem("auth", JSON.stringify({ user: next, role, token }));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
   };
 
   return (
@@ -78,7 +102,9 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!token,
         login,
         logout,
-         guestLogin,
+        guestLogin,
+        setUserHouse,
+        setUserData,
       }}
     >
       {children}
