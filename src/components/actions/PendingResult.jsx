@@ -17,7 +17,8 @@ const PendingResult = () => {
 
   // Data
   const [pending, setPending] = useState([]);
-  const [teams, setTeams] = useState([]);
+  const [teams, setTeams] = useState([]); // includes members
+  const [teamMembersMap, setTeamMembersMap] = useState({}); // teamId -> [{_id,name,class}, ...]
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -46,11 +47,27 @@ const PendingResult = () => {
     setEvents(events || []);
   };
 
+  const fetchMembersForTeams = async (teamList) => {
+    const map = {};
+    await Promise.all(
+      teamList.map(async (t) => {
+        try {
+          const { members } = await apiCall(`/api/team/${t._id}/members`);
+          map[t._id] = members || [];
+        } catch {
+          map[t._id] = [];
+        }
+      })
+    );
+    return map;
+  };
+
   const loadContext = async (evtId) => {
     const { schedules } = await apiCall(`/api/schedule?event_id=${evtId}`);
     const sorted = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
     setRounds(sorted);
     setRoundNo(sorted.length ? String(sorted[0].round_no) : "");
+
     let tResp = null;
     try {
       tResp = await apiCall(`/api/team?event_id=${evtId}`);
@@ -64,6 +81,10 @@ const PendingResult = () => {
       houseCode: t.house_id?.code || "",
     }));
     setTeams(mapped);
+
+    // Fetch members once for all teams in the event
+    const memberMap = await fetchMembersForTeams(mapped);
+    setTeamMembersMap(memberMap);
   };
 
   const loadPending = async () => {
@@ -100,6 +121,7 @@ const PendingResult = () => {
       setRoundNo("");
       setPending([]);
       setTeams([]);
+      setTeamMembersMap({});
       return;
     }
     setLoading(true);
@@ -121,6 +143,17 @@ const PendingResult = () => {
     `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} • ${t.houseName}${
       t.houseCode ? ` (${t.houseCode})` : ""
     }`;
+
+  const renderTeamOrStudents = (row) => {
+    if (row.chest) {
+      return `Chest #${row.chest}`;
+    }
+    const members = teamMembersMap[row.teamId] || [];
+    if (!members.length) return "No chest";
+    const names = members.map((m) => m.name).slice(0, 3).join(", ");
+    const more = members.length > 3 ? ` +${members.length - 3}` : "";
+    return `${names}${more}`;
+  };
 
   const updateRow = async (rowId, newTeamId) => {
     if (!rowId || !newTeamId) return;
@@ -154,7 +187,6 @@ const PendingResult = () => {
     }
   };
 
-  // New: approve single row
   const approveOne = async (row) => {
     if (!row?._id) return;
     setLoading(true);
@@ -172,7 +204,6 @@ const PendingResult = () => {
     }
   };
 
-  // New: reject single row
   const rejectOne = async (row) => {
     if (!row?._id) return;
     if (!window.confirm(`Reject position ${row.position}?`)) return;
@@ -306,7 +337,7 @@ const PendingResult = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-3 text-xs uppercase text-gray-500">Position</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Team</th>
+              <th className="text-left p-3 text-xs uppercase text-gray-500">Team/Student</th>
               <th className="text-left p-3 text-xs uppercase text-gray-500">House</th>
               <th className="text-left p-3 text-xs uppercase text-gray-500">Submitted By</th>
               <th className="text-left p-3 text-xs uppercase text-gray-500">Action</th>
@@ -329,7 +360,7 @@ const PendingResult = () => {
               pending.map((row) => (
                 <tr key={row._id} className="border-t">
                   <td className="p-3">{row.position}</td>
-                  <td className="p-3">{row.chest ? `Chest #${row.chest}` : "No chest"}</td>
+                  <td className="p-3">{renderTeamOrStudents(row)}</td>
                   <td className="p-3">
                     {row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}
                   </td>

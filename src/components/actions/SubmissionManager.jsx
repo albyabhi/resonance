@@ -17,7 +17,7 @@ const SubmissionManager = () => {
   const [statusFilter, setStatusFilter] = useState(""); // "", "pending", "approved"
 
   // Data
-  const [submissions, setSubmissions] = useState([]); // [{ _id, position, team_id: { _id, chest_no?, house_id:{name,code}}, submitted_by, status }]
+  const [submissions, setSubmissions] = useState([]); // normalized rows
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -81,7 +81,7 @@ const SubmissionManager = () => {
     loadRounds();
   }, [eventId]);
 
-  // Load submissions when filters change
+  // Normalize submissions
   const loadSubmissions = async () => {
     if (!eventId || !roundNo) return;
     try {
@@ -143,6 +143,12 @@ const SubmissionManager = () => {
     }
   };
 
+  // UI helpers
+  const statusChipClass = (status) =>
+    status === "pending"
+      ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+      : "bg-green-50 text-green-700 border border-green-200";
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4">
       <div className="mb-3">
@@ -165,7 +171,7 @@ const SubmissionManager = () => {
           <select
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           >
             <option value="">Select event</option>
             {(events || []).map((e) => {
@@ -184,7 +190,7 @@ const SubmissionManager = () => {
             value={roundNo}
             onChange={(e) => setRoundNo(e.target.value)}
             disabled={!rounds.length}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white disabled:bg-gray-50"
+            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           >
             <option value="">Select round</option>
             {rounds.map((r) => (
@@ -199,7 +205,7 @@ const SubmissionManager = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
           >
             <option value="">All</option>
             <option value="pending">Pending</option>
@@ -210,7 +216,7 @@ const SubmissionManager = () => {
           <button
             type="button"
             onClick={loadSubmissions}
-            className="px-4 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200"
+            className="px-4 py-2 min-h-[44px] bg-gray-100 border rounded-lg hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50"
             disabled={!eventId || !roundNo}
           >
             Refresh
@@ -218,8 +224,66 @@ const SubmissionManager = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto border rounded-lg">
+      {/* Mobile cards */}
+      <ul className="space-y-2 md:hidden" aria-label="Submissions list">
+        {loading ? (
+          <li className="text-center text-sm text-gray-600 py-2">Loading…</li>
+        ) : submissions.length === 0 ? (
+          <li className="text-center text-sm text-gray-600 py-2">No submissions found</li>
+        ) : (
+          submissions.map((row) => (
+            <li key={row._id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500">Position</p>
+                  <p className="text-base font-semibold text-gray-900">{row.position}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-500">Team</p>
+                      <p className="font-medium">
+                        {row.chest ? `Chest #${row.chest}` : "No chest"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">House</p>
+                      <p className="font-medium">
+                        {row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-gray-500">Submitted by</p>
+                      <p className="font-medium">{row.submittedBy || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${statusChipClass(row.status)}`}
+                >
+                  {row.status}
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <button
+                  type="button"
+                  disabled={!isOwnPending(row)}
+                  onClick={() => deleteRow(row)}
+                  className={`w-full px-3 py-2 min-h-[44px] rounded text-sm ${
+                    isOwnPending(row)
+                      ? "bg-red-50 text-red-600 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+
+      {/* Desktop/table view */}
+      <div className="hidden md:block overflow-x-auto border rounded-lg">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -254,13 +318,7 @@ const SubmissionManager = () => {
                   </td>
                   <td className="p-3">{row.submittedBy || "-"}</td>
                   <td className="p-3">
-                    <span
-                      className={`px-2 py-1 text-xs rounded ${
-                        row.status === "pending"
-                          ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
-                          : "bg-green-50 text-green-700 border border-green-200"
-                      }`}
-                    >
+                    <span className={`px-2 py-1 text-xs rounded ${statusChipClass(row.status)}`}>
                       {row.status}
                     </span>
                   </td>

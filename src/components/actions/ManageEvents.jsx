@@ -63,6 +63,10 @@ const ManageEvents = () => {
   const [pointsForm, setPointsForm] = useState([...DEFAULT_POINTS]);
   const [filter, setFilter] = useState({ mode: "all", type: "all", query: "" });
 
+  // Progressive disclosure toggles (UI only)
+  const [showSchedule, setShowSchedule] = useState(true);
+  const [showPoints, setShowPoints] = useState(false);
+
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -94,16 +98,14 @@ const ManageEvents = () => {
       setLoading(true);
       setError("");
 
-      // Note: backend mounts are /api/event and /api/house
       const [{ events }, housesResp] = await Promise.all([
         apiCall("/api/event"),
         apiCall("/api/house"),
       ]);
-      // houses route returns raw array, not wrapped
       setEvents(events || []);
       setHouses(Array.isArray(housesResp) ? housesResp : housesResp.houses || []);
 
-      // Usage snapshot: GET /api/event/usage -> { usage: [{ event_id, totalTeams, byHouse: [{house_id, count}] }] }
+      // Usage snapshot
       try {
         const { usage } = await apiCall("/api/event/usage");
         const map = {};
@@ -134,6 +136,8 @@ const ManageEvents = () => {
     setRoundsForm([{ ...DEFAULT_ROUND }]);
     setPointsForm([...DEFAULT_POINTS]);
     setEditingEventId(null);
+    setShowSchedule(true);
+    setShowPoints(false);
   };
 
   const startAdd = () => {
@@ -145,14 +149,9 @@ const ManageEvents = () => {
     try {
       setLoading(true);
       setError("");
-      const eventId = evt._id || evt.event_id; // backend getEvents returns Mongo docs (likely _id)
+      const eventId = evt._id || evt.event_id;
       setEditingEventId(eventId);
 
-      // Load event + its schedule + points overrides
-      // Routes per backend:
-      // - GET /api/event/:id -> { event }
-      // - GET /api/schedule?event_id=ID -> { schedules }
-      // - GET /api/event/points?event_id=ID -> { points }
       const [{ event }, scheduleResp, { points }] = await Promise.all([
         apiCall(`/api/event/${eventId}`),
         apiCall(`/api/schedule?event_id=${eventId}`),
@@ -186,6 +185,8 @@ const ManageEvents = () => {
       setPointsForm(pt.length ? pt : [...DEFAULT_POINTS]);
 
       setActiveTab("edit");
+      setShowSchedule(true);
+      setShowPoints(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -284,7 +285,7 @@ const ManageEvents = () => {
       setLoading(true);
       setError("");
 
-      // 1) Create or update event (backend returns { event })
+      // 1) Create or update event
       let savedEvent;
       if (editingEventId) {
         const { event } = await apiCall(`/api/event/${editingEventId}`, {
@@ -293,7 +294,9 @@ const ManageEvents = () => {
         });
         savedEvent = event;
         setEvents((prev) =>
-          prev.map((it) => ((it._id || it.event_id) === (event._id || event.event_id) ? event : it))
+          prev.map((it) =>
+            (it._id || it.event_id) === (event._id || event.event_id) ? event : it
+          )
         );
       } else {
         const { event } = await apiCall("/api/event", {
@@ -306,8 +309,7 @@ const ManageEvents = () => {
 
       const eventId = savedEvent._id || savedEvent.event_id;
 
-      // 2) Bulk upsert schedule for all rounds
-      // Endpoint per spec: POST /api/schedule/bulkUpsert with { event_id, rounds: [...] }
+      // 2) Bulk upsert schedule
       const schedulePayload = roundsForm.map((r) => ({
         event_id: eventId,
         round_no: r.round_no,
@@ -322,7 +324,6 @@ const ManageEvents = () => {
       });
 
       // 3) Upsert event-specific points mapping
-      // Endpoint per spec: POST /api/event/points/bulkUpsert with { event_id, points: [...] }
       await apiCall(`/api/event/points/bulkUpsert`, {
         method: "POST",
         body: JSON.stringify({
@@ -361,7 +362,7 @@ const ManageEvents = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-dvh bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4">
@@ -388,13 +389,13 @@ const ManageEvents = () => {
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm mb-4 p-1">
-          <div className="flex">
+          <div className="flex gap-1">
             <button
-              className={`flex-1 px-4 py-3 text-sm md:text-base font-medium rounded-lg transition-all duration-200 ${
+              className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "manage"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
               onClick={() => {
                 setActiveTab("manage");
                 resetForms();
@@ -403,11 +404,11 @@ const ManageEvents = () => {
               Manage Events
             </button>
             <button
-              className={`flex-1 px-4 py-3 text-sm md:text-base font-medium rounded-lg transition-all duration-200 ${
+              className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "add" || activeTab === "edit"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
               onClick={startAdd}
             >
               {editingEventId ? "Edit Event" : "Add Event"}
@@ -453,7 +454,7 @@ const ManageEvents = () => {
                 </select>
                 <button
                   onClick={startAdd}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
                 >
                   Add Event
                 </button>
@@ -472,16 +473,19 @@ const ManageEvents = () => {
                   const usage = usageByEventId[id] || { totalTeams: 0, byHouse: {} };
                   return (
                     <div key={id} className="bg-white rounded-xl shadow-sm p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
                           <h3 className="font-semibold text-gray-900">{e.name}</h3>
-                          <p className="text-sm text-gray-500 line-clamp-2">{e.description}</p>
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {e.description}
+                          </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                           {getChip(e.mode, "bg-blue-50 text-blue-700 border-blue-200")}
                           {getChip(e.event_type, "bg-purple-50 text-purple-700 border-purple-200")}
                         </div>
                       </div>
+
                       <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
                         <div>
                           <span className="text-gray-500">Rounds</span>
@@ -502,16 +506,17 @@ const ManageEvents = () => {
                           <p className="font-medium">{usage.totalTeams}</p>
                         </div>
                       </div>
+
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => startEdit(e)}
-                          className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                          className="flex-1 px-3 py-2 min-h-[44px] bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => deleteEvent(id)}
-                          className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                          className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
                         >
                           Delete
                         </button>
@@ -703,126 +708,156 @@ const ManageEvents = () => {
                 </div>
               </section>
 
-              {/* Rounds & Schedule */}
+              {/* Rounds & Schedule (toggle) */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Rounds & schedule</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Total rounds
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={eventForm.rounds}
-                      onChange={(e) => handleEventChange("rounds", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Rounds & schedule</h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowSchedule((s) => !s)}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    {showSchedule ? "Hide" : "Show"}
+                  </button>
                 </div>
-
-                <div className="space-y-4">
-                  {roundsForm.map((r, idx) => (
-                    <div key={idx} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Round {r.round_no}</h3>
-                        <select
-                          value={r.status}
-                          onChange={(e) => updateRoundField(idx, "status", e.target.value)}
-                          className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm"
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s.value} value={s.value}>
-                              {s.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                          <input
-                            type="date"
-                            value={r.date || ""}
-                            onChange={(e) => updateRoundField(idx, "date", e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                          <input
-                            type="time"
-                            value={r.time || ""}
-                            onChange={(e) => updateRoundField(idx, "time", e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
-                          <input
-                            type="text"
-                            value={r.venue || ""}
-                            onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
-                            placeholder="Enter venue"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* Points Config */}
-              <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Points configuration</h2>
-                <p className="text-sm text-gray-600 mb-3">
-                  Define event-specific placements and points; leave empty to use global settings
-                </p>
-                <div className="space-y-2">
-                  {pointsForm.map((row, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2">
-                      <div className="col-span-5 md:col-span-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                {showSchedule && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3 mt-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Total rounds
+                        </label>
                         <input
                           type="number"
                           min={1}
-                          value={row.position}
-                          onChange={(e) => updatePointRow(idx, "position", e.target.value)}
+                          value={eventForm.rounds}
+                          onChange={(e) => handleEventChange("rounds", e.target.value)}
                           className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <div className="col-span-5 md:col-span-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Points</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={row.points}
-                          onChange={(e) => updatePointRow(idx, "points", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-2 flex items-end">
+                    </div>
+
+                    <div className="space-y-4">
+                      {roundsForm.map((r, idx) => (
+                        <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-gray-900">Round {r.round_no}</h3>
+                            <select
+                              value={r.status}
+                              onChange={(e) => updateRoundField(idx, "status", e.target.value)}
+                              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                            >
+                              {STATUS_OPTIONS.map((s) => (
+                                <option key={s.value} value={s.value}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                              <input
+                                type="date"
+                                value={r.date || ""}
+                                onChange={(e) => updateRoundField(idx, "date", e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                              <input
+                                type="time"
+                                value={r.time || ""}
+                                onChange={(e) => updateRoundField(idx, "time", e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
+                              <input
+                                type="text"
+                                value={r.venue || ""}
+                                onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
+                                placeholder="Enter venue"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+
+              {/* Points Config (toggle) */}
+              <section>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Points configuration</h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowPoints((s) => !s)}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    {showPoints ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {showPoints && (
+                  <>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Define placements and points; leave empty to use global settings
+                    </p>
+                    <div className="space-y-2">
+                      {pointsForm.map((row, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2">
+                          <div className="col-span-5 md:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Position
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={row.position}
+                              onChange={(e) => updatePointRow(idx, "position", e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="col-span-5 md:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Points
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={row.points}
+                              onChange={(e) => updatePointRow(idx, "points", e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="col-span-2 md:col-span-2 flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => removePointRow(idx)}
+                              className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div>
                         <button
                           type="button"
-                          onClick={() => removePointRow(idx)}
-                          className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                          onClick={addPointRow}
+                          className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
                         >
-                          Remove
+                          Add row
                         </button>
                       </div>
                     </div>
-                  ))}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={addPointRow}
-                      className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                    >
-                      Add row
-                    </button>
-                  </div>
-                </div>
+                  </>
+                )}
               </section>
 
               {/* Footer actions */}
@@ -840,7 +875,7 @@ const ManageEvents = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 md:flex-none md:min-w-[160px] px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                  className="flex-1 md:flex-none md:min-w-[160px] px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
                   {loading ? "Saving..." : editingEventId ? "Update Event" : "Create Event"}
                 </button>

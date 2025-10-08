@@ -13,7 +13,6 @@ export const roleConfig = {
     actions: [
       { label: "Manage Users", icon: Users, to: "/users" },
       { label: "Manage Students", icon: Users, to: "/users" },
-      { label: "Notifications", icon: Bell, to: "/notifications" },
       { label: "Add Events", icon: Calendar, to: "/events/new" },
       { label: "Manage House", icon: UserPlus, to: "/houses" },
     ],
@@ -24,7 +23,6 @@ export const roleConfig = {
     title: "Captain",
     actions: [
       { label: "Event Registration", icon: UserPlus, to: "/teams/new" },
-      { label: "House Events", icon: Calendar, to: "/events/house" },
       { label: "Manage House Details", icon: UserPlus, to: "/houses" }
     ],
     modules: { standings: true, events: true, stats: true },
