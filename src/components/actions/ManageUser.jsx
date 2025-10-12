@@ -242,8 +242,8 @@ const ManageUser = () => {
 
         {/* Manage Users */}
         {activeTab === "manage" && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {/* Mobile */}
+          <div>
+            {/* Mobile: no wrapper card */}
             <div className="block md:hidden">
               {Array.isArray(users) && users.length === 0 && !loading ? (
                 <div className="p-4 text-gray-600">No users found</div>
@@ -285,199 +285,335 @@ const ManageUser = () => {
                   </div>
                 </div>
               ))}
+              {loading ? <div className="p-4 text-gray-600">Loading…</div> : null}
             </div>
-            {/* Desktop */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left p-4 text-sm font-semibold text-gray-700">User</th>
-                    <th className="text-left p-4 text-sm font-semibold text-gray-700">Role</th>
-                    <th className="text-left p-4 text-sm font-semibold text-gray-700">House</th>
-                    <th className="text-left p-4 text-sm font-semibold text-gray-700">Created</th>
-                    <th className="text-left p-4 text-sm font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.isArray(users) && users.length === 0 && !loading ? (
-                    <tr>
-                      <td className="p-4 text-gray-600" colSpan={5}>
-                        No users found
-                      </td>
-                    </tr>
-                  ) : null}
-                  {users.map((user) => (
-                    <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="p-4">
-                        <div>
-                          <div className="font-semibold text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">@{user.username}</div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}>
-                          {user.role.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-600">{houseLabel(user)}</td>
-                      <td className="p-4 text-gray-600">{createdLabel(user)}</td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user._id)}
-                            className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {loading ? (
-                    <tr>
-                      <td className="p-4 text-gray-600" colSpan={5}>
-                        Loading…
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+
+            {/* Desktop: with wrapper card */}
+            <div className="hidden md:block">
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-semibold text-gray-700">User</th>
+                        <th className="text-left p-4 text-sm font-semibold text-gray-700">Role</th>
+                        <th className="text-left p-4 text-sm font-semibold text-gray-700">House</th>
+                        <th className="text-left p-4 text-sm font-semibold text-gray-700">Created</th>
+                        <th className="text-left p-4 text-sm font-semibold text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.isArray(users) && users.length === 0 && !loading ? (
+                        <tr>
+                          <td className="p-4 text-gray-600" colSpan={5}>
+                            No users found
+                          </td>
+                        </tr>
+                      ) : null}
+                      {users.map((user) => (
+                        <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="p-4">
+                            <div>
+                              <div className="font-semibold text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">@{user.username}</div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span
+                              className={`px-3 py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}
+                            >
+                              {user.role.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className="p-4 text-gray-600">{houseLabel(user)}</td>
+                          <td className="p-4 text-gray-600">{createdLabel(user)}</td>
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEdit(user)}
+                                className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(user._id)}
+                                className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {loading ? (
+                        <tr>
+                          <td className="p-4 text-gray-600" colSpan={5}>
+                            Loading…
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Add/Edit User Form */}
         {activeTab === "add" && (
-          <div className="bg-white rounded-xl shadow-sm p-6 max-w-md mx-auto">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {editingUserId ? "Edit User" : "Add New User"}
-              </h2>
-              <p className="text-gray-600 text-sm">
-                {editingUserId ? "Update user information" : "Fill in the details to create a new user"}
-              </p>
-            </div>
-            <form onSubmit={handleAddOrEditUser} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter full name"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
+          <div>
+            {/* Mobile: no wrapper card */}
+            <div className="block md:hidden">
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  {editingUserId ? "Edit User" : "Add New User"}
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  {editingUserId ? "Update user information" : "Fill in the details to create a new user"}
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="Enter username"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
-              {!editingUserId && (
+              <form onSubmit={handleAddOrEditUser} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                   <input
-                    type="password"
+                    type="text"
                     required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Enter password"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter full name"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => {
-                    const newRole = e.target.value;
-                    setFormData({
-                      ...formData,
-                      role: newRole,
-                      house: requiresHouseSelect(newRole) ? formData.house : "",
-                    });
-                  }}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-                >
-                  {roles.map((r) => (
-                    <option key={r} value={r}>
-                      {r.replace("_", " ").toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* House selection behavior */}
-              {requiresHouseSelect(formData.role) ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Assign House</label>
-                  <select
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                  <input
+                    type="text"
                     required
-                    value={formData.house}
-                    onChange={(e) => setFormData({ ...formData, house: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="Enter username"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+                {!editingUserId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter password"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      setFormData({
+                        ...formData,
+                        role: newRole,
+                        house: requiresHouseSelect(newRole) ? formData.house : "",
+                      });
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
                   >
-                    <option value="">Select house</option>
-                    {houses.map((h) => (
-                      <option key={h._id} value={h._id}>
-                        {h.name} ({h.code})
+                    {roles.map((r) => (
+                      <option key={r} value={r}>
+                        {r.replace("_", " ").toUpperCase()}
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    This user will be linked to the selected house.
+                </div>
+
+                {/* House selection behavior */}
+                {requiresHouseSelect(formData.role) ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Assign House</label>
+                    <select
+                      required
+                      value={formData.house}
+                      onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="">Select house</option>
+                      {houses.map((h) => (
+                        <option key={h._id} value={h._id}>
+                          {h.name} ({h.code})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">This user will be linked to the selected house.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      House <span className="text-gray-400 text-xs">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.house}
+                      onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                      placeholder="Enter house name or ID"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("manage");
+                      setEditingUserId(null);
+                      setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
+                    }}
+                    className="flex-1 px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {loading ? "Saving..." : editingUserId ? "Update User" : "Add User"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Desktop: with wrapper card */}
+            <div className="hidden md:block">
+              <div className= "bg-white rounded-xl shadow-sm p-6 max-w-md mx-auto">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                    {editingUserId ? "Edit User" : "Add New User"}
+                  </h2>
+                  <p className="text-gray-600 text-sm">
+                    {editingUserId ? "Update user information" : "Fill in the details to create a new user"}
                   </p>
                 </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    House <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.house}
-                    onChange={(e) => setFormData({ ...formData, house: e.target.value })}
-                    placeholder="Enter house name or ID"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-              )}
+                <form onSubmit={handleAddOrEditUser} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Enter full name"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      placeholder="Enter username"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                  {!editingUserId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Enter password"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => {
+                        const newRole = e.target.value;
+                        setFormData({
+                          ...formData,
+                          role: newRole,
+                          house: requiresHouseSelect(newRole) ? formData.house : "",
+                        });
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
+                    >
+                      {roles.map((r) => (
+                        <option key={r} value={r}>
+                          {r.replace("_", " ").toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("manage");
-                    setEditingUserId(null);
-                    setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
-                  }}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {loading ? "Saving..." : editingUserId ? "Update User" : "Add User"}
-                </button>
+                  {/* House selection behavior */}
+                  {requiresHouseSelect(formData.role) ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Assign House</label>
+                      <select
+                        required
+                        value={formData.house}
+                        onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      >
+                        <option value="">Select house</option>
+                        {houses.map((h) => (
+                          <option key={h._id} value={h._id}>
+                            {h.name} ({h.code})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">This user will be linked to the selected house.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        House <span className="text-gray-400 text-xs">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.house}
+                        onChange={(e) => setFormData({ ...formData, house: e.target.value })}
+                        placeholder="Enter house name or ID"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("manage");
+                        setEditingUserId(null);
+                        setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      {loading ? "Saving..." : editingUserId ? "Update User" : "Add User"}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            </div>
           </div>
         )}
       </div>

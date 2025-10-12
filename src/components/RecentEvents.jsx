@@ -19,7 +19,7 @@ const statusBadge = (status) => {
 };
 
 function RecentEvents() {
-  const { token } = useAuth();
+  const { token, role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -30,10 +30,9 @@ function RecentEvents() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [eventDetail, setEventDetail] = useState(null);
   const [eventSchedules, setEventSchedules] = useState([]);
-  const [eventTeams, setEventTeams] = useState([]); // [{ _id, houseName, houseCode, chest_no, members?: [] }]
-  const [expandedTeamId, setExpandedTeamId] = useState(null);
-  const [membersLoading, setMembersLoading] = useState(false);
+  const [eventTeams, setEventTeams] = useState([]); // teams with members materialized
 
+  // Public-friendly apiCall: include token only if present
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
@@ -52,6 +51,7 @@ function RecentEvents() {
     return data;
   };
 
+  // Load recent events and per-event schedules
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -87,6 +87,7 @@ function RecentEvents() {
     };
   }, [token, API_BASE_URL]);
 
+  // Top 5 “recent” entries by status/date
   const recentList = useMemo(() => {
     const items = (events || []).map((e) => {
       const id = e._id || e.event_id;
@@ -113,6 +114,7 @@ function RecentEvents() {
     return items.slice(0, 5);
   }, [events, schedulesByEvent]);
 
+  // Open details and load all data, including all teams’ members
   const openDetails = async (eventId) => {
     try {
       setOpenId(eventId);
@@ -128,22 +130,34 @@ function RecentEvents() {
       const sortedSchedules = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
       setEventSchedules(sortedSchedules);
 
-      // 3) Teams (house-level)
+      // 3) Teams with members (always visible; no toggle)
       let teamsResp = null;
       try {
         teamsResp = await apiCall(`/api/team?event_id=${eventId}`);
       } catch {
         teamsResp = { teams: [] };
       }
-      const teams = (teamsResp.teams || []).map((t) => ({
+      const baseTeams = (teamsResp.teams || []).map((t) => ({
         _id: t._id,
         houseName: t.house_id?.name || "",
         houseCode: t.house_id?.code || "",
         chest_no: t.chest_no || null,
-        members: undefined, // will be lazy loaded
+        members: [],
       }));
-      setEventTeams(teams);
-      setExpandedTeamId(null);
+
+      // Fetch members for all teams in parallel
+      const withMembers = await Promise.all(
+        baseTeams.map(async (t) => {
+          try {
+            const { members } = await apiCall(`/api/team/${t._id}/members`);
+            return { ...t, members: members || [] };
+          } catch {
+            return { ...t, members: [] };
+          }
+        })
+      );
+
+      setEventTeams(withMembers);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -156,32 +170,6 @@ function RecentEvents() {
     setEventDetail(null);
     setEventSchedules([]);
     setEventTeams([]);
-    setExpandedTeamId(null);
-  };
-
-  const toggleTeam = async (teamId) => {
-    if (expandedTeamId === teamId) {
-      setExpandedTeamId(null);
-      return;
-    }
-    setExpandedTeamId(teamId);
-    const idx = eventTeams.findIndex((t) => t._id === teamId);
-    if (idx === -1) return;
-    if (eventTeams[idx].members) return; // already loaded
-
-    try {
-      setMembersLoading(true);
-      const { members } = await apiCall(`/api/team/${teamId}/members`);
-      setEventTeams((prev) => {
-        const next = [...prev];
-        next[idx] = { ...next[idx], members: members || [] };
-        return next;
-      });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setMembersLoading(false);
-    }
   };
 
   return (
@@ -287,7 +275,7 @@ function RecentEvents() {
                   )}
                 </section>
 
-                {/* Participants */}
+                {/* Participants (always show members; public-friendly) */}
                 <section>
                   <h5 className="font-semibold mb-2">Participants</h5>
                   {eventTeams.length === 0 ? (
@@ -296,47 +284,34 @@ function RecentEvents() {
                     <ul className="space-y-2">
                       {eventTeams.map((t) => (
                         <li key={t._id} className="border rounded p-2 text-sm">
-                          <button
-                            type="button"
-                            onClick={() => toggleTeam(t._id)}
-                            className="w-full text-left"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">
-                                  {t.houseName || "House"} {t.houseCode ? `(${t.houseCode})` : ""}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  {t.chest_no ? `Chest #${t.chest_no}` : "No chest number"}
-                                </p>
-                              </div>
-                              <span className="text-xs text-blue-600">
-                                {expandedTeamId === t._id ? "Hide" : "View"} members
-                              </span>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">
+                                {t.houseName || "House"} {t.houseCode ? `(${t.houseCode})` : ""}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {t.chest_no ? `Chest #${t.chest_no}` : "No chest number"}
+                              </p>
                             </div>
-                          </button>
+                          </div>
 
-                          {/* Members list */}
-                          {expandedTeamId === t._id && (
-                            <div className="mt-2">
-                              {membersLoading && !t.members ? (
-                                <p className="text-xs text-gray-600">Loading members…</p>
-                              ) : (t.members || []).length === 0 ? (
-                                <p className="text-xs text-gray-600">No members added.</p>
-                              ) : (
-                                <ul className="pl-2">
-                                  {(t.members || []).map((m) => (
-                                    <li key={m._id} className="py-1 flex items-center justify-between">
-                                      <span className="text-gray-800">{m.name}</span>
-                                      <span className="text-gray-500 text-xs">
-                                        {m.class} {m.houseCode ? `• ${m.houseCode}` : ""}
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )}
+                          {/* Members list always visible */}
+                          <div className="mt-2">
+                            {(t.members || []).length === 0 ? (
+                              <p className="text-xs text-gray-600">No members added.</p>
+                            ) : (
+                              <ul className="pl-2">
+                                {(t.members || []).map((m) => (
+                                  <li key={m._id} className="py-1 flex items-center justify-between">
+                                    <span className="text-gray-800">{m.name}</span>
+                                    <span className="text-gray-500 text-xs">
+                                      {m.class} {m.houseCode ? `• ${m.houseCode}` : ""}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
