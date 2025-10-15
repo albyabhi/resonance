@@ -230,19 +230,7 @@ const ManageResult = () => {
         setError("Select event and round");
         return;
       }
-      // Client-side house guard for coordinators
-      if (role === "student_coordinator" && coordinatorHouseId) {
-        const invalidTeam = Object.values(placements)
-          .filter(Boolean)
-          .find((teamId) => {
-            const t = teams.find((x) => x._id === teamId);
-            return !t || String(t.houseId) !== String(coordinatorHouseId);
-          });
-        if (invalidTeam) {
-          setError("Cannot submit results for another house");
-          return;
-        }
-      }
+     
 
       // Submit only new (unlocked) placements
       const selected = Object.entries(placements)
@@ -297,7 +285,6 @@ const ManageResult = () => {
           </p>
         )}
       </div>
-
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">
           {error}

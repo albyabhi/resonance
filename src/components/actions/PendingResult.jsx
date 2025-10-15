@@ -21,26 +21,37 @@ const PendingResult = () => {
   const [teamMembersMap, setTeamMembersMap] = useState({}); // teamId -> [{_id,name,class}, ...]
 
   const apiCall = async (endpoint, options = {}) => {
-    if (!token) throw new Error("No auth token available");
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: options.method || "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-      body: options.body,
-    });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
+  if (!token) throw new Error("No auth token available");
+  const url = `${API_BASE_URL}${endpoint}`;
+  const method = options.method || "GET";
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    ...(options.headers || {}),
   };
+  const body = options.body || undefined;
+
+  console.log("[apiCall] ->", { method, url, headers: { ...headers, Authorization: "Bearer ****" }, body });
+
+  const res = await fetch(url, { method, headers, body });
+  const text = await res.text();
+
+  console.log("[apiCall] <-", { status: res.status, ok: res.ok, text: text?.slice(0, 500) });
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.warn("[apiCall] JSON parse failed, raw:", text);
+    throw new Error("Invalid JSON response from server");
+  }
+  if (!res.ok) {
+    console.warn("[apiCall] error payload:", data);
+    throw new Error(data.message || "API call failed");
+  }
+  return data;
+};
+
 
   const loadEvents = async () => {
     const { events } = await apiCall("/api/event");
@@ -74,6 +85,8 @@ const PendingResult = () => {
     } catch {
       tResp = { teams: [] };
     }
+      console.log("[loadContext] teams:", (tResp.teams || []).length);
+
     const mapped = (tResp.teams || []).map((t) => ({
       _id: t._id,
       chest_no: t.chest_no || "",
@@ -88,6 +101,8 @@ const PendingResult = () => {
   };
 
   const loadPending = async () => {
+      console.log("[loadPending] params:", { eventId, roundNo });
+
     if (!eventId || !roundNo) return;
     const { results } = await apiCall(
       `/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`
@@ -127,6 +142,7 @@ const PendingResult = () => {
     setLoading(true);
     setError("");
     loadContext(eventId).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    
   }, [eventId]);
 
   useEffect(() => {

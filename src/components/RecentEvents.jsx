@@ -19,20 +19,23 @@ const statusBadge = (status) => {
 };
 
 function RecentEvents() {
-  const { token, role } = useAuth();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
   const [schedulesByEvent, setSchedulesByEvent] = useState({});
+  const [resultsByEvent, setResultsByEvent] = useState({}); // eventId -> [{position, team_id{_id,chest_no,house_id{...}}, ...}]
+  const [showAll, setShowAll] = useState(false);
 
-  // details panel state
+  // filters and UI state
+  const [category, setCategory] = useState("all"); // all | upcoming | completed
   const [openId, setOpenId] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [eventDetail, setEventDetail] = useState(null);
   const [eventSchedules, setEventSchedules] = useState([]);
-  const [eventTeams, setEventTeams] = useState([]); // teams with members materialized
+  const [eventTeams, setEventTeams] = useState([]);
+  const [activeTab, setActiveTab] = useState("winners"); // winners | participants
 
-  // Public-friendly apiCall: include token only if present
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
@@ -51,7 +54,7 @@ function RecentEvents() {
     return data;
   };
 
-  // Load recent events and per-event schedules
+  // bootstrap events + schedules + results summary
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -60,6 +63,8 @@ function RecentEvents() {
         setError("");
         const { events: evts } = await apiCall("/api/event");
         const schedulesMap = {};
+        const resultsMap = {};
+
         await Promise.all(
           (evts || []).map(async (e) => {
             const id = e._id || e.event_id;
@@ -69,11 +74,21 @@ function RecentEvents() {
             } catch {
               schedulesMap[id] = [];
             }
+
+            try {
+              // fetch approved results for winners tab
+              const { results } = await apiCall(`/api/results?event_id=${id}&status=approved`);
+              resultsMap[id] = results || [];
+            } catch {
+              resultsMap[id] = [];
+            }
           })
         );
+
         if (!mounted) return;
         setEvents(evts || []);
         setSchedulesByEvent(schedulesMap);
+        setResultsByEvent(resultsMap);
       } catch (err) {
         if (!mounted) return;
         setError(err.message);
@@ -87,22 +102,27 @@ function RecentEvents() {
     };
   }, [token, API_BASE_URL]);
 
-  // Top 5 “recent” entries by status/date
-  const recentList = useMemo(() => {
-    const items = (events || []).map((e) => {
+  const eventStatus = (id) => {
+    const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => {
+      const oa = statusOrder[a.status] || 0;
+      const ob = statusOrder[b.status] || 0;
+      if (oa !== ob) return ob - oa;
+      const ad = new Date(a.date || 0).getTime();
+      const bd = new Date(b.date || 0).getTime();
+      if (ad !== bd) return ad - bd;
+      return String(a.time || "").localeCompare(String(b.time || ""));
+    });
+    const chosen = sched[0] || {};
+    return chosen.status || "upcoming";
+  };
+
+  // apply category filter and build list
+  // replace your list useMemo with this
+const list = useMemo(() => {
+  const items = (events || [])
+    .map((e) => {
       const id = e._id || e.event_id;
-      const sched = schedulesByEvent[id] || [];
-      const chosen =
-        sched.sort((a, b) => {
-          const oa = statusOrder[a.status] || 0;
-          const ob = statusOrder[b.status] || 0;
-          if (oa !== ob) return ob - oa;
-          const ad = new Date(a.date || 0).getTime();
-          const bd = new Date(b.date || 0).getTime();
-          if (ad !== bd) return ad - bd;
-          return String(a.time || "").localeCompare(String(b.time || ""));
-        })[0] || {};
-      const status = chosen.status || "upcoming";
+      const status = eventStatus(id);
       return {
         key: id,
         name: e.name,
@@ -110,27 +130,28 @@ function RecentEvents() {
         status,
         color: statusBadge(status),
       };
-    });
-    return items.slice(0, 5);
-  }, [events, schedulesByEvent]);
+    })
+    .filter((it) => (category === "all" ? true : it.status === category));
+  return showAll ? items : items.slice(0, 8);
+}, [events, schedulesByEvent, category, showAll]);
 
-  // Open details and load all data, including all teams’ members
   const openDetails = async (eventId) => {
     try {
       setOpenId(eventId);
       setDetailsLoading(true);
       setError("");
+      setActiveTab("winners");
 
-      // 1) Event basics
+      // Event basics
       const { event } = await apiCall(`/api/event/${eventId}`);
       setEventDetail(event || null);
 
-      // 2) Schedules
+      // Schedules
       const { schedules } = await apiCall(`/api/schedule?event_id=${eventId}`);
       const sortedSchedules = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
       setEventSchedules(sortedSchedules);
 
-      // 3) Teams with members (always visible; no toggle)
+      // Teams with members
       let teamsResp = null;
       try {
         teamsResp = await apiCall(`/api/team?event_id=${eventId}`);
@@ -144,8 +165,6 @@ function RecentEvents() {
         chest_no: t.chest_no || null,
         members: [],
       }));
-
-      // Fetch members for all teams in parallel
       const withMembers = await Promise.all(
         baseTeams.map(async (t) => {
           try {
@@ -156,7 +175,6 @@ function RecentEvents() {
           }
         })
       );
-
       setEventTeams(withMembers);
     } catch (err) {
       setError(err.message);
@@ -172,33 +190,73 @@ function RecentEvents() {
     setEventTeams([]);
   };
 
+  // build winners view for completed events
+  const winnersView = useMemo(() => {
+    if (!openId) return [];
+    const results = (resultsByEvent[openId] || [])
+      .filter((r) => r.status === "approved")
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    // Map team id to members and house for quick access
+    const teamMap = new Map(eventTeams.map((t) => [String(t._id), t]));
+    return results.slice(0, 6).map((r) => {
+      const teamObj = teamMap.get(String(r.team_id?._id || r.team_id)) || {};
+      const houseName = teamObj.houseName || r.team_id?.house_id?.name || "";
+      const houseCode = teamObj.houseCode || r.team_id?.house_id?.code || "";
+      const members = teamObj.members || []; // already [{_id,name,class,houseCode}]
+      return {
+        resultId: r._id,
+        position: r.position,
+        houseText: houseName ? `${houseName}${houseCode ? ` (${houseCode})` : ""}` : "",
+        members,
+      };
+    });
+  }, [openId, resultsByEvent, eventTeams]);
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm">
-      <h3 className="font-semibold mb-2">🏅 Recent Events</h3>
-      <p className="text-sm text-gray-500 mb-3">Latest competition events</p>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h3 className="font-semibold">🏅 Events</h3>
+        {/* Category filter */}
+        <div className="inline-flex rounded-lg border overflow-hidden">
+          {["all", "upcoming", "completed"].map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={`px-3 py-1.5 text-sm ${
+                category === c ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {c[0].toUpperCase() + c.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="text-sm text-gray-500 mb-3">Latest and upcoming competition events</p>
 
       {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
 
       {loading ? (
         <div className="text-gray-600 text-sm">Loading…</div>
-      ) : recentList.length === 0 ? (
+      ) : list.length === 0 ? (
         <div className="text-gray-600 text-sm">No events found</div>
       ) : (
-        recentList.map((evt) => (
-          <button
-            key={evt.key}
-            onClick={() => openDetails(evt.key)}
-            className="w-full text-left flex justify-between items-center p-3 mb-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-          >
-            <div>
-              <p className="font-medium">{evt.name}</p>
-              <p className="text-xs text-gray-500">{evt.typeText}</p>
-            </div>
-            <span className={`px-3 py-1 text-xs font-medium rounded-full ${evt.color}`}>
-              {evt.status === "live" ? "Ongoing" : evt.status === "completed" ? "Completed" : "Upcoming"}
-            </span>
-          </button>
-        ))
+        <div className="grid grid-cols-1 gap-2">
+          {list.map((evt) => (
+            <button
+              key={evt.key}
+              onClick={() => openDetails(evt.key)}
+              className="w-full text-left flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+            >
+              <div className="min-w-0">
+                <p className="font-medium truncate">{evt.name}</p>
+                <p className="text-xs text-gray-500">{evt.typeText}</p>
+              </div>
+              <span className={`px-3 py-1 text-xs font-medium rounded-full ${evt.color}`}>
+                {evt.status === "live" ? "Ongoing" : evt.status === "completed" ? "Completed" : "Upcoming"}
+              </span>
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Details Drawer / Modal */}
@@ -206,88 +264,125 @@ function RecentEvents() {
         <div
           className="fixed inset-0 bg-black/30 z-40 flex items-end md:items-center md:justify-center"
           onMouseDown={(e) => {
-            // Close only when the backdrop itself is the event target
             if (e.target === e.currentTarget) closeDetails();
           }}
         >
           <div
-            className="w-full md:max-w-2xl bg-white rounded-t-2xl md:rounded-2xl p-4 md:p-6 shadow-lg"
-            onMouseDown={(e) => {
-              // Prevent inside clicks from bubbling to the backdrop
-              e.stopPropagation();
-            }}
+            className="w-full md:max-w-3xl bg-white rounded-t-2xl md:rounded-2xl p-0 shadow-lg max-h-[90vh] overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-lg font-semibold">
-                {eventDetail?.name || "Event details"}
-              </h4>
-              <button onClick={closeDetails} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">
-                Close
-              </button>
+            {/* Sticky header */}
+            <div className="p-4 border-b bg-white sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-semibold truncate">
+                  {eventDetail?.name || "Event details"}
+                </h4>
+                <button onClick={closeDetails} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">
+                  Close
+                </button>
+              </div>
+              {/* Basics */}
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500">Mode</span>
+                  <p className="font-medium">{eventDetail?.mode}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Type</span>
+                  <p className="font-medium">{eventDetail?.event_type}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Rounds</span>
+                  <p className="font-medium">{eventDetail?.rounds}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Team size</span>
+                  <p className="font-medium">
+                    {eventDetail?.event_type === "individual"
+                      ? "1"
+                      : `${eventDetail?.min_team_size || 1}–${eventDetail?.max_team_size || 1}`}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Max per house</span>
+                  <p className="font-medium">{eventDetail?.max_per_house || 1}</p>
+                </div>
+              </div>
+
+              {/* Tabs for completed events */}
+              <div className="mt-3">
+                <div className="inline-flex rounded-lg border overflow-hidden">
+                  {["winners", "participants"].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setActiveTab(t)}
+                      className={`px-3 py-1.5 text-sm ${
+                        activeTab === t ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {t[0].toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {detailsLoading ? (
-              <div className="text-gray-600 text-sm">Loading details…</div>
-            ) : (
-              <>
-                {/* Basics */}
-                <section className="mb-4">
-                  <p className="text-sm text-gray-700">
-                    {eventDetail?.description || "No description provided."}
-                  </p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-500">Mode</span>
-                      <p className="font-medium">{eventDetail?.mode}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Type</span>
-                      <p className="font-medium">{eventDetail?.event_type}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Rounds</span>
-                      <p className="font-medium">{eventDetail?.rounds}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Team size</span>
-                      <p className="font-medium">
-                        {eventDetail?.event_type === "individual"
-                          ? "1"
-                          : `${eventDetail?.min_team_size || 1}–${eventDetail?.max_team_size || 1}`}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Max per house</span>
-                      <p className="font-medium">{eventDetail?.max_per_house || 1}</p>
-                    </div>
-                  </div>
-                </section>
+            {/* Body scroll area */}
+            <div className="p-4 overflow-y-auto">
+              {/* Schedule */}
+              <section className="mb-4">
+                <h5 className="font-semibold mb-2">Schedule</h5>
+                {eventSchedules.length === 0 ? (
+                  <p className="text-sm text-gray-600">No schedule added yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {eventSchedules.map((r) => (
+                      <li key={r._id} className="text-sm border rounded p-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Round {r.round_no}</span>
+                          <span className="px-2 py-0.5 rounded text-xs border">{r.status}</span>
+                        </div>
+                        <div className="text-gray-600 mt-1">
+                          {r.date ? new Date(r.date).toLocaleDateString() : "-"} • {r.time || "-"} • {r.venue || "-"}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
 
-                {/* Schedule */}
-                <section className="mb-4">
-                  <h5 className="font-semibold mb-2">Schedule</h5>
-                  {eventSchedules.length === 0 ? (
-                    <p className="text-sm text-gray-600">No schedule added yet.</p>
-                  ) : (
+              {/* Winners or Participants */}
+              {activeTab === "winners" ? (
+                <section>
+                  <h5 className="font-semibold mb-2">Winners</h5>
+                  {resultsByEvent[openId]?.length ? (
                     <ul className="space-y-2">
-                      {eventSchedules.map((r) => (
-                        <li key={r._id} className="text-sm border rounded p-2">
-                          <div className="flex justify-between">
-                            <span className="font-medium">Round {r.round_no}</span>
-                            <span className="px-2 py-0.5 rounded text-xs border">
-                              {r.status}
-                            </span>
+                      {winnersView.map((w) => (
+                        <li key={w.resultId} className="border rounded p-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">Position {w.position}</span>
+                            <span className="text-gray-700">{w.houseText}</span>
                           </div>
-                          <div className="text-gray-600 mt-1">
-                            {r.date ? new Date(r.date).toLocaleDateString() : "-"} • {r.time || "-"} • {r.venue || "-"}
+                          {/* Members scroll (max height) */}
+                          <div className="mt-2 max-h-28 overflow-y-auto pr-1">
+                            {(w.members || []).slice(0, 50).map((m) => (
+                              <div key={m._id} className="py-1 flex items-center justify-between text-sm">
+                                <span className="text-gray-800 truncate">{m.name}</span>
+                                <span className="text-gray-500 text-xs">{m.class || ""}</span>
+                              </div>
+                            ))}
+                            {(!w.members || w.members.length === 0) && (
+                              <p className="text-xs text-gray-500">No members listed.</p>
+                            )}
                           </div>
                         </li>
                       ))}
                     </ul>
+                  ) : (
+                    <p className="text-sm text-gray-600">No approved results yet.</p>
                   )}
                 </section>
-
-                {/* Participants */}
+              ) : (
                 <section>
                   <h5 className="font-semibold mb-2">Participants</h5>
                   {eventTeams.length === 0 ? (
@@ -306,16 +401,14 @@ function RecentEvents() {
                               </p>
                             </div>
                           </div>
-
-                          {/* Members list */}
-                          <div className="mt-2">
+                          <div className="mt-2 max-h-28 overflow-y-auto pr-1">
                             {(t.members || []).length === 0 ? (
                               <p className="text-xs text-gray-600">No members added.</p>
                             ) : (
-                              <ul className="pl-2">
+                              <ul>
                                 {(t.members || []).map((m) => (
                                   <li key={m._id} className="py-1 flex items-center justify-between">
-                                    <span className="text-gray-800">{m.name}</span>
+                                    <span className="text-gray-800 truncate">{m.name}</span>
                                     <span className="text-gray-500 text-xs">
                                       {m.class} {m.houseCode ? `• ${m.houseCode}` : ""}
                                     </span>
@@ -326,11 +419,13 @@ function RecentEvents() {
                           </div>
                         </li>
                       ))}
+                      
                     </ul>
                   )}
+                  
                 </section>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
