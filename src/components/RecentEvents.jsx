@@ -24,7 +24,7 @@ function RecentEvents() {
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
   const [schedulesByEvent, setSchedulesByEvent] = useState({});
-  const [resultsByEvent, setResultsByEvent] = useState({}); // eventId -> [{position, team_id{_id,chest_no,house_id{...}}, ...}]
+  const [resultsByEvent, setResultsByEvent] = useState({});
   const [showAll, setShowAll] = useState(false);
 
   // filters and UI state
@@ -76,7 +76,6 @@ function RecentEvents() {
             }
 
             try {
-              // fetch approved results for winners tab
               const { results } = await apiCall(`/api/results?event_id=${id}&status=approved`);
               resultsMap[id] = results || [];
             } catch {
@@ -103,37 +102,41 @@ function RecentEvents() {
   }, [token, API_BASE_URL]);
 
   const eventStatus = (id) => {
-    const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => {
-      const oa = statusOrder[a.status] || 0;
-      const ob = statusOrder[b.status] || 0;
-      if (oa !== ob) return ob - oa;
-      const ad = new Date(a.date || 0).getTime();
-      const bd = new Date(b.date || 0).getTime();
-      if (ad !== bd) return ad - bd;
-      return String(a.time || "").localeCompare(String(b.time || ""));
-    });
+    const sched = (schedulesByEvent[id] || [])
+      .slice()
+      .sort((a, b) => {
+        const oa = statusOrder[a.status] || 0;
+        const ob = statusOrder[b.status] || 0;
+        if (oa !== ob) return ob - oa;
+        const ad = new Date(a.date || 0).getTime();
+        const bd = new Date(b.date || 0).getTime();
+        if (ad !== bd) return ad - bd;
+        return String(a.time || "").localeCompare(String(b.time || ""));
+      });
     const chosen = sched[0] || {};
     return chosen.status || "upcoming";
   };
 
-  // apply category filter and build list
-  // replace your list useMemo with this
-const list = useMemo(() => {
-  const items = (events || [])
-    .map((e) => {
-      const id = e._id || e.event_id;
-      const status = eventStatus(id);
-      return {
-        key: id,
-        name: e.name,
-        typeText: `${modeLabel(e.mode)} • ${typeLabel(e.event_type)}`,
-        status,
-        color: statusBadge(status),
-      };
-    })
-    .filter((it) => (category === "all" ? true : it.status === category));
-  return showAll ? items : items.slice(0, 8);
-}, [events, schedulesByEvent, category, showAll]);
+  // build filtered list (no logic change; just used for UI)
+  const fullItems = useMemo(() => {
+    return (events || [])
+      .map((e) => {
+        const id = e._id || e.event_id;
+        const status = eventStatus(id);
+        return {
+          key: id,
+          name: e.name,
+          typeText: `${modeLabel(e.mode)} • ${typeLabel(e.event_type)}`,
+          status,
+          color: statusBadge(status),
+        };
+      })
+      .filter((it) => (category === "all" ? true : it.status === category));
+  }, [events, schedulesByEvent, category]);
+
+  const list = useMemo(() => {
+    return showAll ? fullItems : fullItems.slice(0, 8);
+  }, [fullItems, showAll]);
 
   const openDetails = async (eventId) => {
     try {
@@ -142,16 +145,13 @@ const list = useMemo(() => {
       setError("");
       setActiveTab("winners");
 
-      // Event basics
       const { event } = await apiCall(`/api/event/${eventId}`);
       setEventDetail(event || null);
 
-      // Schedules
       const { schedules } = await apiCall(`/api/schedule?event_id=${eventId}`);
       const sortedSchedules = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
       setEventSchedules(sortedSchedules);
 
-      // Teams with members
       let teamsResp = null;
       try {
         teamsResp = await apiCall(`/api/team?event_id=${eventId}`);
@@ -190,19 +190,17 @@ const list = useMemo(() => {
     setEventTeams([]);
   };
 
-  // build winners view for completed events
   const winnersView = useMemo(() => {
     if (!openId) return [];
     const results = (resultsByEvent[openId] || [])
       .filter((r) => r.status === "approved")
       .sort((a, b) => (a.position || 0) - (b.position || 0));
-    // Map team id to members and house for quick access
     const teamMap = new Map(eventTeams.map((t) => [String(t._id), t]));
     return results.slice(0, 6).map((r) => {
       const teamObj = teamMap.get(String(r.team_id?._id || r.team_id)) || {};
       const houseName = teamObj.houseName || r.team_id?.house_id?.name || "";
       const houseCode = teamObj.houseCode || r.team_id?.house_id?.code || "";
-      const members = teamObj.members || []; // already [{_id,name,class,houseCode}]
+      const members = teamObj.members || [];
       return {
         resultId: r._id,
         position: r.position,
@@ -217,12 +215,12 @@ const list = useMemo(() => {
       <div className="flex items-center justify-between gap-3 mb-2">
         <h3 className="font-semibold">🏅 Events</h3>
         {/* Category filter */}
-        <div className="inline-flex rounded-lg border overflow-hidden">
+        <div className="inline-flex rounded-lg border overflow-hidden shadow-sm">
           {["all", "upcoming", "completed"].map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3 py-1.5 text-sm ${
+              className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 category === c ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -231,6 +229,7 @@ const list = useMemo(() => {
           ))}
         </div>
       </div>
+
       <p className="text-sm text-gray-500 mb-3">Latest and upcoming competition events</p>
 
       {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
@@ -240,23 +239,39 @@ const list = useMemo(() => {
       ) : list.length === 0 ? (
         <div className="text-gray-600 text-sm">No events found</div>
       ) : (
-        <div className="grid grid-cols-1 gap-2">
-          {list.map((evt) => (
-            <button
-              key={evt.key}
-              onClick={() => openDetails(evt.key)}
-              className="w-full text-left flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-            >
-              <div className="min-w-0">
-                <p className="font-medium truncate">{evt.name}</p>
-                <p className="text-xs text-gray-500">{evt.typeText}</p>
-              </div>
-              <span className={`px-3 py-1 text-xs font-medium rounded-full ${evt.color}`}>
-                {evt.status === "live" ? "Ongoing" : evt.status === "completed" ? "Completed" : "Upcoming"}
-              </span>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-2 animate-[fadeIn_300ms_ease-out]">
+            {list.map((evt) => (
+              <button
+                key={evt.key}
+                onClick={() => openDetails(evt.key)}
+                className="w-full text-left flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition shadow-sm hover:shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.99]"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{evt.name}</p>
+                  <p className="text-xs text-gray-500">{evt.typeText}</p>
+                </div>
+                <span className={`px-3 py-1 text-xs font-medium rounded-full ${evt.color}`}>
+                  {evt.status === "live" ? "Ongoing" : evt.status === "completed" ? "Completed" : "Upcoming"}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* See all / See less */}
+          {fullItems.length > 8 && (
+            <div className="mt-3 flex justify-center">
+              <button
+                onClick={() => setShowAll((s) => !s)}
+                className="px-3 py-1.5 text-sm rounded-md border bg-white text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                aria-expanded={showAll}
+                aria-controls="events-list"
+              >
+                {showAll ? "See less" : `See all (${fullItems.length})`}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Details Drawer / Modal */}
@@ -266,9 +281,11 @@ const list = useMemo(() => {
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) closeDetails();
           }}
+          role="dialog"
+          aria-modal="true"
         >
           <div
-            className="w-full md:max-w-3xl bg-white rounded-t-2xl md:rounded-2xl p-0 shadow-lg max-h-[90vh] overflow-hidden"
+            className="w-full md:max-w-3xl bg-white rounded-t-2xl md:rounded-2xl p-0 shadow-lg max-h-[90vh] overflow-hidden transition-transform md:animate-[popIn_160ms_ease-out]"
             onMouseDown={(e) => e.stopPropagation()}
           >
             {/* Sticky header */}
@@ -277,10 +294,14 @@ const list = useMemo(() => {
                 <h4 className="text-lg font-semibold truncate">
                   {eventDetail?.name || "Event details"}
                 </h4>
-                <button onClick={closeDetails} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">
+                <button
+                  onClick={closeDetails}
+                  className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
                   Close
                 </button>
               </div>
+
               {/* Basics */}
               <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                 <div>
@@ -309,14 +330,14 @@ const list = useMemo(() => {
                 </div>
               </div>
 
-              {/* Tabs for completed events */}
+              {/* Tabs */}
               <div className="mt-3">
-                <div className="inline-flex rounded-lg border overflow-hidden">
+                <div className="inline-flex rounded-lg border overflow-hidden shadow-sm">
                   {["winners", "participants"].map((t) => (
                     <button
                       key={t}
                       onClick={() => setActiveTab(t)}
-                      className={`px-3 py-1.5 text-sm ${
+                      className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                         activeTab === t ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
                       }`}
                     >
@@ -363,7 +384,6 @@ const list = useMemo(() => {
                             <span className="font-medium">Position {w.position}</span>
                             <span className="text-gray-700">{w.houseText}</span>
                           </div>
-                          {/* Members scroll (max height) */}
                           <div className="mt-2 max-h-28 overflow-y-auto pr-1">
                             {(w.members || []).slice(0, 50).map((m) => (
                               <div key={m._id} className="py-1 flex items-center justify-between text-sm">
@@ -419,10 +439,8 @@ const list = useMemo(() => {
                           </div>
                         </li>
                       ))}
-                      
                     </ul>
                   )}
-                  
                 </section>
               )}
             </div>
@@ -434,3 +452,8 @@ const list = useMemo(() => {
 }
 
 export default RecentEvents;
+
+/* Tailwind keyframes (optional):
+   If using Tailwind v3, add to tailwind.config.js:
+   theme.extend.animation + keyframes for fadeIn and popIn.
+   Or replace classes with built-in transition utilities. */
