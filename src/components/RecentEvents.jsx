@@ -36,6 +36,9 @@ function RecentEvents() {
   const [eventTeams, setEventTeams] = useState([]);
   const [activeTab, setActiveTab] = useState("winners"); // winners | participants
 
+  // NEW: loading state while fetching team names and their members
+  const [namesLoading, setNamesLoading] = useState(false);
+
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
@@ -152,6 +155,8 @@ function RecentEvents() {
       const sortedSchedules = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
       setEventSchedules(sortedSchedules);
 
+      // Fetch teams first (fast), then fetch members with loading indicator
+      setNamesLoading(true);
       let teamsResp = null;
       try {
         teamsResp = await apiCall(`/api/team?event_id=${eventId}`);
@@ -165,6 +170,9 @@ function RecentEvents() {
         chest_no: t.chest_no || null,
         members: [],
       }));
+      setEventTeams(baseTeams); // show shells immediately
+
+      // fetch members for each team
       const withMembers = await Promise.all(
         baseTeams.map(async (t) => {
           try {
@@ -179,6 +187,7 @@ function RecentEvents() {
     } catch (err) {
       setError(err.message);
     } finally {
+      setNamesLoading(false);
       setDetailsLoading(false);
     }
   };
@@ -188,6 +197,7 @@ function RecentEvents() {
     setEventDetail(null);
     setEventSchedules([]);
     setEventTeams([]);
+    setNamesLoading(false);
   };
 
   const winnersView = useMemo(() => {
@@ -209,6 +219,18 @@ function RecentEvents() {
       };
     });
   }, [openId, resultsByEvent, eventTeams]);
+
+  // simple skeleton row for names
+  const NameSkeleton = ({ rows = 3 }) => (
+    <div className="animate-pulse space-y-2">
+      {Array.from({ length: rows }).map((_, idx) => (
+        <div key={idx} className="flex items-center justify-between">
+          <div className="h-3 bg-gray-200 rounded w-2/3" />
+          <div className="h-3 bg-gray-200 rounded w-16" />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm">
@@ -375,7 +397,12 @@ function RecentEvents() {
               {/* Winners or Participants */}
               {activeTab === "winners" ? (
                 <section>
-                  <h5 className="font-semibold mb-2">Winners</h5>
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-semibold">Winners</h5>
+                    {namesLoading && (
+                      <span className="text-xs text-gray-500">Loading names…</span>
+                    )}
+                  </div>
                   {resultsByEvent[openId]?.length ? (
                     <ul className="space-y-2">
                       {winnersView.map((w) => (
@@ -385,13 +412,16 @@ function RecentEvents() {
                             <span className="text-gray-700">{w.houseText}</span>
                           </div>
                           <div className="mt-2 max-h-28 overflow-y-auto pr-1">
-                            {(w.members || []).slice(0, 50).map((m) => (
-                              <div key={m._id} className="py-1 flex items-center justify-between text-sm">
-                                <span className="text-gray-800 truncate">{m.name}</span>
-                                <span className="text-gray-500 text-xs">{m.class || ""}</span>
-                              </div>
-                            ))}
-                            {(!w.members || w.members.length === 0) && (
+                            {namesLoading ? (
+                              <NameSkeleton rows={3} />
+                            ) : (w.members || []).length > 0 ? (
+                              (w.members || []).slice(0, 50).map((m) => (
+                                <div key={m._id} className="py-1 flex items-center justify-between text-sm">
+                                  <span className="text-gray-800 truncate">{m.name}</span>
+                                  <span className="text-gray-500 text-xs">{m.class || ""}</span>
+                                </div>
+                              ))
+                            ) : (
                               <p className="text-xs text-gray-500">No members listed.</p>
                             )}
                           </div>
@@ -404,25 +434,32 @@ function RecentEvents() {
                 </section>
               ) : (
                 <section>
-                  <h5 className="font-semibold mb-2">Participants</h5>
-                  {eventTeams.length === 0 ? (
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-semibold">Participants</h5>
+                    {namesLoading && (
+                      <span className="text-xs text-gray-500">Loading names…</span>
+                    )}
+                  </div>
+                  {eventTeams.length === 0 && !namesLoading ? (
                     <p className="text-sm text-gray-600">No registrations yet.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {eventTeams.map((t) => (
-                        <li key={t._id} className="border rounded p-2 text-sm">
+                      {(eventTeams.length ? eventTeams : Array.from({ length: 2 }).map((_, i) => ({ _id: `sk_${i}`, members: [] }))).map((t, idx) => (
+                        <li key={t._id ?? `sk_${idx}`} className="border rounded p-2 text-sm">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium">
-                                {t.houseName || "House"} {t.houseCode ? `(${t.houseCode})` : ""}
+                                {t.houseName || (namesLoading ? "Loading…" : "House")} {t.houseCode ? `(${t.houseCode})` : ""}
                               </p>
                               <p className="text-xs text-gray-600">
-                                {t.chest_no ? `Chest #${t.chest_no}` : "No chest number"}
+                                {t.chest_no ? `Chest #${t.chest_no}` : (namesLoading ? "Loading…" : "No chest number")}
                               </p>
                             </div>
                           </div>
                           <div className="mt-2 max-h-28 overflow-y-auto pr-1">
-                            {(t.members || []).length === 0 ? (
+                            {namesLoading ? (
+                              <NameSkeleton rows={3} />
+                            ) : (t.members || []).length === 0 ? (
                               <p className="text-xs text-gray-600">No members added.</p>
                             ) : (
                               <ul>
@@ -452,8 +489,3 @@ function RecentEvents() {
 }
 
 export default RecentEvents;
-
-/* Tailwind keyframes (optional):
-   If using Tailwind v3, add to tailwind.config.js:
-   theme.extend.animation + keyframes for fadeIn and popIn.
-   Or replace classes with built-in transition utilities. */
