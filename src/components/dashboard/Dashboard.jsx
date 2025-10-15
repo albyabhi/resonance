@@ -15,6 +15,7 @@ import ManageResult from "../actions/ManageResult";
 import SubmissionManager from "../actions/SubmissionManager";
 import PendingResult from "../actions/PendingResult";
 import EditHouse from "../actions/EditHouse";
+import AdminScoreboard from "../actions/AdminScoreboard";
 
 // Map action labels to components
 const actionComponents = {
@@ -22,6 +23,7 @@ const actionComponents = {
   "Manage Users": ManageUsers,
   "Manage House": ManageHouse,
   "Add Events": ManageEvents,
+  "ScoreBoard Manage" : AdminScoreboard,
 
   // captain
   "Event Registration": Register,

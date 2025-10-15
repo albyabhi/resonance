@@ -15,6 +15,7 @@ export const roleConfig = {
       { label: "Manage Students", icon: Users, to: "/users" },
       { label: "Add Events", icon: Calendar, to: "/events/new" },
       { label: "Manage House", icon: UserPlus, to: "/houses" },
+      { label: "ScoreBoard Manage", icon: CheckCircle, to: "/houses" },
     ],
     modules: { standings: true, events: true, stats: true },
   },

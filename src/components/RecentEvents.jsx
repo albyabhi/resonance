@@ -203,8 +203,20 @@ function RecentEvents() {
 
       {/* Details Drawer / Modal */}
       {openId && (
-        <div className="fixed inset-0 bg-black/30 z-40 flex items-end md:items-center md:justify-center">
-          <div className="w-full md:max-w-2xl bg-white rounded-t-2xl md:rounded-2xl p-4 md:p-6 shadow-lg">
+        <div
+          className="fixed inset-0 bg-black/30 z-40 flex items-end md:items-center md:justify-center"
+          onMouseDown={(e) => {
+            // Close only when the backdrop itself is the event target
+            if (e.target === e.currentTarget) closeDetails();
+          }}
+        >
+          <div
+            className="w-full md:max-w-2xl bg-white rounded-t-2xl md:rounded-2xl p-4 md:p-6 shadow-lg"
+            onMouseDown={(e) => {
+              // Prevent inside clicks from bubbling to the backdrop
+              e.stopPropagation();
+            }}
+          >
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-lg font-semibold">
                 {eventDetail?.name || "Event details"}
@@ -275,7 +287,7 @@ function RecentEvents() {
                   )}
                 </section>
 
-                {/* Participants (always show members; public-friendly) */}
+                {/* Participants */}
                 <section>
                   <h5 className="font-semibold mb-2">Participants</h5>
                   {eventTeams.length === 0 ? (
@@ -295,7 +307,7 @@ function RecentEvents() {
                             </div>
                           </div>
 
-                          {/* Members list always visible */}
+                          {/* Members list */}
                           <div className="mt-2">
                             {(t.members || []).length === 0 ? (
                               <p className="text-xs text-gray-600">No members added.</p>
