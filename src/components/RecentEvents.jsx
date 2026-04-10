@@ -1,20 +1,22 @@
-// src/components/RecentEvents.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../components/AuthContext";
+import { FadeIn } from "./AnimateReveal";
+import { Calendar, Filter, ChevronRight, Layout, Users, Trophy, Clock, MapPin, X } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const statusOrder = { live: 3, upcoming: 2, completed: 1 };
-const modeLabel = (m) => (m === "onstage" ? "onstage" : "offstage");
-const typeLabel = (t) => (t === "team" ? "team" : "individual");
-const statusBadge = (status) => {
+const modeLabel = (m) => (m === "onstage" ? "Stage" : "Off-stage");
+const typeLabel = (t) => (t === "team" ? "Team" : "Individual");
+
+const statusConfig = (status) => {
   switch (status) {
     case "live":
-      return "bg-blue-900 text-white";
+      return { label: "Live", classes: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20" };
     case "completed":
-      return "bg-gray-200 text-gray-700";
+      return { label: "Completed", classes: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/5" };
     default:
-      return "bg-gray-100 text-gray-700";
+      return { label: "Upcoming", classes: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20" };
   }
 };
 
@@ -26,18 +28,13 @@ function RecentEvents() {
   const [schedulesByEvent, setSchedulesByEvent] = useState({});
   const [resultsByEvent, setResultsByEvent] = useState({});
   const [showAll, setShowAll] = useState(false);
-
-  // filters and UI state
-  const [category, setCategory] = useState("all"); // all | upcoming | completed
+  const [category, setCategory] = useState("all");
   const [openId, setOpenId] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [eventDetail, setEventDetail] = useState(null);
   const [eventSchedules, setEventSchedules] = useState([]);
   const [eventTeams, setEventTeams] = useState([]);
-  const [activeTab, setActiveTab] = useState("winners"); // winners | participants
-
-  // NEW: loading state while fetching team names and their members
-  const [namesLoading, setNamesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("winners");
 
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
@@ -46,20 +43,11 @@ function RecentEvents() {
       ...(options.headers || {}),
     };
     const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
+    if (!res.ok) throw new Error("API call failed");
+    return res.json();
   };
 
-  // bootstrap events + schedules + results summary
   useEffect(() => {
-    let mounted = true;
     const load = async () => {
       try {
         setLoading(true);
@@ -67,127 +55,83 @@ function RecentEvents() {
         const { events: evts } = await apiCall("/api/event");
         const schedulesMap = {};
         const resultsMap = {};
+        const eventIds = (evts || []).map((e) => e._id || e.event_id).join(",");
 
-        await Promise.all(
-          (evts || []).map(async (e) => {
-            const id = e._id || e.event_id;
-            try {
-              const { schedules } = await apiCall(`/api/schedule?event_id=${id}`);
-              schedulesMap[id] = schedules || [];
-            } catch {
-              schedulesMap[id] = [];
-            }
+        if (eventIds) {
+          try {
+            const { schedules } = await apiCall(`/api/schedule/batch?event_ids=${eventIds}`);
+            (schedules || []).forEach((s) => {
+              if (!schedulesMap[s.event_id]) schedulesMap[s.event_id] = [];
+              schedulesMap[s.event_id].push(s);
+            });
+            const { results } = await apiCall(`/api/results/batch?event_ids=${eventIds}&status=approved`);
+            (results || []).forEach((r) => {
+              if (!resultsMap[r.event_id]) resultsMap[r.event_id] = [];
+              resultsMap[r.event_id].push(r);
+            });
+          } catch (e) {
+            console.error("Batch fetch failed", e);
+          }
+        }
 
-            try {
-              const { results } = await apiCall(`/api/results?event_id=${id}&status=approved`);
-              resultsMap[id] = results || [];
-            } catch {
-              resultsMap[id] = [];
-            }
-          })
-        );
-
-        if (!mounted) return;
         setEvents(evts || []);
         setSchedulesByEvent(schedulesMap);
         setResultsByEvent(resultsMap);
       } catch (err) {
-        if (!mounted) return;
         setError(err.message);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     };
     load();
-    return () => {
-      mounted = false;
-    };
-  }, [token, API_BASE_URL]);
+  }, []);
 
   const eventStatus = (id) => {
-    const sched = (schedulesByEvent[id] || [])
-      .slice()
-      .sort((a, b) => {
-        const oa = statusOrder[a.status] || 0;
-        const ob = statusOrder[b.status] || 0;
-        if (oa !== ob) return ob - oa;
-        const ad = new Date(a.date || 0).getTime();
-        const bd = new Date(b.date || 0).getTime();
-        if (ad !== bd) return ad - bd;
-        return String(a.time || "").localeCompare(String(b.time || ""));
-      });
-    const chosen = sched[0] || {};
-    return chosen.status || "upcoming";
+    const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0));
+    return sched[0]?.status || "upcoming";
   };
 
-  // build filtered list (no logic change; just used for UI)
   const fullItems = useMemo(() => {
     return (events || [])
       .map((e) => {
         const id = e._id || e.event_id;
         const status = eventStatus(id);
-        return {
-          key: id,
-          name: e.name,
-          typeText: `${modeLabel(e.mode)} • ${typeLabel(e.event_type)}`,
-          status,
-          color: statusBadge(status),
-        };
+        return { key: id, name: e.name, mode: e.mode, type: e.event_type, status };
       })
       .filter((it) => (category === "all" ? true : it.status === category));
   }, [events, schedulesByEvent, category]);
 
-  const list = useMemo(() => {
-    return showAll ? fullItems : fullItems.slice(0, 8);
-  }, [fullItems, showAll]);
+  const list = useMemo(() => (showAll ? fullItems : fullItems.slice(0, 6)), [fullItems, showAll]);
 
   const openDetails = async (eventId) => {
     try {
       setOpenId(eventId);
       setDetailsLoading(true);
-      setError("");
       setActiveTab("winners");
-
       const { event } = await apiCall(`/api/event/${eventId}`);
       setEventDetail(event || null);
-
       const { schedules } = await apiCall(`/api/schedule?event_id=${eventId}`);
-      const sortedSchedules = (schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0));
-      setEventSchedules(sortedSchedules);
+      setEventSchedules((schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0)));
 
-      // Fetch teams first (fast), then fetch members with loading indicator
-      setNamesLoading(true);
-      let teamsResp = null;
-      try {
-        teamsResp = await apiCall(`/api/team?event_id=${eventId}`);
-      } catch {
-        teamsResp = { teams: [] };
-      }
+      const teamsResp = await apiCall(`/api/team?event_id=${eventId}`).catch(() => ({ teams: [] }));
       const baseTeams = (teamsResp.teams || []).map((t) => ({
         _id: t._id,
         houseName: t.house_id?.name || "",
         houseCode: t.house_id?.code || "",
-        chest_no: t.chest_no || null,
+        chest_no: t.chest_no,
         members: [],
       }));
-      setEventTeams(baseTeams); // show shells immediately
 
-      // fetch members for each team
       const withMembers = await Promise.all(
         baseTeams.map(async (t) => {
-          try {
-            const { members } = await apiCall(`/api/team/${t._id}/members`);
-            return { ...t, members: members || [] };
-          } catch {
-            return { ...t, members: [] };
-          }
+          const { members } = await apiCall(`/api/team/${t._id}/members`).catch(() => ({ members: [] }));
+          return { ...t, members: members || [] };
         })
       );
       setEventTeams(withMembers);
     } catch (err) {
       setError(err.message);
     } finally {
-      setNamesLoading(false);
       setDetailsLoading(false);
     }
   };
@@ -197,294 +141,220 @@ function RecentEvents() {
     setEventDetail(null);
     setEventSchedules([]);
     setEventTeams([]);
-    setNamesLoading(false);
   };
 
   const winnersView = useMemo(() => {
     if (!openId) return [];
-    const results = (resultsByEvent[openId] || [])
-      .filter((r) => r.status === "approved")
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    const results = (resultsByEvent[openId] || []).filter((r) => r.status === "approved").sort((a, b) => (a.position || 0) - (b.position || 0));
     const teamMap = new Map(eventTeams.map((t) => [String(t._id), t]));
     return results.slice(0, 6).map((r) => {
       const teamObj = teamMap.get(String(r.team_id?._id || r.team_id)) || {};
-      const houseName = teamObj.houseName || r.team_id?.house_id?.name || "";
-      const houseCode = teamObj.houseCode || r.team_id?.house_id?.code || "";
-      const members = teamObj.members || [];
-      return {
-        resultId: r._id,
-        position: r.position,
-        houseText: houseName ? `${houseName}${houseCode ? ` (${houseCode})` : ""}` : "",
-        members,
-      };
+      return { resultId: r._id, position: r.position, houseText: teamObj.houseName || r.team_id?.house_id?.name || "", members: teamObj.members || [] };
     });
   }, [openId, resultsByEvent, eventTeams]);
 
-  // simple skeleton row for names
-  const NameSkeleton = ({ rows = 3 }) => (
-    <div className="animate-pulse space-y-2">
-      {Array.from({ length: rows }).map((_, idx) => (
-        <div key={idx} className="flex items-center justify-between">
-          <div className="h-3 bg-gray-200 rounded w-2/3" />
-          <div className="h-3 bg-gray-200 rounded w-16" />
-        </div>
-      ))}
-    </div>
-  );
-
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm">
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <h3 className="font-semibold">🏅 Events</h3>
-        {/* Category filter */}
-        <div className="inline-flex rounded-lg border overflow-hidden shadow-sm">
-          {["all", "upcoming", "completed"].map((c) => (
+    <FadeIn delay={0.3} className="card-premium flex h-full w-full max-w-full flex-col overflow-hidden">
+      <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Events</h3>
+          </div>
+          <p className="pl-7 text-sm text-gray-500 dark:text-gray-400">Upcoming, live, and completed events</p>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 p-1 dark:border-gray-800 dark:bg-gray-900">
+          {["all", "live", "upcoming", "completed"].map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                category === c ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              className={`rounded-full px-3 py-1.5 text-xs transition-all ${
+                category === c ? "border border-gray-200 shadow-sm font-semibold" : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
               }`}
+              style={category === c ? { backgroundColor: 'var(--card)', color: 'var(--accent)', borderColor: 'var(--border-divider)' } : {}}
             >
-              {c[0].toUpperCase() + c.slice(1)}
+              {c}
             </button>
           ))}
         </div>
-      </div>
+      </header>
 
-      <p className="text-sm text-gray-500 mb-3">Latest and upcoming competition events</p>
+      {error && (
+        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
+          Stream error: {error}
+        </div>
+      )}
 
-      {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
-
-      {loading ? (
-        <div className="text-gray-600 text-sm">Loading…</div>
-      ) : list.length === 0 ? (
-        <div className="text-gray-600 text-sm">No events found</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-2 animate-[fadeIn_300ms_ease-out]">
-            {list.map((evt) => (
+      <div className="flex-1 space-y-3">
+        {loading ? (
+          [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse dark:bg-gray-900" />)
+        ) : list.length === 0 ? (
+          <div className="py-20 text-center">
+            <Filter className="mx-auto mb-4 h-10 w-10 text-gray-300 dark:text-gray-700" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">No events matched the current filter</p>
+          </div>
+        ) : (
+          list.map((evt) => {
+            const config = statusConfig(evt.status);
+            return (
               <button
                 key={evt.key}
                 onClick={() => openDetails(evt.key)}
-                className="w-full text-left flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition shadow-sm hover:shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.99]"
+                className="group flex w-full items-center justify-between rounded-2xl border border-gray-200 p-4 text-left transition hover:border-indigo-200 hover:shadow-md dark:border-gray-800 dark:hover:border-indigo-500/20"
+                style={{ backgroundColor: 'var(--card)' }}
               >
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{evt.name}</p>
-                  <p className="text-xs text-gray-500">{evt.typeText}</p>
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-400 transition-colors group-hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:text-indigo-400">
+                    <Layout className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">{evt.name}</p>
+                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{modeLabel(evt.mode)} · {typeLabel(evt.type)}</p>
+                  </div>
                 </div>
-                <span className={`px-3 py-1 text-xs font-medium rounded-full ${evt.color}`}>
-                  {evt.status === "live" ? "Ongoing" : evt.status === "completed" ? "Completed" : "Upcoming"}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className={`rounded-full border px-3 py-1 text-[11px] ${config.classes}`}>{config.label}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-indigo-500" />
+                </div>
               </button>
-            ))}
-          </div>
+            );
+          })
+        )}
+      </div>
 
-          {/* See all / See less */}
-          {fullItems.length > 8 && (
-            <div className="mt-3 flex justify-center">
-              <button
-                onClick={() => setShowAll((s) => !s)}
-                className="px-3 py-1.5 text-sm rounded-md border bg-white text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                aria-expanded={showAll}
-                aria-controls="events-list"
-              >
-                {showAll ? "See less" : `See all (${fullItems.length})`}
-              </button>
-            </div>
-          )}
-        </>
+      {fullItems.length > 6 && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="mt-6 w-full border-t border-gray-100 py-3 text-sm text-gray-500 transition-colors hover:text-indigo-600 dark:border-gray-800 dark:text-gray-400 dark:hover:text-indigo-400"
+        >
+          {showAll ? "Show fewer" : `Show all (${fullItems.length})`}
+        </button>
       )}
 
-      {/* Details Drawer / Modal */}
       {openId && (
-        <div
-          className="fixed inset-0 bg-black/30 z-40 flex items-end md:items-center md:justify-center"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeDetails();
-          }}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="w-full md:max-w-3xl bg-white rounded-t-2xl md:rounded-2xl p-0 shadow-lg max-h-[90vh] overflow-hidden transition-transform md:animate-[popIn_160ms_ease-out]"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {/* Sticky header */}
-            <div className="p-4 border-b bg-white sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <h4 className="text-lg font-semibold truncate">
-                  {eventDetail?.name || "Event details"}
-                </h4>
-                <button
-                  onClick={closeDetails}
-                  className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                >
-                  Close
-                </button>
-              </div>
-
-              {/* Basics */}
-              <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Mode</span>
-                  <p className="font-medium">{eventDetail?.mode}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Type</span>
-                  <p className="font-medium">{eventDetail?.event_type}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Rounds</span>
-                  <p className="font-medium">{eventDetail?.rounds}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Team size</span>
-                  <p className="font-medium">
-                    {eventDetail?.event_type === "individual"
-                      ? "1"
-                      : `${eventDetail?.min_team_size || 1}–${eventDetail?.max_team_size || 1}`}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Max per house</span>
-                  <p className="font-medium">{eventDetail?.max_per_house || 1}</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xl transition-all duration-300 sm:p-6">
+          <FadeIn className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-[#0B1220]">
+            <header className="flex items-center justify-between border-b border-gray-200 bg-gray-50/70 p-6 dark:border-gray-800 dark:bg-gray-900/50">
+              <div className="space-y-1">
+                <h4 className="text-2xl font-semibold text-gray-900 dark:text-white">{eventDetail?.name || "Event details"}</h4>
+                <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {eventDetail?.mode}</span>
+                  <span className="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {eventDetail?.event_type}</span>
                 </div>
               </div>
+              <button onClick={closeDetails} className="rounded-xl border border-gray-200 bg-white p-2 text-gray-400 transition hover:text-rose-500 dark:border-gray-800 dark:bg-slate-900">
+                <X className="h-6 w-6" />
+              </button>
+            </header>
 
-              {/* Tabs */}
-              <div className="mt-3">
-                <div className="inline-flex rounded-lg border overflow-hidden shadow-sm">
-                  {["winners", "participants"].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setActiveTab(t)}
-                      className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                        activeTab === t ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      {t[0].toUpperCase() + t.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Body scroll area */}
-            <div className="p-4 overflow-y-auto">
-              {/* Schedule */}
-              <section className="mb-4">
-                <h5 className="font-semibold mb-2">Schedule</h5>
-                {eventSchedules.length === 0 ? (
-                  <p className="text-sm text-gray-600">No schedule added yet.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {eventSchedules.map((r) => (
-                      <li key={r._id} className="text-sm border rounded p-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Round {r.round_no}</span>
-                          <span className="px-2 py-0.5 rounded text-xs border">{r.status}</span>
-                        </div>
-                        <div className="text-gray-600 mt-1">
-                          {r.date ? new Date(r.date).toLocaleDateString() : "-"} • {r.time || "-"} • {r.venue || "-"}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              {/* Winners or Participants */}
-              {activeTab === "winners" ? (
-                <section>
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-semibold">Winners</h5>
-                    {namesLoading && (
-                      <span className="text-xs text-gray-500">Loading names…</span>
-                    )}
-                  </div>
-                  {resultsByEvent[openId]?.length ? (
-                    <ul className="space-y-2">
-                      {winnersView.map((w) => (
-                        <li key={w.resultId} className="border rounded p-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">Position {w.position}</span>
-                            <span className="text-gray-700">{w.houseText}</span>
-                          </div>
-                          <div className="mt-2 max-h-28 overflow-y-auto pr-1">
-                            {namesLoading ? (
-                              <NameSkeleton rows={3} />
-                            ) : (w.members || []).length > 0 ? (
-                              (w.members || []).slice(0, 50).map((m) => (
-                                <div key={m._id} className="py-1 flex items-center justify-between text-sm">
-                                  <span className="text-gray-800 truncate">{m.name}</span>
-                                  <span className="text-gray-500 text-xs">{m.class || ""}</span>
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-xs text-gray-500">No members listed.</p>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-gray-600">No approved results yet.</p>
-                  )}
-                </section>
+            <div className="flex-1 space-y-10 overflow-y-auto p-6 overscroll-contain sm:p-8">
+              {detailsLoading ? (
+                <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading event details</div>
               ) : (
-                <section>
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-semibold">Participants</h5>
-                    {namesLoading && (
-                      <span className="text-xs text-gray-500">Loading names…</span>
-                    )}
+                <>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    {[
+                      { label: "Rounds", value: eventDetail?.rounds, icon: Clock },
+                      { label: "Min team", value: eventDetail?.min_team_size || 1, icon: Users },
+                      { label: "Max team", value: eventDetail?.max_team_size || 1, icon: Users },
+                      { label: "House cap", value: eventDetail?.max_per_house, icon: Layout },
+                    ].map((m, i) => (
+                      <div key={i} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
+                        <m.icon className="mb-2 h-4 w-4 text-indigo-500" />
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{m.label}</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{m.value}</p>
+                      </div>
+                    ))}
                   </div>
-                  {eventTeams.length === 0 && !namesLoading ? (
-                    <p className="text-sm text-gray-600">No registrations yet.</p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {(eventTeams.length ? eventTeams : Array.from({ length: 2 }).map((_, i) => ({ _id: `sk_${i}`, members: [] }))).map((t, idx) => (
-                        <li key={t._id ?? `sk_${idx}`} className="border rounded p-2 text-sm">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">
-                                {t.houseName || (namesLoading ? "Loading…" : "House")} {t.houseCode ? `(${t.houseCode})` : ""}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {t.chest_no ? `Chest #${t.chest_no}` : (namesLoading ? "Loading…" : "No chest number")}
-                              </p>
+
+                  <section>
+                    <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                      <Clock className="h-4 w-4 text-indigo-500" /> Timeline
+                    </h5>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {eventSchedules.map((r) => (
+                        <div key={r._id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
+                          <div className="mb-3 flex items-start justify-between">
+                            <p className="text-xs text-gray-400 dark:text-gray-500">Round {r.round_no}</p>
+                            <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
+                              {r.status}
+                            </span>
+                          </div>
+                          <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">{r.venue || "Global Arena"}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(r.date).toLocaleDateString()} · {r.time || "TBD"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section>
+                    <div className="mb-6 flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+                      <div className="flex gap-6">
+                        {["winners", "participants"].map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setActiveTab(t)}
+                            className={`relative text-sm transition-all ${activeTab === t ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"}`}
+                          >
+                            {t}
+                            {activeTab === t && <span className="absolute -bottom-[17px] left-0 right-0 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {activeTab === "winners" ? (
+                      <div className="space-y-4">
+                        {winnersView.length ? (
+                          winnersView.map((w) => (
+                            <div key={w.resultId} className="flex items-center gap-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
+                              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-semibold ${w.position === 1 ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300"}`}>
+                                {w.position === 1 ? <Trophy className="h-6 w-6" /> : w.position}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{w.houseText}</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {w.members.map((m) => (
+                                    <span key={m._id} className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                                      {m.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Awaiting official validation.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {eventTeams.map((t) => (
+                          <div key={t._id} className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-[#111827]">
+                            <p className="mb-1 text-xs text-indigo-600 dark:text-indigo-400">{t.houseName}</p>
+                            <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">{t.chest_no ? `Chest Node #${t.chest_no}` : "Chest Node unassigned"}</p>
+                            <div className="space-y-2">
+                              {t.members.map((m) => (
+                                <div key={m._id} className="flex items-center justify-between border-b border-gray-100 py-2 text-xs text-gray-600 last:border-0 dark:border-gray-800 dark:text-gray-400">
+                                  <span>{m.name}</span>
+                                  <span className="text-xs text-gray-400 dark:text-gray-500">{m.class}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          <div className="mt-2 max-h-28 overflow-y-auto pr-1">
-                            {namesLoading ? (
-                              <NameSkeleton rows={3} />
-                            ) : (t.members || []).length === 0 ? (
-                              <p className="text-xs text-gray-600">No members added.</p>
-                            ) : (
-                              <ul>
-                                {(t.members || []).map((m) => (
-                                  <li key={m._id} className="py-1 flex items-center justify-between">
-                                    <span className="text-gray-800 truncate">{m.name}</span>
-                                    <span className="text-gray-500 text-xs">
-                                      {m.class} {m.houseCode ? `• ${m.houseCode}` : ""}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </>
               )}
             </div>
-          </div>
+          </FadeIn>
         </div>
       )}
-    </div>
+    </FadeIn>
   );
 }
 

@@ -1,7 +1,9 @@
-// src/components/ManageUser.jsx
+// src/components/actions/ManageUser.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useIsMobile } from "../utils/useIsMobile";
+import { FadeIn } from "../AnimateReveal";
+import { UserPlus, Users, Edit3, Trash2, Shield, House, Search, Filter, Mail, Calendar, ChevronRight } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -12,769 +14,297 @@ const ManageUser = () => {
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
   const [houses, setHouses] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     username: "",
     password: "",
     role: "guest",
-    house: "", // holds house_id for captain/student_coordinator
+    house: "",
   });
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const mobileView = useIsMobile(); // now this works correctly
-
-  useEffect(() => {
-    const handleResize = () => setMobileView(isMobile());
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const mobileView = useIsMobile();
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-
-    const config = {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: options.body,
-    };
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const text = await response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Failed to parse JSON, response text:", text);
-      throw new Error("Invalid JSON response from server");
-    }
-
-    if (!response.ok) throw new Error(data.message || "API call failed");
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "API failure");
     return data;
   };
 
-  // Fetch houses for role-based selection
   const fetchHouses = async () => {
     try {
       const resp = await apiCall("/api/house");
       setHouses(Array.isArray(resp) ? resp : resp.houses || []);
-    } catch (err) {
-      console.warn("Failed to load houses:", err.message);
-      setHouses([]);
-    }
+    } catch { setHouses([]); }
   };
 
-  // Fetch users
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError("");
       const resp = await apiCall("/api/users");
-      const list = Array.isArray(resp)
-        ? resp
-        : Array.isArray(resp.users)
-        ? resp.users
-        : [];
-      setUsers(list);
-    } catch (err) {
-      setError(err.message);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
+      setUsers(Array.isArray(resp) ? resp : resp.users || []);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
-    if (token) {
-      fetchUsers();
-      fetchHouses();
-    }
+    if (token) { fetchUsers(); fetchHouses(); }
   }, [token]);
 
-  // Add or edit user
   const handleAddOrEditUser = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      setError("");
-
-      const requiresHouse =
-        formData.role === "captain" || formData.role === "student_coordinator";
-
-      // Build payload; for captain or student_coordinator, house must be ObjectId string in formData.house
-      const payload = requiresHouse
-        ? {
-            name: formData.name,
-            username: formData.username,
-            password: formData.password,
-            role: formData.role,
-            house: formData.house || null,
-          }
-        : { ...formData };
+      const requiresHouse = ["captain", "student_coordinator"].includes(formData.role);
+      const payload = requiresHouse ? { ...formData, house: formData.house || null } : formData;
 
       if (editingUserId) {
-        const { user } = await apiCall(`/api/users/${editingUserId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
-        setUsers((prev) =>
-          prev.map((u) => (u._id === editingUserId ? user : u))
-        );
+        const { user } = await apiCall(`/api/users/${editingUserId}`, { method: "PUT", body: JSON.stringify(payload) });
+        setUsers(prev => prev.map(u => u._id === editingUserId ? user : u));
         setEditingUserId(null);
       } else {
-        const { user } = await apiCall("/api/users/add", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        setUsers((prev) => [user, ...prev]);
+        const { user } = await apiCall("/api/users/add", { method: "POST", body: JSON.stringify(payload) });
+        setUsers(prev => [user, ...prev]);
       }
-
-      setFormData({
-        name: "",
-        username: "",
-        password: "",
-        role: "guest",
-        house: "",
-      });
+      setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
       setActiveTab("manage");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
-  // Edit form
-  const handleEdit = (user) => {
-    setFormData({
-      name: user.name || "",
-      username: user.username || "",
-      password: "",
-      role: user.role || "guest",
-      house: user.house?._id || "", // preselect existing house for captain/student_coordinator
-    });
-    setEditingUserId(user._id);
-    setActiveTab("add");
-  };
-
-  // Delete user
-  const handleDelete = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-    try {
-      setLoading(true);
-      await apiCall(`/api/users/${userId}`, { method: "DELETE" });
-      setUsers((prev) => prev.filter((u) => u._id !== userId));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getRoleColor = (role) => {
-    const colors = {
-      admin: "bg-red-50 text-red-700 border-red-200",
-      captain: "bg-blue-50 text-blue-700 border-blue-200",
-      student_coordinator: "bg-green-50 text-green-700 border-green-200",
-      faculty: "bg-purple-50 text-purple-700 border-purple-200",
-      guest: "bg-gray-50 text-gray-700 border-gray-200",
+  const roleConfig = (role) => {
+    const map = {
+      admin: { label: "Executive Admin", classes: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border-rose-100 dark:border-rose-500/20" },
+      captain: { label: "Strategic Lead", classes: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20" },
+      student_coordinator: { label: "Ops Coordinator", classes: "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400 border-violet-100 dark:border-violet-500/20" },
+      faculty: { label: "Intelligence", classes: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20" },
+      guest: { label: "Observer", classes: "bg-slate-50 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/5" },
     };
-    return colors[role] || colors.guest;
+    return map[role] || map.guest;
   };
 
-  const houseLabel = (u) => {
-    if (u?.house && typeof u.house === "object" && u.house.name)
-      return u.house.name;
-    return "-";
-  };
-  const createdLabel = (u) => {
-    const d = u?.createdAt || u?.created_at;
-    try {
-      return d ? new Date(d).toLocaleDateString() : "-";
-    } catch {
-      return "-";
-    }
-  };
-
-  const requiresHouseSelect = (role) =>
-    role === "captain" || role === "student_coordinator";
+  const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.username.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            User Management
-          </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Manage users, roles, and permissions
-          </p>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-            {error}
-            <button
-              onClick={() => setError("")}
-              className="ml-2 text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm mb-6 p-1">
-          <div className="flex">
-            <button
-              className={`flex-1 px-4 py-3 text-sm md:text-base font-medium rounded-lg transition-all duration-200 ${
-                activeTab === "manage"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
-              onClick={() => {
-                setActiveTab("manage");
-                setEditingUserId(null);
-                setFormData({
-                  name: "",
-                  username: "",
-                  password: "",
-                  role: "guest",
-                  house: "",
-                });
-                fetchUsers();
-              }}
-            >
-              Manage Users
-            </button>
-            <button
-              className={`flex-1 px-4 py-3 text-sm md:text-base font-medium rounded-lg transition-all duration-200 ${
-                activeTab === "add"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
-              onClick={() => {
-                setActiveTab("add");
-                setEditingUserId(null);
-                setFormData({
-                  name: "",
-                  username: "",
-                  password: "",
-                  role: "guest",
-                  house: "",
-                });
-              }}
-            >
-              {editingUserId ? "Edit User" : "Add User"}
-            </button>
-          </div>
-        </div>
-
-        {/* Manage Users */}
-        {activeTab === "manage" && (
-          <div>
-            {/* Mobile: no wrapper card */}
-            {mobileView && (
-              <div>
-                {Array.isArray(users) && users.length === 0 && !loading ? (
-                  <div className="p-4 text-gray-600">No users found</div>
-                ) : null}
-                {users.map((user) => (
-                  <div
-                    key={user._id}
-                    className="p-4 border-b border-gray-100 last:border-b-0"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {user.name}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          @{user.username}
-                        </p>
-                      </div>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(
-                          user.role
-                        )}`}
-                      >
-                        {user.role.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">House:</span>
-                        <p className="font-medium">{houseLabel(user)}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Created:</span>
-                        <p className="font-medium">{createdLabel(user)}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user._id)}
-                        className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {loading ? (
-                  <div className="p-4 text-gray-600">Loading…</div>
-                ) : null}
-              </div>
-            )}
-
-            {/* Desktop: with wrapper card */}
-            <div className="hidden md:block">
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                          User
-                        </th>
-                        <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                          Role
-                        </th>
-                        <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                          House
-                        </th>
-                        <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                          Created
-                        </th>
-                        <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.isArray(users) &&
-                      users.length === 0 &&
-                      !loading ? (
-                        <tr>
-                          <td className="p-4 text-gray-600" colSpan={5}>
-                            No users found
-                          </td>
-                        </tr>
-                      ) : null}
-                      {users.map((user) => (
-                        <tr
-                          key={user._id}
-                          className="border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          <td className="p-4">
-                            <div>
-                              <div className="font-semibold text-gray-900">
-                                {user.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                @{user.username}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`px-3 py-1 text-xs font-medium rounded-full border ${getRoleColor(
-                                user.role
-                              )}`}
-                            >
-                              {user.role.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="p-4 text-gray-600">
-                            {houseLabel(user)}
-                          </td>
-                          <td className="p-4 text-gray-600">
-                            {createdLabel(user)}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEdit(user)}
-                                className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(user._id)}
-                                className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {loading ? (
-                        <tr>
-                          <td className="p-4 text-gray-600" colSpan={5}>
-                            Loading…
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add/Edit User Form */}
-        {activeTab === "add" && (
-          <div>
-            {/* Mobile: no wrapper card */}
-            {mobileView && (
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  {editingUserId ? "Edit User" : "Add New User"}
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-white/5">
+        <div className="space-y-2">
+            <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-heading">
+                    Personnel Management
                 </h2>
-                <p className="text-gray-600 text-sm">
-                  {editingUserId
-                    ? "Update user information"
-                    : "Fill in the details to create a new user"}
-                </p>
-              </div>
-              <form onSubmit={handleAddOrEditUser} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="Enter full name"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
-                    placeholder="Enter username"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-                {!editingUserId && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      placeholder="Enter password"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Role
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => {
-                      const newRole = e.target.value;
-                      setFormData({
-                        ...formData,
-                        role: newRole,
-                        house: requiresHouseSelect(newRole)
-                          ? formData.house
-                          : "",
-                      });
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-                  >
-                    {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {r.replace("_", " ").toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* House selection behavior */}
-                {requiresHouseSelect(formData.role) ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Assign House
-                    </label>
-                    <select
-                      required
-                      value={formData.house}
-                      onChange={(e) =>
-                        setFormData({ ...formData, house: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="">Select house</option>
-                      {houses.map((h) => (
-                        <option key={h._id} value={h._id}>
-                          {h.name} ({h.code})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      This user will be linked to the selected house.
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      House{" "}
-                      <span className="text-gray-400 text-xs">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.house}
-                      onChange={(e) =>
-                        setFormData({ ...formData, house: e.target.value })
-                      }
-                      placeholder="Enter house name or ID"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("manage");
-                      setEditingUserId(null);
-                      setFormData({
-                        name: "",
-                        username: "",
-                        password: "",
-                        role: "guest",
-                        house: "",
-                      });
-                    }}
-                    className="flex-1 px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50"
-                  >
-                    {loading
-                      ? "Saving..."
-                      : editingUserId
-                      ? "Update User"
-                      : "Add User"}
-                  </button>
-                </div>
-              </form>
             </div>
-            )}
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">Identity & Core Infrastructure</p>
+        </div>
+        
+        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
+          {["manage", "add"].map(t => (
+            <button
+              key={t}
+              onClick={() => { setActiveTab(t); if(t==='add') setEditingUserId(null); }}
+              className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'bg-white dark:bg-[#0B1220] text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              {t === 'manage' ? 'Directory' : editingUserId ? 'Edit Node' : 'Initialize Node'}
+            </button>
+          ))}
+        </div>
+      </header>
 
-            {/* Desktop: with wrapper card */}
-            <div className="hidden md:block">
-              <div className="bg-white rounded-xl shadow-sm p-6 max-w-md mx-auto">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                    {editingUserId ? "Edit User" : "Add New User"}
-                  </h2>
-                  <p className="text-gray-600 text-sm">
-                    {editingUserId
-                      ? "Update user information"
-                      : "Fill in the details to create a new user"}
-                  </p>
-                </div>
-                <form onSubmit={handleAddOrEditUser} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      placeholder="Enter full name"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
-                      placeholder="Enter username"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                  {!editingUserId && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        placeholder="Enter password"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Role
-                    </label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => {
-                        const newRole = e.target.value;
-                        setFormData({
-                          ...formData,
-                          role: newRole,
-                          house: requiresHouseSelect(newRole)
-                            ? formData.house
-                            : "",
-                        });
-                      }}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-                    >
-                      {roles.map((r) => (
-                        <option key={r} value={r}>
-                          {r.replace("_", " ").toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl flex items-center gap-4 text-rose-600 dark:text-rose-400 shadow-soft">
+          <Shield className="w-5 h-5 shrink-0" />
+          <p className="text-xs font-bold uppercase tracking-widest leading-none">{error}</p>
+        </div>
+      )}
 
-                  {/* House selection behavior */}
-                  {requiresHouseSelect(formData.role) ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Assign House
-                      </label>
-                      <select
-                        required
-                        value={formData.house}
-                        onChange={(e) =>
-                          setFormData({ ...formData, house: e.target.value })
-                        }
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      >
-                        <option value="">Select house</option>
-                        {houses.map((h) => (
-                          <option key={h._id} value={h._id}>
-                            {h.name} ({h.code})
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        This user will be linked to the selected house.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        House{" "}
-                        <span className="text-gray-400 text-xs">
-                          (Optional)
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.house}
-                        onChange={(e) =>
-                          setFormData({ ...formData, house: e.target.value })
-                        }
-                        placeholder="Enter house name or ID"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("manage");
-                        setEditingUserId(null);
-                        setFormData({
-                          name: "",
-                          username: "",
-                          password: "",
-                          role: "guest",
-                          house: "",
-                        });
-                      }}
-                      className="flex-1 px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex-1 px-4 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors shadow-sm disabled:opacity-50"
-                    >
-                      {loading
-                        ? "Saving..."
-                        : editingUserId
-                        ? "Update User"
-                        : "Add User"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-
-
-
+      {activeTab === "manage" ? (
+        <FadeIn className="space-y-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+             <div className="relative group w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Identify personnel via name or key..." 
+                    className="w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                />
+             </div>
+             <div className="text-xs font-black text-slate-400 underline decoration-indigo-500/20 underline-offset-8 decoration-2">{filteredUsers.length} NODES IDENTIFIED</div>
           </div>
-        )}
-      </div>
+
+          <div className="card-premium overflow-hidden border-slate-200 dark:border-white/5 bg-white dark:bg-[#111827]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-100 dark:border-white/10 uppercase tracking-[0.2em] text-[9px] font-black text-slate-500">
+                    <th className="p-6">Personnel Node</th>
+                    <th className="p-6">Role / Level</th>
+                    <th className="p-6">Infrastructure</th>
+                    <th className="p-6">Initialized</th>
+                    <th className="p-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-white/5">
+                  {filteredUsers.map(user => {
+                    const cfg = roleConfig(user.role);
+                    return (
+                      <tr key={user._id} className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-all">
+                        <td className="p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 shrink-0 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black group-hover:scale-110 transition-transform">
+                                    {user.name.charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user.name}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">@{user.username}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td className="p-6">
+                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border ${cfg.classes}`}>
+                                {cfg.label}
+                            </span>
+                        </td>
+                        <td className="p-6">
+                            <div className="flex items-center gap-2">
+                                <House className="w-3.5 h-3.5 text-slate-300" />
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 capitalize">{user.house?.name || "Global"}</span>
+                            </div>
+                        </td>
+                        <td className="p-6">
+                            <div className="flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-slate-300" />
+                                <span className="text-xs font-bold text-slate-500">{new Date(user.createdAt || user.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </td>
+                        <td className="p-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                                <button 
+                                    onClick={() => { setFormData({ name: user.name, username: user.username, password: "", role: user.role, house: user.house?._id || "" }); setEditingUserId(user._id); setActiveTab("add"); }}
+                                    className="p-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 dark:bg-white/5 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400 transition-all active:scale-95 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30"
+                                >
+                                    <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => { if(window.confirm('Terminate Node Presence?')) apiCall(`/api/users/${user._id}`, { method: 'DELETE' }).then(fetchUsers); }}
+                                    className="p-2 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-all active:scale-95 border border-transparent hover:border-rose-100 dark:hover:border-rose-500/30"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {loading && <div className="p-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 animate-pulse">Synchronizing Node Data...</div>}
+              {!loading && filteredUsers.length === 0 && <div className="p-20 text-center space-y-4">
+                  <Filter className="w-10 h-10 text-slate-200 dark:text-white/5 mx-auto" />
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Zero Node Resonance Found</p>
+              </div>}
+            </div>
+          </div>
+        </FadeIn>
+      ) : (
+        <FadeIn className="max-w-2xl mx-auto">
+          <div className="card-premium p-10 bg-white dark:bg-[#111827] space-y-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 p opacity-5">
+                <UserPlus className="w-32 h-32 text-indigo-500" />
+            </div>
+            
+            <div className="space-y-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{editingUserId ? 'Reprogram Node' : 'Initialize New Node'}</h3>
+                <p className="text-sm font-medium text-slate-500">Assign credentials and infrastructure alignment.</p>
+            </div>
+
+            <form onSubmit={handleAddOrEditUser} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Formal Designation</label>
+                        <input 
+                            required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                            placeholder="Full operative name"
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Access Key</label>
+                        <input 
+                            required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})}
+                            placeholder="Unique identifier"
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                    </div>
+                </div>
+
+                {!editingUserId && (
+                   <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Vector</label>
+                        <input 
+                            required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                            placeholder="Secure bit-sequence"
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Clearance Level</label>
+                        <select 
+                            value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, house: ['captain', 'student_coordinator'].includes(e.target.value) ? formData.house : ""})}
+                            className="w-full appearance-none bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                            {roles.map(r => <option key={r} value={r} className="bg-white dark:bg-[#0B1220]">{r.replace('_', ' ').toUpperCase()}</option>)}
+                        </select>
+                    </div>
+
+                    {["captain", "student_coordinator"].includes(formData.role) && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">House Vector</label>
+                            <select 
+                                required value={formData.house} onChange={e => setFormData({...formData, house: e.target.value})}
+                                className="w-full appearance-none bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            >
+                                <option value="" className="bg-white dark:bg-[#0B1220]">Synchronize Vector...</option>
+                                {houses.map(h => <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">{h.name} ({h.code})</option>)}
+                            </select>
+                        </div>
+                    )}
+                </div>
+
+                <div className="pt-8 flex gap-4">
+                    <button 
+                        type="button" 
+                        onClick={() => setActiveTab("manage")}
+                        className="flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border border-slate-200 dark:border-white/5 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                    >
+                        Abort Initialization
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                    >
+                        {loading ? "Writing Node..." : editingUserId ? "Update Node Protocol" : "Initialize Operative"}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </FadeIn>
+      )}
     </div>
   );
 };

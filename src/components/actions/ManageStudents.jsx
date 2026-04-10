@@ -272,9 +272,9 @@ function ManageStudents() {
             id="tab-all"
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "all"
-                ? "bg-blue-600 text-white shadow"
+                ? "bg-orange-600 text-white shadow"
                 : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
             onClick={() => switchTab("all")}
           >
             All Students
@@ -286,9 +286,9 @@ function ManageStudents() {
             id="tab-add"
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "add"
-                ? "bg-blue-600 text-white shadow"
+                ? "bg-orange-600 text-white shadow"
                 : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
             onClick={() => switchTab("add")}
           >
             Add
@@ -300,9 +300,9 @@ function ManageStudents() {
             id="tab-update"
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "update"
-                ? "bg-blue-600 text-white shadow"
+                ? "bg-orange-600 text-white shadow"
                 : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+            } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
             disabled={!editingStudent}
           >
             Update
@@ -326,7 +326,7 @@ function ManageStudents() {
                 id="filter-house"
                 value={filterHouse}
                 onChange={(e) => setFilterHouse(e.target.value)}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               >
                 <option value="">Filter by house</option>
                 {houses.map((h) => (
@@ -345,7 +345,7 @@ function ManageStudents() {
                 value={filterClass}
                 onChange={(e) => setFilterClass(e.target.value)}
                 placeholder="Filter by class"
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               />
 
               <label className="sr-only" htmlFor="search">
@@ -357,18 +357,18 @@ function ManageStudents() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               />
 
               <button
-                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 onClick={handleDeselectAll}
                 type="button"
               >
                 Clear Selection
               </button>
               <button
-                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 onClick={handleSelectAll}
                 type="button"
               >
@@ -422,7 +422,7 @@ function ManageStudents() {
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
-                      className="flex-1 px-3 py-2 min-h-[44px] bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                      className="flex-1 px-3 py-2 min-h-[44px] bg-orange-50 text-orange-700 border border-orange-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                       onClick={() => handleEditStart(stu)}
                       type="button"
                     >
@@ -489,7 +489,7 @@ function ManageStudents() {
                       <td className="p-3 align-middle">
                         <div className="flex flex-wrap gap-2">
                           <button
-                            className="px-3 py-2 min-h-[40px] bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                            className="px-3 py-2 min-h-[40px] bg-orange-50 text-orange-700 border border-orange-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                             onClick={() => handleEditStart(stu)}
                             type="button"
                           >
@@ -537,7 +537,7 @@ function ManageStudents() {
                 required
                 value={addForm.house_id}
                 onChange={(e) => setAddForm((f) => ({ ...f, house_id: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               >
                 <option value="">Select house</option>
                 {houses.map((h) => (
@@ -556,7 +556,7 @@ function ManageStudents() {
                 placeholder="Name"
                 value={addForm.name}
                 onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               />
               <label className="sr-only" htmlFor="add-class">
                 Class
@@ -568,11 +568,11 @@ function ManageStudents() {
                 placeholder="Class"
                 value={addForm.class}
                 onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-60"
+                className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
                 disabled={loading}
               >
                 Add Student
@@ -590,7 +590,7 @@ function ManageStudents() {
                 required
                 value={bulkHouse}
                 onChange={(e) => setBulkHouse(e.target.value)}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               >
                 <option value="">Select house for this bulk</option>
                 {houses.map((h) => (
@@ -609,11 +609,11 @@ function ManageStudents() {
                 placeholder='Paste students as JSON array, e.g. [{"NAME":"...","CLASS":"..."}]'
                 value={bulkJson}
                 onChange={(e) => setBulkJson(e.target.value)}
-                className="block w-full border border-gray-200 rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="block w-full border border-gray-200 rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-60"
+                className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
                 disabled={loading}
               >
                 Bulk Add
@@ -641,7 +641,7 @@ function ManageStudents() {
               onChange={(e) =>
                 setEditingStudent((stu) => ({ ...stu, house_id: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
             >
               <option value="">House</option>
               {houses.map((h) => (
@@ -661,7 +661,7 @@ function ManageStudents() {
               onChange={(e) =>
                 setEditingStudent((stu) => ({ ...stu, name: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               placeholder="Name"
             />
             <label className="sr-only" htmlFor="edit-class">
@@ -675,20 +675,20 @@ function ManageStudents() {
               onChange={(e) =>
                 setEditingStudent((stu) => ({ ...stu, class: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               placeholder="Class"
             />
             <button
               type="submit"
               onClick={handleEditSave}
-              className="bg-blue-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-60"
+              className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
               disabled={loading}
             >
               Save Changes
             </button>
             <button
               type="button"
-              className="mt-2 w-full border px-3 py-2 min-h-[44px] rounded text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="mt-2 w-full border px-3 py-2 min-h-[44px] rounded text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               onClick={() => {
                 setEditingStudent(null);
                 setActiveTab("all");

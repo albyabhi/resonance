@@ -298,7 +298,7 @@ const ManageResult = () => {
           <select
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="">Select event</option>
             {(events || []).map((e) => {
@@ -317,7 +317,7 @@ const ManageResult = () => {
             value={roundNo}
             onChange={(e) => setRoundNo(e.target.value)}
             disabled={!schedules.length}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50"
           >
             <option value="">Select round</option>
             {schedules.map((r) => (
@@ -334,7 +334,7 @@ const ManageResult = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Chest no., house, student name/class"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
       </div>
@@ -465,7 +465,7 @@ const ManageResult = () => {
           type="button"
           disabled={loading || !eventId || !roundNo}
           onClick={submitResults}
-          className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50"
         >
           {loading ? "Submitting..." : "Submit for Approval"}
         </button>

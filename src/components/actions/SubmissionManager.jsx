@@ -1,5 +1,4 @@
-// src/components/SubmissionManager.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -8,16 +7,12 @@ const SubmissionManager = () => {
   const { token, role, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Filters
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
   const [rounds, setRounds] = useState([]);
   const [roundNo, setRoundNo] = useState("");
-  const [statusFilter, setStatusFilter] = useState(""); // "", "pending", "approved"
-
-  // Data
-  const [submissions, setSubmissions] = useState([]); // normalized rows
+  const [statusFilter, setStatusFilter] = useState("");
+  const [submissions, setSubmissions] = useState([]);
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -41,7 +36,6 @@ const SubmissionManager = () => {
     return data;
   };
 
-  // Load events
   useEffect(() => {
     const loadEvents = async () => {
       try {
@@ -58,7 +52,6 @@ const SubmissionManager = () => {
     if (token) loadEvents();
   }, [token]);
 
-  // Load rounds when event changes
   useEffect(() => {
     const loadRounds = async () => {
       setRounds([]);
@@ -81,7 +74,6 @@ const SubmissionManager = () => {
     loadRounds();
   }, [eventId]);
 
-  // Normalize submissions
   const loadSubmissions = async () => {
     if (!eventId || !roundNo) return;
     try {
@@ -119,7 +111,6 @@ const SubmissionManager = () => {
   useEffect(() => {
     setSubmissions([]);
     if (eventId && roundNo) loadSubmissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, roundNo, statusFilter]);
 
   const isOwnPending = (row) =>
@@ -143,124 +134,89 @@ const SubmissionManager = () => {
     }
   };
 
-  // UI helpers
   const statusChipClass = (status) =>
     status === "pending"
-      ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
-      : "bg-green-50 text-green-700 border border-green-200";
+      ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+      : "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20";
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="theme-card p-4">
       <div className="mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Submissions</h2>
-        <p className="text-sm text-gray-600">
-          View and manage submitted results (pending and approved)
-        </p>
+        <h2 className="text-lg font-semibold theme-text-primary">Submissions</h2>
+        <p className="text-sm theme-text-secondary">View and manage submitted results.</p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">
-          {error}
-        </div>
-      )}
+      {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Event</label>
-          <select
-            value={eventId}
-            onChange={(e) => setEventId(e.target.value)}
-            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          >
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Event</label>
+          <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="theme-input min-h-[44px] px-3 py-2">
             <option value="">Select event</option>
             {(events || []).map((e) => {
               const id = e._id || e.event_id;
               return (
                 <option key={id} value={id}>
-                  {e.name} • {e.event_type} • {e.mode}
+                  {e.name} - {e.event_type} - {e.mode}
                 </option>
               );
             })}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
-          <select
-            value={roundNo}
-            onChange={(e) => setRoundNo(e.target.value)}
-            disabled={!rounds.length}
-            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          >
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Round</label>
+          <select value={roundNo} onChange={(e) => setRoundNo(e.target.value)} disabled={!rounds.length} className="theme-input min-h-[44px] px-3 py-2 disabled:bg-gray-50 dark:disabled:bg-gray-900">
             <option value="">Select round</option>
             {rounds.map((r) => (
               <option key={r._id || r.round_no} value={r.round_no}>
-                Round {r.round_no} • {r.status}
+                Round {r.round_no} - {r.status}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-          >
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Status</label>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="theme-input min-h-[44px] px-3 py-2">
             <option value="">All</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
           </select>
         </div>
         <div className="flex items-end">
-          <button
-            type="button"
-            onClick={loadSubmissions}
-            className="px-4 py-2 min-h-[44px] bg-gray-100 border rounded-lg hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50"
-            disabled={!eventId || !roundNo}
-          >
+          <button type="button" onClick={loadSubmissions} className="theme-panel min-h-[44px] rounded-lg px-4 py-2 transition hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50" disabled={!eventId || !roundNo}>
             Refresh
           </button>
         </div>
       </div>
 
-      {/* Mobile cards */}
       <ul className="space-y-2 md:hidden" aria-label="Submissions list">
         {loading ? (
-          <li className="text-center text-sm text-gray-600 py-2">Loading…</li>
+          <li className="py-2 text-center text-sm theme-text-secondary">Loading...</li>
         ) : submissions.length === 0 ? (
-          <li className="text-center text-sm text-gray-600 py-2">No submissions found</li>
+          <li className="py-2 text-center text-sm theme-text-secondary">No submissions found</li>
         ) : (
           submissions.map((row) => (
-            <li key={row._id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+            <li key={row._id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500">Position</p>
-                  <p className="text-base font-semibold text-gray-900">{row.position}</p>
+                  <p className="text-xs theme-text-secondary">Position</p>
+                  <p className="text-base font-semibold theme-text-primary">{row.position}</p>
                   <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-gray-500">Team</p>
-                      <p className="font-medium">
-                        {row.chest ? `Chest #${row.chest}` : "No chest"}
-                      </p>
+                      <p className="theme-text-secondary">Team</p>
+                      <p className="font-medium theme-text-primary">{row.chest ? `Chest #${row.chest}` : "No chest"}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">House</p>
-                      <p className="font-medium">
-                        {row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}
-                      </p>
+                      <p className="theme-text-secondary">House</p>
+                      <p className="font-medium theme-text-primary">{row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}</p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-gray-500">Submitted by</p>
-                      <p className="font-medium">{row.submittedBy || "-"}</p>
+                      <p className="theme-text-secondary">Submitted by</p>
+                      <p className="font-medium theme-text-primary">{row.submittedBy || "-"}</p>
                     </div>
                   </div>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs rounded ${statusChipClass(row.status)}`}
-                >
-                  {row.status}
-                </span>
+                <span className={`rounded px-2 py-1 text-xs ${statusChipClass(row.status)}`}>{row.status}</span>
               </div>
 
               <div className="mt-3">
@@ -268,10 +224,10 @@ const SubmissionManager = () => {
                   type="button"
                   disabled={!isOwnPending(row)}
                   onClick={() => deleteRow(row)}
-                  className={`w-full px-3 py-2 min-h-[44px] rounded text-sm ${
+                  className={`w-full rounded px-3 py-2 text-sm ${
                     isOwnPending(row)
-                      ? "bg-red-50 text-red-600 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      ? "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                      : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-900 dark:text-gray-500"
                   }`}
                 >
                   Delete
@@ -282,55 +238,44 @@ const SubmissionManager = () => {
         )}
       </ul>
 
-      {/* Desktop/table view */}
-      <div className="hidden md:block overflow-x-auto border rounded-lg">
+      <div className="hidden overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 md:block">
         <table className="min-w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Position</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Team</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">House</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Submitted By</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Status</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Action</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Position</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Team</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">House</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Submitted By</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Status</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={6}>
-                  Loading…
-                </td>
+                <td className="p-3 text-sm theme-text-secondary" colSpan={6}>Loading...</td>
               </tr>
             ) : submissions.length === 0 ? (
               <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={6}>
-                  No submissions found
-                </td>
+                <td className="p-3 text-sm theme-text-secondary" colSpan={6}>No submissions found</td>
               </tr>
             ) : (
               submissions.map((row) => (
-                <tr key={row._id} className="border-t">
-                  <td className="p-3">{row.position}</td>
-                  <td className="p-3">{row.chest ? `Chest #${row.chest}` : "No chest"}</td>
-                  <td className="p-3">
-                    {row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}
-                  </td>
-                  <td className="p-3">{row.submittedBy || "-"}</td>
-                  <td className="p-3">
-                    <span className={`px-2 py-1 text-xs rounded ${statusChipClass(row.status)}`}>
-                      {row.status}
-                    </span>
-                  </td>
+                <tr key={row._id} className="border-t border-gray-200 dark:border-gray-800">
+                  <td className="p-3 theme-text-primary">{row.position}</td>
+                  <td className="p-3 theme-text-primary">{row.chest ? `Chest #${row.chest}` : "No chest"}</td>
+                  <td className="p-3 theme-text-primary">{row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}</td>
+                  <td className="p-3 theme-text-primary">{row.submittedBy || "-"}</td>
+                  <td className="p-3"><span className={`rounded px-2 py-1 text-xs ${statusChipClass(row.status)}`}>{row.status}</span></td>
                   <td className="p-3">
                     <button
                       type="button"
                       disabled={!isOwnPending(row)}
                       onClick={() => deleteRow(row)}
-                      className={`px-3 py-1 rounded text-sm ${
+                      className={`rounded px-3 py-1 text-sm ${
                         isOwnPending(row)
-                          ? "bg-red-50 text-red-600 hover:bg-red-100"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          ? "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                          : "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-900 dark:text-gray-500"
                       }`}
                     >
                       Delete

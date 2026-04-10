@@ -1,10 +1,53 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" suppressHydrationWarning>
   <head>
     <meta charset="UTF-8" />
-<link rel="icon" type="image/jpeg" href="/src/assets/Rlogo.jpg" />
+    <link rel="icon" type="image/jpeg" href="/src/assets/Rlogo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ── Phase 3 – Static meta tags ──────────────────────────── -->
+    <!-- Tell browsers this page supports both light and dark schemes -->
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Media-aware theme-color: first matching tag wins.
+         Chrome & Safari read the media attribute and pick the right one
+         based on the OS preference. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#020617" />
+
+    <!-- Fallback theme-color (no media) – used by crawlers and browsers
+         that don't support the media attribute. Phase 4's sync hook
+         updates this tag dynamically when the user toggles. -->
+    <meta name="theme-color" content="#f8fafc" />
+
+    <!-- ── Phase 6 – PWA manifest link ─────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Syne:wght@400..800&display=swap" rel="stylesheet">
+
     <title>Resonance 2025</title>
+
+    <!-- ── Phase 5 – SSR-correctness (SPA equivalent) ──────────── -->
+    <!-- Apply the persisted theme BEFORE React hydrates so the user
+         never sees a flash of the wrong colour.  This inline script
+         runs synchronously and is tiny (~200 bytes). -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = stored === 'dark' || (stored !== 'light' && prefersDark);
+
+        // Apply dark class immediately
+        if (dark) document.documentElement.classList.add('dark');
+
+        // Update the fallback <meta name="theme-color"> tag to match
+        var fallback = document.querySelector('meta[name="theme-color"]:not([media])');
+        if (fallback) fallback.setAttribute('content', dark ? '#020617' : '#f8fafc');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

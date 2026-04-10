@@ -1,41 +1,43 @@
-// AppShell.jsx
-import React, { useState } from 'react';
-import Header from './Header';
-import Sidebar from './dashboard/Sidebar';
+import { useState, useCallback } from "react";
+import Header from "./Header";
+import { useTheme } from "../context/ThemeContext";
 
 export default function AppShell({ onLogout = () => {}, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Theme is now managed by ThemeProvider (Phase 2)
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
+  const handleMenuClick = useCallback(() => setMobileOpen(true), []);
+  const handleClose = useCallback(() => setMobileOpen(false), []);
+  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header on top */}
+    <div className="min-h-screen flex flex-col overflow-x-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <Header
         onLogout={onLogout}
-        onMenuClick={() => setMobileOpen(true)}
-        className="w-full shadow-sm bg-white z-50"
+        onMenuClick={handleMenuClick}
+        theme={theme}
+        setTheme={setTheme}
+        resolvedTheme={resolvedTheme}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
       />
 
-      {/* Content below header */}
-      <div className="flex flex-1">
-        {/* Sidebar - desktop */}
-        {/* <aside className="hidden md:flex flex-col w-64 h-[calc(100vh-64px)] border-r bg-white">
-          <Sidebar onLogout={onLogout} />
-        </aside> */}
-
-        {/* Main content */}
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          {children}
-        </main>
+      <div className="flex flex-1 min-h-0">
+        {typeof children === "function"
+          ? children({
+              mobileOpen,
+              setMobileOpen,
+              onCloseSidebar: handleClose,
+              sidebarOpen,
+              setSidebarOpen,
+              theme,
+              setTheme,
+            })
+          : children}
       </div>
-
-      {/* Mobile sidebar */}
-      {/* {mobileOpen && (
-        <Sidebar
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          onLogout={onLogout}
-        />
-      )} */}
     </div>
   );
 }

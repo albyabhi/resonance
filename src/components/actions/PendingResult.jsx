@@ -1,57 +1,41 @@
-// src/components/FacultyResults.jsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const PendingResult = () => {
-  const { token, role } = useAuth(); // 'faculty' or 'faculty_coordinator'
+  const { token, role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Filters
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState("");
   const [rounds, setRounds] = useState([]);
   const [roundNo, setRoundNo] = useState("");
-
-  // Data
   const [pending, setPending] = useState([]);
-  const [teams, setTeams] = useState([]); // includes members
-  const [teamMembersMap, setTeamMembersMap] = useState({}); // teamId -> [{_id,name,class}, ...]
+  const [teams, setTeams] = useState([]);
+  const [teamMembersMap, setTeamMembersMap] = useState({});
 
   const apiCall = async (endpoint, options = {}) => {
-  if (!token) throw new Error("No auth token available");
-  const url = `${API_BASE_URL}${endpoint}`;
-  const method = options.method || "GET";
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    ...(options.headers || {}),
+    if (!token) throw new Error("No auth token available");
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: options.method || "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(options.headers || {}),
+      },
+      body: options.body || undefined,
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON response from server");
+    }
+    if (!res.ok) throw new Error(data.message || "API call failed");
+    return data;
   };
-  const body = options.body || undefined;
-
-  console.log("[apiCall] ->", { method, url, headers: { ...headers, Authorization: "Bearer ****" }, body });
-
-  const res = await fetch(url, { method, headers, body });
-  const text = await res.text();
-
-  console.log("[apiCall] <-", { status: res.status, ok: res.ok, text: text?.slice(0, 500) });
-
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    console.warn("[apiCall] JSON parse failed, raw:", text);
-    throw new Error("Invalid JSON response from server");
-  }
-  if (!res.ok) {
-    console.warn("[apiCall] error payload:", data);
-    throw new Error(data.message || "API call failed");
-  }
-  return data;
-};
-
 
   const loadEvents = async () => {
     const { events } = await apiCall("/api/event");
@@ -85,7 +69,6 @@ const PendingResult = () => {
     } catch {
       tResp = { teams: [] };
     }
-      console.log("[loadContext] teams:", (tResp.teams || []).length);
 
     const mapped = (tResp.teams || []).map((t) => ({
       _id: t._id,
@@ -94,19 +77,13 @@ const PendingResult = () => {
       houseCode: t.house_id?.code || "",
     }));
     setTeams(mapped);
-
-    // Fetch members once for all teams in the event
     const memberMap = await fetchMembersForTeams(mapped);
     setTeamMembersMap(memberMap);
   };
 
   const loadPending = async () => {
-      console.log("[loadPending] params:", { eventId, roundNo });
-
     if (!eventId || !roundNo) return;
-    const { results } = await apiCall(
-      `/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`
-    );
+    const { results } = await apiCall(`/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`);
     const rows = (results || []).map((r) => {
       const team = r.team_id || {};
       const house = team.house_id || {};
@@ -142,7 +119,6 @@ const PendingResult = () => {
     setLoading(true);
     setError("");
     loadContext(eventId).catch((e) => setError(e.message)).finally(() => setLoading(false));
-    
   }, [eventId]);
 
   useEffect(() => {
@@ -155,15 +131,10 @@ const PendingResult = () => {
     loadPending().catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, [eventId, roundNo]);
 
-  const teamLabel = (t) =>
-    `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} • ${t.houseName}${
-      t.houseCode ? ` (${t.houseCode})` : ""
-    }`;
+  const teamLabel = (t) => `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} - ${t.houseName}${t.houseCode ? ` (${t.houseCode})` : ""}`;
 
   const renderTeamOrStudents = (row) => {
-    if (row.chest) {
-      return `Chest #${row.chest}`;
-    }
+    if (row.chest) return `Chest #${row.chest}`;
     const members = teamMembersMap[row.teamId] || [];
     if (!members.length) return "No chest";
     const names = members.map((m) => m.name).slice(0, 3).join(", ");
@@ -279,126 +250,76 @@ const PendingResult = () => {
   const isFaculty = ["faculty", "faculty_coordinator"].includes(String(role || "").toLowerCase());
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="theme-card p-4">
       <div className="mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Faculty Approvals</h2>
-        <p className="text-sm text-gray-600">
-          Approve, reject, or correct pending placements; approval updates the scoreboard
-        </p>
-        {!isFaculty && (
-          <p className="text-xs text-red-600 mt-1">
-            Access requires Faculty role. Current role: {String(role || "")}
-          </p>
-        )}
+        <h2 className="text-lg font-semibold theme-text-primary">Faculty Approvals</h2>
+        <p className="text-sm theme-text-secondary">Approve, reject, or correct pending placements.</p>
+        {!isFaculty && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Access requires Faculty role. Current role: {String(role || "")}</p>}
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">
-          {error}
-        </div>
-      )}
+      {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Event</label>
-          <select
-            value={eventId}
-            onChange={(e) => setEventId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
-          >
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Event</label>
+          <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="theme-input px-3 py-2">
             <option value="">Select event</option>
             {(events || []).map((e) => {
               const id = e._id || e.event_id;
               return (
                 <option key={id} value={id}>
-                  {e.name} • {e.event_type} • {e.mode}
+                  {e.name} - {e.event_type} - {e.mode}
                 </option>
               );
             })}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
-          <select
-            value={roundNo}
-            onChange={(e) => setRoundNo(e.target.value)}
-            disabled={!rounds.length}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white disabled:bg-gray-50"
-          >
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Round</label>
+          <select value={roundNo} onChange={(e) => setRoundNo(e.target.value)} disabled={!rounds.length} className="theme-input px-3 py-2 disabled:bg-gray-50 dark:disabled:bg-gray-900">
             <option value="">Select round</option>
             {rounds.map((r) => (
               <option key={r._id || r.round_no} value={r.round_no}>
-                Round {r.round_no} • {r.status}
+                Round {r.round_no} - {r.status}
               </option>
             ))}
           </select>
         </div>
         <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={loadPending}
-            className="px-4 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200"
-            disabled={!eventId || !roundNo}
-          >
+          <button type="button" onClick={loadPending} className="theme-panel rounded-lg px-4 py-2 transition hover:bg-gray-50 dark:hover:bg-gray-800" disabled={!eventId || !roundNo}>
             Refresh
           </button>
         </div>
       </div>
 
-      {/* Table A: Pending Approval */}
-      <div className="overflow-x-auto border rounded-lg mb-6">
-        <div className="px-3 py-2 border-b bg-gray-50 text-sm font-medium">Pending Approval</div>
+      <div className="mb-6 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium theme-text-primary dark:border-gray-800 dark:bg-gray-900">Pending Approval</div>
         <table className="min-w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Position</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Team/Student</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">House</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Submitted By</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Action</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Position</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Team/Student</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">House</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Submitted By</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={5}>
-                  Loading…
-                </td>
-              </tr>
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={5}>Loading...</td></tr>
             ) : pending.length === 0 ? (
-              <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={5}>
-                  No pending submissions
-                </td>
-              </tr>
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={5}>No pending submissions</td></tr>
             ) : (
               pending.map((row) => (
-                <tr key={row._id} className="border-t">
-                  <td className="p-3">{row.position}</td>
-                  <td className="p-3">{renderTeamOrStudents(row)}</td>
-                  <td className="p-3">
-                    {row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}
-                  </td>
-                  <td className="p-3">{row.submittedBy || "-"}</td>
+                <tr key={row._id} className="border-t border-gray-200 dark:border-gray-800">
+                  <td className="p-3 theme-text-primary">{row.position}</td>
+                  <td className="p-3 theme-text-primary">{renderTeamOrStudents(row)}</td>
+                  <td className="p-3 theme-text-primary">{row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}</td>
+                  <td className="p-3 theme-text-primary">{row.submittedBy || "-"}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => approveOne(row)}
-                        className="px-3 py-1 bg-green-50 text-green-700 rounded hover:bg-green-100 text-sm"
-                        disabled={!isFaculty}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => rejectOne(row)}
-                        className="px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 text-sm"
-                        disabled={!isFaculty}
-                      >
-                        Reject
-                      </button>
+                      <button type="button" onClick={() => approveOne(row)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20" disabled={!isFaculty}>Approve</button>
+                      <button type="button" onClick={() => rejectOne(row)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20" disabled={!isFaculty}>Reject</button>
                     </div>
                   </td>
                 </tr>
@@ -407,64 +328,38 @@ const PendingResult = () => {
           </tbody>
         </table>
 
-        {/* Bulk actions */}
         <div className="flex items-center gap-2 px-3 py-2">
-          <button
-            type="button"
-            onClick={approveAll}
-            className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
-            disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}
-          >
-            Approve All
-          </button>
-          <button
-            type="button"
-            onClick={rejectAll}
-            className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
-            disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}
-          >
-            Reject All
-          </button>
+          <button type="button" onClick={approveAll} className="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50" disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}>Approve All</button>
+          <button type="button" onClick={rejectAll} className="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50" disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}>Reject All</button>
         </div>
 
-        <p className="text-xs text-gray-500 px-3 pb-3">
-          Approving applies points per PointsConfig and updates event totals; House standings update on next refresh.
-        </p>
+        <p className="px-3 pb-3 text-xs theme-text-secondary">Approving applies points and updates standings on next refresh.</p>
       </div>
 
-      {/* Table B: Edit Pending */}
-      <div className="overflow-x-auto border rounded-lg">
-        <div className="px-3 py-2 border-b bg-gray-50 text-sm font-medium">Edit Pending Rows</div>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium theme-text-primary dark:border-gray-800 dark:bg-gray-900">Edit Pending Rows</div>
         <table className="min-w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Position</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Current Team</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Change To</th>
-              <th className="text-left p-3 text-xs uppercase text-gray-500">Action</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Position</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Current Team</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Change To</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={4}>
-                  Loading…
-                </td>
-              </tr>
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={4}>Loading...</td></tr>
             ) : pending.length === 0 ? (
-              <tr>
-                <td className="p-3 text-sm text-gray-600" colSpan={4}>
-                  No pending submissions
-                </td>
-              </tr>
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={4}>No pending submissions</td></tr>
             ) : (
               pending.map((row) => {
                 const current = teams.find((t) => t._id === row.teamId);
                 const currentLabel = current ? teamLabel(current) : "Team";
                 return (
-                  <tr key={row._id} className="border-t">
-                    <td className="p-3">{row.position}</td>
-                    <td className="p-3">{currentLabel}</td>
+                  <tr key={row._id} className="border-t border-gray-200 dark:border-gray-800">
+                    <td className="p-3 theme-text-primary">{row.position}</td>
+                    <td className="p-3 theme-text-primary">{currentLabel}</td>
                     <td className="p-3">
                       <select
                         defaultValue=""
@@ -473,24 +368,16 @@ const PendingResult = () => {
                           if (!newTeamId) return;
                           updateRow(row._id, newTeamId);
                         }}
-                        className="px-2 py-1 border rounded bg-white"
+                        className="theme-input px-2 py-1"
                       >
                         <option value="">Select team</option>
                         {teams.map((t) => (
-                          <option key={t._id} value={t._id}>
-                            {teamLabel(t)}
-                          </option>
+                          <option key={t._id} value={t._id}>{teamLabel(t)}</option>
                         ))}
                       </select>
                     </td>
                     <td className="p-3">
-                      <button
-                        type="button"
-                        onClick={() => deleteRow(row._id, row.position)}
-                        className="px-3 py-1 rounded text-sm bg-red-50 text-red-600 hover:bg-red-100"
-                      >
-                        Delete
-                      </button>
+                      <button type="button" onClick={() => deleteRow(row._id, row.position)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">Delete</button>
                     </td>
                   </tr>
                 );

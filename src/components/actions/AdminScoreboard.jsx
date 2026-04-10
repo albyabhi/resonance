@@ -79,7 +79,7 @@ const MobileRowCard = ({
               onChangeTeam(newTeamId);
               e.target.value = "";
             }}
-            className="px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="">Change team</option>
             {(teamsByEvent[grp.event_id] || []).map((t) => (
@@ -93,7 +93,7 @@ const MobileRowCard = ({
               value={posValue}
               onChange={(e) => setPosValue(e.target.value)}
               placeholder="Position"
-              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const v = parseInt(posValue, 10);
@@ -350,7 +350,7 @@ const AdminScoreboard = () => {
           <select
             value={houseId}
             onChange={(e) => setHouseId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
           >
             <option value="">Select house</option>
             {houses.map((h) => (
@@ -366,7 +366,7 @@ const AdminScoreboard = () => {
           <select
             value={filterEvent}
             onChange={(e) => setFilterEvent(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
           >
             <option value="">All events</option>
             {events.map((ev) => (
@@ -386,7 +386,7 @@ const AdminScoreboard = () => {
           <button
             type="button"
             onClick={loadDetails}
-            className="w-full md:w-auto px-3 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition"
+            className="w-full md:w-auto px-3 py-2 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700 active:scale-[0.98] transition"
           >
             Refresh
           </button>
@@ -395,7 +395,7 @@ const AdminScoreboard = () => {
 
       {/* Pull-to-refresh hint for mobile */}
       {refreshHint && (
-        <div className="mb-2 text-center text-xs text-blue-600">Release to refresh…</div>
+        <div className="mb-2 text-center text-xs text-orange-600">Release to refresh…</div>
       )}
 
       {/* Responsive content container */}
@@ -511,7 +511,7 @@ const AdminScoreboard = () => {
                                   editRow(row, { team_id: newTeamId });
                                   e.target.value = "";
                                 }}
-                                className="px-2 py-1 border rounded bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-2 py-1 border rounded bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                               >
                                 <option value="">Change team</option>
                                 {(teamsByEvent[row.event_id] || []).map((t) => (
@@ -522,7 +522,7 @@ const AdminScoreboard = () => {
                                 type="number"
                                 min={1}
                                 placeholder="Position"
-                                className="w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     const v = parseInt(e.currentTarget.value, 10);

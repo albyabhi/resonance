@@ -1,21 +1,17 @@
-// src/components/actions/EditHouse.jsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const EditHouse = () => {
-  const { token, role ,setUserHouse  } = useAuth(); // should be "captain"
+  const { token, role, setUserHouse } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  const [houseId, setHouseId] = useState("");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
-
   const [previewOk, setPreviewOk] = useState(true);
 
   const apiCall = async (endpoint, options = {}) => {
@@ -40,24 +36,17 @@ const EditHouse = () => {
     return data;
   };
 
-  // Load current house
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         setError("");
         setSuccess("");
-        if (String(role || "").toLowerCase() !== "captain") {
-          throw new Error("Only captains can edit house details");
-        }
+        if (String(role || "").toLowerCase() !== "captain") throw new Error("Only captains can edit house details");
         const { house } = await apiCall("/api/house/me");
-        setHouseId(house._id);
         setName(house.name || "");
         setCode(house.code || "");
-        
-       setUserHouse(house); // update AuthContext user.house
-
-
+        setUserHouse(house);
         setLogoUrl(house.logoUrl || "");
       } catch (err) {
         setError(err.message);
@@ -74,13 +63,8 @@ const EditHouse = () => {
       setSaving(true);
       setError("");
       setSuccess("");
-
-      if (!name.trim()) {
-        throw new Error("House name is required");
-      }
-      if (!code.trim()) {
-        throw new Error("House code is required");
-      }
+      if (!name.trim()) throw new Error("House name is required");
+      if (!code.trim()) throw new Error("House code is required");
 
       const payload = {
         name: name.trim(),
@@ -96,9 +80,8 @@ const EditHouse = () => {
       setName(house.name || "");
       setCode(house.code || "");
       setLogoUrl(house.logoUrl || "");
-      setSuccess("House updated successfully");
+      setSuccess("House updated successfully.");
     } catch (err) {
-      // Show specific conflict message if any
       if (String(err.message || "").toLowerCase().includes("code already exists")) {
         setError("House code already exists. Choose a different code.");
       } else {
@@ -110,98 +93,61 @@ const EditHouse = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="theme-card p-4">
       <div className="mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Edit House</h2>
-        <p className="text-sm text-gray-600">
-          Update house name, code, and optional logo URL
-        </p>
+        <h2 className="text-lg font-semibold theme-text-primary">Manage House Logo</h2>
+        <p className="text-sm theme-text-secondary">Update your house logo URL.</p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg mb-3">
-          {success}
-        </div>
-      )}
+      {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
+      {success && <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">{success}</div>}
 
       {loading ? (
-        <div className="text-sm text-gray-600">Loading…</div>
+        <div className="text-sm theme-text-secondary">Loading...</div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              House Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter house name"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="theme-panel mb-4 grid grid-cols-2 gap-4 rounded-lg p-3">
+            <div>
+              <p className="text-xs font-semibold uppercase theme-text-muted">House Name</p>
+              <p className="font-medium theme-text-primary">{name || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase theme-text-muted">House Code</p>
+              <p className="font-medium theme-text-primary">{code || "-"}</p>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              House Code
-            </label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter house code (unique)"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Code must be unique (e.g., PHX, AQL).
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Logo URL <span className="text-gray-400">(optional)</span>
+            <label className="mb-1 block text-sm font-medium theme-text-secondary">
+              Logo URL <span className="theme-text-muted">(optional)</span>
             </label>
             <input
               type="url"
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               placeholder="https://example.com/logo.png"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="theme-input px-3 py-2"
             />
             {logoUrl ? (
               <div className="mt-2">
-                <div className="text-xs text-gray-500 mb-1">Preview</div>
-                <div className={`w-28 h-28 border rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center ${previewOk ? "" : "border-red-300"}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                <div className="mb-1 text-xs theme-text-secondary">Preview</div>
+                <div className={`theme-panel flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border ${previewOk ? "" : "border-rose-300 dark:border-rose-500/30"}`}>
                   <img
                     src={logoUrl}
                     alt="House logo preview"
-                    className="object-contain w-full h-full"
+                    className="h-full w-full object-contain"
                     onError={() => setPreviewOk(false)}
                     onLoad={() => setPreviewOk(true)}
                   />
                 </div>
-                {!previewOk && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Failed to load image. Check the URL.
-                  </p>
-                )}
+                {!previewOk && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Failed to load image. Check the URL.</p>}
               </div>
             ) : null}
           </div>
 
           <div className="pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Save Changes"}
+            <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

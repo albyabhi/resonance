@@ -1,14 +1,17 @@
 // src/components/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // NEW
+import { normalizeRole } from './dashboard/roleConfig';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);          // { id, name, username, role, house? }
-  const [role, setRole] = useState("guest");       // lowercased role mirror
+  const [role, setRole] = useState("guest");       
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();                  // NEW
 
   // Load from localStorage on first mount
   useEffect(() => {
@@ -36,7 +39,7 @@ export function AuthProvider({ children }) {
     }
   }, [user, role, token]);
 
-  const normalizeRole = (r) => String(r || "").toLowerCase();
+  // use shared normalizer from roleConfig so role keys are consistent across app
 
   const guestLogin = () => {
     setUser({ name: "Guest User" });
@@ -53,10 +56,15 @@ export function AuthProvider({ children }) {
     setToken(jwtToken || null);
   };
 
-  const logout = () => {
+  // Logout then navigate to /login
+  const logout = (options) => {
     setUser(null);
     setRole("guest");
     setToken(null);
+    localStorage.removeItem("auth");
+    if (!options || options.redirect !== false) {
+      navigate("/login", { replace: true }); // redirect to login
+    }
   };
 
   // Update only user.house and persist
@@ -64,7 +72,6 @@ export function AuthProvider({ children }) {
     setUser((prev) => {
       if (!prev) return prev;
       const next = { ...prev, house };
-      // persist immediately using latest token/role
       if (token) {
         try {
           localStorage.setItem("auth", JSON.stringify({ user: next, role, token }));
@@ -101,7 +108,7 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated: !!token,
         login,
-        logout,
+        logout,           // now redirects to /login
         guestLogin,
         setUserHouse,
         setUserData,

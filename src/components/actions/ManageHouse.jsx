@@ -1,7 +1,9 @@
-// src/components/ManageHouse.jsx
+// src/components/actions/ManageHouse.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import Select from "react-select";
+import { FadeIn } from "../AnimateReveal";
+import { House, Grid, PlusCircle, Search, Edit3, Trash2, Shield, Upload, X, Camera, User, Hash } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -10,620 +12,259 @@ const ManageHouse = () => {
   const [activeTab, setActiveTab] = useState("manage");
   const [houses, setHouses] = useState([]);
   const [captainOptions, setCaptainOptions] = useState([]);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    captainUserId: "",
-    logoUrl: "", // fallback/manual URL
-  });
-
-  // Local file state for uploads
+  const [searchQuery, setSearchQuery] = useState("");
+  const [formData, setFormData] = useState({ name: "", code: "", captainUserId: "", logoUrl: "" });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
   const fileInputRef = useRef(null);
-
   const [editingHouseId, setEditingHouseId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Unified API call (JSON by default)
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-
     const isFormData = options.body instanceof FormData;
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(options.headers || {}),
-    };
-
-    const config = { ...options, headers };
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const text = await response.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Failed to parse JSON, response text:", text);
-      throw new Error("Invalid JSON response from server");
-    }
-
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(isFormData ? {} : { "Content-Type": "application/json" }), ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.message || "API call failed");
     return data;
   };
 
-  // Fetch all houses
   const fetchHouses = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const data = await apiCall("/api/house");
-      setHouses(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    try { setLoading(true); setHouses(await apiCall("/api/house")); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    if (token) fetchHouses();
-  }, [token]);
+  useEffect(() => { if (token) fetchHouses(); }, [token]);
 
-  // Build request payload depending on whether a file is selected
-  const buildPayload = () => {
-    if (logoFile) {
-      const fd = new FormData();
-      fd.append("name", formData.name);
-      fd.append("code", formData.code);
-      if (formData.captainUserId)
-        fd.append("captainUserId", formData.captainUserId);
-      // File field name must match Multer .single("logo") on the server
-      fd.append("logo", logoFile);
-      return fd;
-    }
-    // JSON fallback (also used for explicit logo removal)
-    return JSON.stringify({
-      name: formData.name,
-      code: formData.code,
-      captainUserId: formData.captainUserId || undefined,
-      logoUrl: formData.logoUrl, // "" will instruct server to remove logo
-    });
-  };
-
-  // Add or edit house
   const handleAddOrEditHouse = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      setError("");
-
-      const body = buildPayload();
-      const isFormData = body instanceof FormData;
-
-      if (editingHouseId) {
-        const updated = await apiCall(`/api/house/${editingHouseId}`, {
-          method: "PUT",
-          body,
-        });
-        setHouses(houses.map((h) => (h._id === editingHouseId ? updated : h)));
-        setEditingHouseId(null);
+      let body;
+      if (logoFile) {
+        body = new FormData();
+        body.append("name", formData.name);
+        body.append("code", formData.code);
+        if (formData.captainUserId) body.append("captainUserId", formData.captainUserId);
+        body.append("logo", logoFile);
       } else {
-        const created = await apiCall("/api/house", {
-          method: "POST",
-          body,
-        });
-        setHouses([created, ...houses]);
+        body = JSON.stringify({ name: formData.name, code: formData.code, captainUserId: formData.captainUserId || undefined, logoUrl: formData.logoUrl });
       }
 
+      if (editingHouseId) {
+        const updated = await apiCall(`/api/house/${editingHouseId}`, { method: "PUT", body });
+        setHouses(houses.map(h => h._id === editingHouseId ? updated : h));
+      } else {
+        const created = await apiCall("/api/house", { method: "POST", body });
+        setHouses([created, ...houses]);
+      }
       resetForm();
       setActiveTab("manage");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   const resetForm = () => {
     setFormData({ name: "", code: "", captainUserId: "", logoUrl: "" });
-    setLogoFile(null);
-    setLogoPreview("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null; // allow re-selecting same file
-    }
+    setLogoFile(null); setLogoPreview(""); setEditingHouseId(null);
   };
 
-  const fetchCaptainOptions = async (input) => {
-    if (!input || !token) return setCaptainOptions([]);
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/users/search?name=${encodeURIComponent(input)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) {
-        console.error("Fetch error", res.status, await res.text());
-        return setCaptainOptions([]);
-      }
-      const data = await res.json();
-      setCaptainOptions(
-        Array.isArray(data.users)
-          ? data.users.map((u) => ({ value: u._id, label: u.name }))
-          : []
-      );
-    } catch (err) {
-      console.error(err);
-      setCaptainOptions([]);
-    }
-  };
-
-  const handleInputChange = (inputValue) => {
-    if (inputValue.length >= 3) fetchCaptainOptions(inputValue);
-    else setCaptainOptions([]);
-    return inputValue;
-  };
-
-  const handleEdit = (house) => {
-    setFormData({
-      name: house.name,
-      code: house.code,
-      captainUserId: house.captain?._id || "",
-      logoUrl: house.logoUrl || "",
-    });
-    setLogoFile(null);
-    setLogoPreview(house.logoUrl || "");
-    if (fileInputRef.current) fileInputRef.current.value = null;
-    setEditingHouseId(house._id);
-    setActiveTab("add");
-  };
-
-  const handleDelete = async (houseId) => {
-    if (!window.confirm("Are you sure you want to delete this house?")) return;
-    try {
-      setLoading(true);
-      await apiCall(`/api/house/${houseId}`, { method: "DELETE" });
-      setHouses(houses.filter((h) => h._id !== houseId));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // File selection handlers
   const onLogoFileChange = (e) => {
     const file = e.target.files?.[0];
-    setLogoFile(file || null);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setLogoPreview(url);
-      // When a file is chosen, ignore manual URL
-      setFormData((prev) => ({ ...prev, logoUrl: "" }));
-    } else {
-      setLogoPreview("");
-    }
+    if (file) { setLogoFile(file); setLogoPreview(URL.createObjectURL(file)); setFormData(p => ({ ...p, logoUrl: "" })); }
   };
 
-  const removeSelectedLogo = () => {
-    setLogoFile(null);
-    setLogoPreview("");
-    if (fileInputRef.current) fileInputRef.current.value = null;
-  };
-
-  // Explicitly request server-side logo removal
-  const markLogoForRemoval = () => {
-    removeSelectedLogo();
-    setFormData((prev) => ({ ...prev, logoUrl: "" })); // server interprets "" as delete
-  };
+  const filteredHouses = houses.filter(h => h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.code.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="min-h-dvh bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-            House Management
-          </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Manage houses and captains
-          </p>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-white/5">
+        <div className="space-y-2">
+            <div className="flex items-center gap-2">
+                <House className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-heading">
+                    Infrastructure Registry
+                </h2>
+            </div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">House Management & Assets</p>
         </div>
-
-        {error && (
-          <div
-            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4"
-            role="alert"
-            aria-live="polite"
-          >
-            {error}
+        
+        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
+          {["manage", "add"].map(t => (
             <button
-              onClick={() => setError("")}
-              className="ml-2 text-red-500 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              key={t}
+              onClick={() => { setActiveTab(t); if(t==='add') resetForm(); }}
+              className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'bg-white dark:bg-[#0B1220] text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              ×
+              {t === 'manage' ? 'Directory' : editingHouseId ? 'Edit Asset' : 'Initialize Asset'}
             </button>
-          </div>
-        )}
-
-        <div
-          className="bg-white rounded-xl shadow-sm mb-4 p-1 flex"
-          role="tablist"
-          aria-label="House management views"
-        >
-          <button
-            role="tab"
-            aria-selected={activeTab === "manage"}
-            aria-controls="panel-manage"
-            id="tab-manage"
-            className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
-              activeTab === "manage"
-                ? "bg-blue-600 text-white shadow"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
-            onClick={() => {
-              setActiveTab("manage");
-              setEditingHouseId(null);
-              resetForm();
-            }}
-          >
-            Manage Houses
-          </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === "add"}
-            aria-controls="panel-add"
-            id="tab-add"
-            className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
-              activeTab === "add"
-                ? "bg-blue-600 text-white shadow"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
-            onClick={() => {
-              setActiveTab("add");
-              setEditingHouseId(null);
-              resetForm();
-            }}
-          >
-            {editingHouseId ? "Edit House" : "Add House"}
-          </button>
+          ))}
         </div>
+      </header>
 
-        {activeTab === "manage" && (
-          <section
-            id="panel-manage"
-            role="tabpanel"
-            aria-labelledby="tab-manage"
-            className="space-y-3"
-          >
-            <div className="md:hidden space-y-3">
-              {houses.length === 0 ? (
-                <div className="text-gray-600">No houses found</div>
-              ) : (
-                houses.map((house) => (
-                  <div
-                    key={house._id}
-                    className="bg-white rounded-xl shadow-sm p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm text-gray-500">Name</p>
-                        <h3 className="text-base font-semibold text-gray-900 break-words">
-                          {house.name}
-                        </h3>
-                        <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-gray-500">Code</p>
-                            <p className="font-medium">{house.code}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Captain</p>
-                            <p className="font-medium">
-                              {house.captain?.name || "-"}
-                            </p>
-                          </div>
-                          <div className="col-span-2">
-                            <p className="text-gray-500">Logo</p>
-                            {house.logoUrl ? (
-                              <img
-                                src={house.logoUrl}
-                                alt={`${house.name} logo`}
-                                className="mt-1 h-12 w-12 rounded object-cover border border-gray-200"
-                                loading="lazy"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <p className="font-medium">-</p>
-                            )}
-                          </div>
-                        </div>
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl flex items-center gap-4 text-rose-600 dark:text-rose-400 shadow-soft">
+          <Shield className="w-5 h-5 shrink-0" />
+          <p className="text-xs font-bold uppercase tracking-widest leading-none">{error}</p>
+        </div>
+      )}
+
+      {activeTab === "manage" ? (
+        <FadeIn className="space-y-10">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+             <div className="relative group w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Locate infrastructure node..." 
+                    className="w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
+                />
+             </div>
+             <div className="text-xs font-black text-slate-400 underline decoration-indigo-500/20 underline-offset-8 decoration-2">{filteredHouses.length} SYSTEMS ACTIVE</div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredHouses.map((house, idx) => (
+              <FadeIn key={house._id} delay={idx * 0.1}>
+                <div className="card-premium group bg-white dark:bg-[#111827] overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 hover:-translate-y-1 border-slate-200 dark:border-white/5">
+                   <div className="relative h-48 bg-slate-50 dark:bg-white/5 overflow-hidden border-b border-slate-100 dark:border-white/5">
+                      {house.logoUrl ? (
+                         <img src={house.logoUrl} alt={house.name} className="w-full h-full object-cover p-8 transition-transform duration-700 group-hover:scale-110" />
+                      ) : (
+                         <div className="w-full h-full flex flex-col items-center justify-center space-y-3 opacity-20">
+                            <Camera className="w-12 h-12" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">Asset Missing</p>
+                         </div>
+                      )}
+                      <div className="absolute top-4 left-4">
+                        <span className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm border border-white/20 text-indigo-600 dark:text-indigo-400">
+                          {house.code}
+                        </span>
                       </div>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(house)}
-                        className="flex-1 px-3 py-2 min-h-[44px] bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(house._id)}
-                        className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                   </div>
 
-            <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                        Name
-                      </th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                        Code
-                      </th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                        Captain
-                      </th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                        Logo URL
-                      </th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {houses.map((house) => (
-                      <tr
-                        key={house._id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="p-4 text-gray-900">{house.name}</td>
-                        <td className="p-4 text-gray-900">{house.code}</td>
-                        <td className="p-4 text-gray-900">
-                          {house.captain?.name || "-"}
-                        </td>
-                        <td className="p-4 text-gray-900">
-                          {house.logoUrl ? (
-                            <img
-                              src={house.logoUrl}
-                              alt={`${house.name} logo`}
-                              className="h-10 w-10 rounded object-cover border border-gray-200"
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEdit(house)}
-                              className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(house._id)}
-                              className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {houses.length === 0 && (
-                      <tr>
-                        <td className="p-4 text-gray-600">No houses found</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
+                   <div className="p-6 space-y-6 flex-1 flex flex-col">
+                      <div className="space-y-1">
+                         <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{house.name}</h3>
+                         <div className="flex items-center gap-2">
+                            <User className="w-3.5 h-3.5 text-slate-300" />
+                            <p className="text-xs font-semibold text-slate-500">{house.captain?.name || "No Command Assigned"}</p>
+                         </div>
+                      </div>
 
-        {activeTab === "add" && (
-          <section
-            id="panel-add"
-            role="tabpanel"
-            aria-labelledby="tab-add"
-            className="bg-white rounded-xl shadow-sm p-4 md:p-6 max-w-md mx-auto"
-          >
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {editingHouseId ? "Edit House" : "Add New House"}
-            </h2>
-            <form onSubmit={handleAddOrEditHouse} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  House Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Atlas"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                  className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., ATL"
-                />
-              </div>
-
-              {editingHouseId && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Assign Captain
-                  </label>
-                  <Select
-                    options={captainOptions}
-                    onInputChange={handleInputChange}
-                    onChange={(selectedOption) =>
-                      setFormData({
-                        ...formData,
-                        captainUserId: selectedOption?.value || "",
-                      })
-                    }
-                    value={
-                      formData.captainUserId
-                        ? captainOptions.find(
-                            (c) => c.value === formData.captainUserId
-                          ) || {
-                            value: formData.captainUserId,
-                            label: "Loading...",
-                          }
-                        : null
-                    }
-                    placeholder="Assign Captain"
-                    isClearable
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        minHeight: 44,
-                        borderColor: "#e5e7eb",
-                        boxShadow: "none",
-                      }),
-                      valueContainer: (base) => ({
-                        ...base,
-                        padding: "4px 8px",
-                      }),
-                    }}
-                  />
+                      <div className="mt-auto flex items-center justify-end gap-2 pt-6 border-t border-slate-50 dark:border-white/5">
+                        <button 
+                            onClick={() => { setFormData({ name: house.name, code: house.code, captainUserId: house.captain?._id || "", logoUrl: house.logoUrl || "" }); setEditingHouseId(house._id); setLogoPreview(house.logoUrl || ""); setActiveTab("add"); }}
+                            className="p-2.5 rounded-xl bg-slate-50 hover:bg-white text-slate-400 hover:text-indigo-600 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-indigo-400 border border-slate-200/50 dark:border-white/10 transition-all shadow-sm active:scale-95"
+                        >
+                            <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => { if(window.confirm('Decommission Infrastructure?')) apiCall(`/api/house/${house._id}`, { method: 'DELETE' }).then(fetchHouses); }}
+                            className="p-2.5 rounded-xl bg-slate-50 hover:bg-white text-slate-400 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-white/10 dark:hover:text-rose-400 border border-slate-200/50 dark:border-white/10 transition-all shadow-sm active:scale-95"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                   </div>
                 </div>
-              )}
+              </FadeIn>
+            ))}
+          </div>
+          {loading && <div className="p-20 text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 animate-pulse">Syncing Infrastructure...</div>}
+        </FadeIn>
+      ) : (
+        <FadeIn className="max-w-4xl mx-auto">
+          <div className="card-premium p-10 bg-white dark:bg-[#111827] grid grid-cols-1 lg:grid-cols-12 gap-12 relative overflow-hidden">
+             {/* Decorative */}
+             <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+                <PlusCircle className="w-48 h-48 text-indigo-500" />
+             </div>
 
-              {/* Logo controls */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Logo
-                </label>
+             <div className="lg:col-span-4 space-y-8">
+                <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Visual Asset</h3>
+                    <p className="text-sm font-medium text-slate-500">Official house identification.</p>
+                </div>
 
-                {/* File picker */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-                  onChange={onLogoFileChange}
-                  className="block w-full text-sm text-gray-900 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-
-                {/* Preview + actions */}
-                {(logoPreview || formData.logoUrl) && (
-                  <div className="flex items-center gap-3">
+                <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group relative cursor-pointer aspect-square rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 flex flex-col items-center justify-center overflow-hidden transition-all hover:border-indigo-500/50 hover:bg-indigo-500/[0.02]"
+                >
                     {logoPreview ? (
-                      <img
-                        src={logoPreview}
-                        alt="Logo preview"
-                        className="h-12 w-12 rounded object-cover border border-gray-200"
-                      />
-                    ) : formData.logoUrl ? (
-                      <img
-                        src={formData.logoUrl}
-                        alt="Current logo"
-                        className="h-12 w-12 rounded object-cover border border-gray-200"
-                      />
-                    ) : null}
+                        <div className="relative w-full h-full">
+                            <img src={logoPreview} className="w-full h-full object-cover p-10 transition-transform group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-8 h-8 text-white" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center p-6 space-y-4">
+                            <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 shadow-xl flex items-center justify-center mx-auto transition-transform group-hover:scale-110">
+                                <Upload className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Upload Visual</p>
+                                <p className="text-[9px] font-medium text-slate-400 max-w-[120px] mx-auto">PNG, SVG, or JPEG (Max 2MB)</p>
+                            </div>
+                        </div>
+                    )}
+                    <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={onLogoFileChange} />
+                </div>
+             </div>
 
-                    <div className="flex gap-2">
-                      {logoFile && (
-                        <button
-                          type="button"
-                          onClick={removeSelectedLogo}
-                          className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-                        >
-                          Clear selected
-                        </button>
-                      )}
-                      {(formData.logoUrl || logoPreview) && (
-                        <button
-                          type="button"
-                          onClick={markLogoForRemoval}
-                          className="px-3 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
-                        >
-                          Remove logo
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
+             <div className="lg:col-span-8 flex flex-col justify-center">
+                <form onSubmit={handleAddOrEditHouse} className="space-y-8">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                          <Shield className="w-3 h-3 text-indigo-500" /> System Designation
+                        </label>
+                        <input 
+                            required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                            placeholder="e.g. Phoenix Prime"
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                          <Hash className="w-3 h-3 text-indigo-500" /> Protocol Code
+                        </label>
+                        <input 
+                            required value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})}
+                            placeholder="e.g. PHX"
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
+                        />
+                      </div>
+                   </div>
 
-                {/* Manual URL fallback when no file selected */}
-                {!logoFile && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Or paste a logo URL
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.logoUrl}
-                      onChange={(e) =>
-                        setFormData({ ...formData, logoUrl: e.target.value })
-                      }
-                      className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://example.com/logo.png"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      If a file is selected, the URL will be ignored.
-                    </p>
-                  </div>
-                )}
-              </div>
+                   <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full py-5 text-[11px] font-black uppercase tracking-[0.3em] text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-2xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50"
+                   >
+                        {loading ? "Writing Strategy..." : editingHouseId ? "Update System Protocol" : "Initialize Infrastructure"}
+                   </button>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("manage");
-                    setEditingHouseId(null);
-                    resetForm();
-                  }}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-                >
-                  {loading
-                    ? "Saving..."
-                    : editingHouseId
-                    ? "Update House"
-                    : "Add House"}
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
-      </div>
+                   <button 
+                        type="button" 
+                        onClick={() => setActiveTab("manage")}
+                        className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-600 transition-all"
+                   >
+                        Abort Operation
+                   </button>
+                </form>
+             </div>
+          </div>
+        </FadeIn>
+      )}
     </div>
   );
 };

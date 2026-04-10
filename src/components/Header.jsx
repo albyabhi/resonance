@@ -1,181 +1,158 @@
-import React from "react";
-import { LogOut, Bell, Menu, ChevronDown } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import Logo from "../assets/Rlogo.jpg";
+import { useNavigate } from "react-router-dom";
+import ThemeToggle from "./ThemeToggle";
 
-/**
- * ERP-standard Header
- * - No new functionality added; only UX, visuals, a11y, and animations
- * - Works on mobile and desktop
- * - Tailwind-based micro-interactions with reduced-motion support
- */
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 function Header({
-  onLogout = () => {},
-  onBellClick = () => {},
   onMenuClick = () => {},
+  theme = "light",
+  setTheme = () => {},
+  sidebarOpen = true,
+  onToggleSidebar = () => {},
 }) {
-  const { user, role, logout } = useAuth();
+  const auth = useAuth();
+  const { user, role, token } = auth || { user: null, role: "guest", token: null };
+  const navigate = useNavigate();
 
-  const roleLabelMap = {
-    admin: "Admin",
-    captain: "House Captain",
-    student_coordinator: "Student Coordinator",
-    faculty: "Faculty Coordinator",
-    guest: "Guest",
-  };
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  const displayName = user?.name || "Guest User";
-  const roleLabel = roleLabelMap[role] || "Guest";
+  useEffect(() => {
+    if (token && role !== "guest") {
+      fetch(`${API_BASE_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => setNotifications(data.notifications || []))
+        .catch(console.error);
+    }
+  }, [token, role]);
 
-  const handleLogout = () => {
-    logout();
-    onLogout();
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const displayName = user?.name || "Guest";
+
+  const handleMarkAsRead = async (id) => {
+    await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
   };
 
   return (
-    <header
-      className={[
-        // Layout and backdrop
-        "sticky top-0 z-50",
-        "bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/65",
-        "border-b border-slate-200/70",
-        "px-3 sm:px-5 lg:px-6 py-2.5",
-      ].join(" ")}
-      role="banner"
-    >
-      <div
-        className={[
-          "mx-auto w-full",
-          "flex items-center justify-between gap-2",
-          "max-w-[120rem]",
-        ].join(" ")}
-      >
-        {/* Left: Menu + Brand */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2">
-            <div aria-hidden="true">
-              <img
-                src={Logo}
-                alt="Resonance Logo"
-                className="w-14 h-14 rounded-full shadow-md border border-indigo-100 mb-2"
-              />
-            </div>
-            <div className="leading-tight">
-              <h1
-                className={[
-                  "text-base sm:text-lg font-semibold",
-                  "text-slate-800 tracking-tight",
-                ].join(" ")}
-              >
-                Resonance
-              </h1>
-              <p className="text-[11px] sm:text-xs text-slate-500">
-                Inter‑House Competition Management
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Notifications */}
+    <header className="glass sticky top-0 z-50 h-16 transition-colors duration-300">
+      <div className="mx-auto flex h-full w-full max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <button
-            className={[
-              "relative inline-flex items-center justify-center",
-              "rounded-md p-2 text-slate-600",
-              "hover:bg-slate-100 hover:text-slate-800",
-              "active:scale-[0.98]",
-              "transition-all duration-150 ease-out",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60",
-              "motion-reduce:transition-none",
-            ].join(" ")}
-            onClick={onBellClick}
-            aria-label="Notifications"
+            onClick={onMenuClick}
+            className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+            aria-label="Open menu"
           >
-            <Bell className="w-5 h-5" />
-            {/* Example unread dot (decorative only, no new logic) */}
-            <span
-              className={[
-                "pointer-events-none absolute -top-0.5 -right-0.5",
-                "inline-block h-2 w-2 rounded-full",
-                "bg-rose-500 ring-2 ring-white",
-                "shadow-[0_0_0_2px_rgba(255,255,255,0.6)]",
-              ].join(" ")}
-              aria-hidden="true"
-            />
+            <Menu className="h-5 w-5" />
           </button>
 
-          {/* Identity block */}
-          <div
-            className={[
-              "hidden xs:flex items-center gap-2",
-              "px-2.5 py-2 rounded-md",
-              "hover:bg-slate-50",
-              "transition-colors duration-150",
-              "motion-reduce:transition-none",
-            ].join(" ")}
-          >
-            <div
-              className={[
-                "h-8 w-8 rounded-full",
-                "bg-gradient-to-br from-slate-200 to-slate-300",
-                "ring-1 ring-inset ring-slate-300/70",
-                "grid place-items-center text-[11px] font-medium text-slate-700",
-                "select-none",
-              ].join(" ")}
-              aria-hidden="true"
-              title={displayName}
-            >
-              {displayName
-                .split(" ")
-                .map((s) => s[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase()}
-            </div>
-            <div className="leading-tight text-right">
-              <p className="text-sm font-medium text-slate-900">
-                {displayName}
-              </p>
-              <p className="text-[11px] text-slate-500">{roleLabel}</p>
-            </div>
-            <ChevronDown
-              className="w-4 h-4 text-slate-400"
-              aria-hidden="true"
-            />
-          </div>
-
-          {/* Logout */}
           <button
             type="button"
-            onClick={handleLogout}
-            className={[
-              "inline-flex items-center gap-1.5",
-              "rounded-md px-2.5 py-2 text-sm font-medium",
-              "text-rose-600 hover:text-rose-700",
-              "hover:bg-rose-50 active:bg-rose-100",
-              "active:scale-[0.98]",
-              "transition-all duration-150 ease-out",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50",
-              "motion-reduce:transition-none",
-            ].join(" ")}
-            aria-label="Logout"
+            onClick={onToggleSidebar}
+            className="hidden rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:inline-flex dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
+            {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+          </button>
+
+          <button type="button" onClick={() => navigate("/dashboard")} className="flex min-w-0 items-center gap-3">
+            <img
+              src={Logo}
+              alt="Resonance"
+              className="h-10 w-10 rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
+            />
+            <span className="hidden text-lg font-semibold tracking-tight sm:inline" style={{ color: 'var(--text)' }}>
+              Resonance
+            </span>
           </button>
         </div>
-      </div>
 
-      {/* Subtle divider glow for depth */}
-      <div
-        className={[
-          "pointer-events-none mt-2 -mb-2",
-          "h-px w-full",
-          "bg-gradient-to-r from-transparent via-slate-200 to-transparent",
-        ].join(" ")}
-        aria-hidden="true"
-      />
+        <div className="relative hidden max-w-xl flex-1 lg:block">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search dashboard"
+            className="h-11 w-full rounded-full border border-gray-200 bg-gray-100/80 pl-11 pr-4 text-sm text-gray-900 outline-none transition-colors duration-300 placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white dark:border-gray-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+
+          {role !== "guest" && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative rounded-full border border-gray-200 bg-white p-2.5 text-gray-500 transition-colors duration-300 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-2 top-2 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-indigo-600" />
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-[#111827]">
+                  <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/80 p-4 dark:border-gray-800 dark:bg-gray-900/70">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                        {unreadCount} New
+                      </span>
+                    )}
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">All caught up.</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n._id}
+                          onClick={() => {
+                            if (!n.read) handleMarkAsRead(n._id);
+                            if (n.action_url) {
+                              navigate(n.action_url);
+                              setShowNotifications(false);
+                            }
+                          }}
+                          className={`cursor-pointer border-b border-gray-100 p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/70 ${!n.read ? "border-l-2 border-l-indigo-600" : ""}`}
+                        >
+                          <p className={`text-sm ${!n.read ? "font-semibold text-gray-900 dark:text-white" : "font-medium text-gray-600 dark:text-gray-400"}`}>
+                            {n.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                            {n.message}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-indigo-600 dark:border-gray-800 dark:bg-gray-900 dark:text-indigo-400"
+            title={displayName}
+          >
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </div>
     </header>
   );
 }

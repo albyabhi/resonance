@@ -1,14 +1,16 @@
 // src/LoginPage.jsx
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
-import Logo from "../assets/Rlogo.jpg"
+import { useNavigate } from "react-router-dom";
+import { LogIn, User, Lock, Shield, Eye, EyeOff, Sparkles, Command } from "lucide-react";
+import Logo from "../assets/Rlogo.jpg";
 
 export default function LoginPage({ onLogin = () => {} }) {
   const roles = [
-    { value: "admin", label: "Administrator" },
-    { value: "captain", label: "House Captain" },
-    { value: "student_coordinator", label: "Student Coordinator" },
-    { value: "faculty", label: "Faculty Coordinator" },
+    { value: "admin", label: "Executive Administrator", icon: Command },
+    { value: "captain", label: "Strategic House Captain", icon: Shield },
+    { value: "student_coordinator", label: "Operations Coordinator", icon: User },
+    { value: "faculty", label: "Faculty Intelligence", icon: Shield },
   ];
 
   const [role, setRole] = useState("admin");
@@ -18,6 +20,7 @@ export default function LoginPage({ onLogin = () => {} }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); 
 
   const { login, guestLogin } = useAuth();
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -43,241 +46,168 @@ export default function LoginPage({ onLogin = () => {} }) {
         body: JSON.stringify({ username, password }),
       });
 
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {}
+      let data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        let message = data?.message || "Login failed";
-        if (res.status === 401) message = "Invalid username or password";
-        else if (res.status === 404) message = "User not found";
-        else if (res.status === 403) message = "Not authorized for this section";
-        throw new Error(message);
+        throw new Error(data?.message || "Authentication transmission failed");
       }
 
       const serverRole = data?.user?.role;
       if (role !== serverRole) {
-        throw new Error("Not authorized for this section");
+        throw new Error("Operational mismatch: Role unauthorized");
       }
 
       login(data.user, data.token);
-      setSuccess("Login successful");
-      setPassword("");
+      setSuccess("Authentication success");
       onLogin(serverRole);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(circle_at_20%_0%,#eef2ff_0%,#f8fafc_50%,#f1f5f9_100%)] px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-[max(env(safe-area-inset-top),24px)] flex items-center">
-      <div className="w-full max-w-sm mx-auto">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1220] flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Decorative Gradients */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-500/10 blur-[120px] rounded-full pointer-events-none" />
+      
+      <div className="w-full max-w-[440px] relative z-10 space-y-8">
+        
         {/* Brand Section */}
-        <div className="flex flex-col items-center mb-5 text-center">
-          <img
-            src={Logo}
-            alt="Resonance Logo"
-            className="w-14 h-14 rounded-full shadow-md border border-indigo-100 mb-2"
-          />
-          <h1 className="text-xl font-semibold text-gray-900 leading-tight">
-            Resonance
-          </h1>
-          <p className="text-sm text-gray-600">
-            Inter-House Competition
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Union Christian Institute of Management and Technology
-          </p>
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <img
+              src={Logo}
+              alt="Logo"
+              className="w-20 h-20 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/5 relative z-10 transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tighter text-slate-900 dark:text-white font-heading">
+                RESONANCE
+            </h1>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
+                Intelligence Command Center
+            </p>
+          </div>
         </div>
 
         {/* Card */}
-        <div className="relative">
-          <div
-            className="absolute -inset-0.5 bg-gradient-to-br from-indigo-500/20 via-transparent to-sky-500/20 rounded-3xl blur-lg"
-            aria-hidden="true"
-          />
-          <div className="relative rounded-3xl border border-white/50 bg-white/60 backdrop-blur-xl shadow-xl">
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              {/* Role */}
-              <div>
-                <label
-                  htmlFor="role"
-                  className="block text-[13px] font-medium text-gray-700 mb-1.5"
-                >
-                  Select role
-                </label>
-                <div className="relative">
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={handleRoleChange}
-                    className="w-full appearance-none rounded-xl bg-white/70 border border-gray-200 px-3 py-3 text-[15px] text-gray-800 shadow-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    {roles.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                  <svg
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-gray-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
-                  </svg>
-                </div>
-              </div>
+        <div className="card-premium p-8 bg-white/70 dark:bg-[#111827]/80 backdrop-blur-2xl shadow-2xl space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Initialize Session</h2>
+            <p className="text-xs font-medium text-slate-500 italic">Access restricted to authorized personnel only.</p>
+          </div>
 
-              {/* Username */}
-              <div>
-                <label
-                  htmlFor="username"
-                  className="block text-[13px] font-medium text-gray-700 mb-1.5"
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Role Strategy */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Command className="w-3 h-3 text-indigo-500" /> Administrative Access
+              </label>
+              <div className="relative group">
+                <select
+                  value={role}
+                  onChange={handleRoleChange}
+                  className="w-full appearance-none rounded-xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5 px-4 py-3.5 text-sm font-medium text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 transition-all cursor-pointer"
                 >
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  inputMode="text"
-                  autoComplete="username"
-                  placeholder="e.g. 1234"
-                  className="w-full rounded-xl bg-white/70 border border-gray-200 px-3 py-3 text-[15px] text-gray-800 placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  required
-                />
+                  {roles.map((r) => (
+                    <option key={r.value} value={r.value} className="bg-white dark:bg-[#0B1220] py-2">
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <LogIn className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
+            </div>
 
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-[13px] font-medium text-gray-700 mb-1.5"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPass ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    placeholder="••••••"
-                    className="w-full rounded-xl bg-white/70 border border-gray-200 px-3 py-3 pr-10 text-[15px] text-gray-800 placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    required
-                  />
-                  <button
-                    type="button"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                    onClick={() => setShowPass((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1 rounded-md focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/20"
-                  >
-                    {showPass ? (
-                      <svg
-                        className="size-5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path d="M3 3l18 18" strokeWidth="1.5" />
-                        <path
-                          d="M10.5 6.5A8.5 8.5 0 0121 12c-1.2 2.9-4.7 6-9 6-1.4 0-2.8-.3-4-.9"
-                          strokeWidth="1.5"
-                        />
-                        <path d="M9.9 9.9a3 3 0 104.2 4.2" strokeWidth="1.5" />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="size-5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path
-                          d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"
-                          strokeWidth="1.5"
-                        />
-                        <circle cx="12" cy="12" r="3" strokeWidth="1.5" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+            {/* Credential Node */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <User className="w-3 h-3 text-indigo-500" /> Operational Identifier
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Unique key (e.g. 1024)"
+                className="w-full rounded-xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5 px-12 py-3.5 text-sm font-medium text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 transition-all"
+                required
+              />
+              <User className="absolute left-10 mt-[-40px] w-4 h-4 text-slate-400" />
+            </div>
+
+            {/* Secret Vector */}
+            <div className="space-y-2 relative">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Lock className="w-3 h-3 text-indigo-500" /> Security Vector
+              </label>
+              <input
+                type={showPass ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5 px-12 py-3.5 text-sm font-medium text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 transition-all"
+                required
+              />
+              <Lock className="absolute left-4 mt-[14px] w-4 h-4 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-4 mt-[14px] text-slate-400 hover:text-indigo-500 transition-colors"
+                aria-label="Toggle security visibility"
+              >
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Alert Layers */}
+            {(error || success) && (
+              <div className={`p-3 rounded-xl border text-[11px] font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200 ${error ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20 text-rose-600 dark:text-rose-400' : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>
+                <Shield className="w-3.5 h-3.5 shrink-0" /> {error || success}
               </div>
+            )}
 
-              {/* Submit */}
+            {/* Execute Strategy */}
+            <div className="pt-2 space-y-4">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 text-white py-3 text-[15px] font-medium shadow-md shadow-indigo-600/20 hover:from-indigo-700 hover:to-sky-700 active:from-indigo-800 active:to-sky-800 transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/30"
+                className="w-full relative group bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-4 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading
-                  ? "Logging in..."
-                  : `Login as ${roles.find((r) => r.value === role)?.label}`}
+                <span className="flex items-center justify-center gap-2">
+                    {loading ? "Authenticating Platform..." : `Connect as ${role}`}
+                    <Sparkles className="w-3.5 h-3.5" />
+                </span>
               </button>
 
-              {/* Guest */}
               <button
                 type="button"
                 onClick={() => {
                   guestLogin();
-                  setError("");
-                  setSuccess("Guest login successful");
                   onLogin("guest");
+                  navigate("/", { replace: true });
                 }}
-                className="w-full rounded-xl border border-gray-200 bg-white/70 text-gray-800 py-3 text-[15px] font-medium shadow-sm hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/20"
+                className="w-full bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl py-3 text-[10px] font-black uppercase tracking-widest border border-slate-200/60 dark:border-white/5 transition-all"
               >
-                Quick guest access
+                Enter as Public Observer
               </button>
-            </form>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer Integrity */}
+        <div className="text-center space-y-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Cloud infrastructure verified by <span className="text-indigo-600 dark:text-indigo-400">UpScript Dynamics</span>
+          </p>
+          <div className="flex items-center justify-center gap-4 text-[9px] font-black text-slate-300 dark:text-white/10 uppercase tracking-[0.3em]">
+             <span>Node SF-10</span>
+             <span className="w-1 h-1 rounded-full bg-current" />
+             <span>Core v2.4.0</span>
           </div>
         </div>
 
-        {/* Alerts */}
-        <div className="mt-4 space-y-2">
-          {success && (
-            <p
-              className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2"
-              role="status"
-              aria-live="polite"
-            >
-              {success}
-            </p>
-          )}
-          {error && (
-            <p
-              className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2"
-              role="status"
-              aria-live="polite"
-            >
-              {error}
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-6 text-center space-y-1">
-          <p className="text-[11px] text-gray-500">
-            By continuing, you agree to the Terms and Privacy Policy.
-          </p>
-          <p className="text-[12px] text-gray-600">
-            Powered by{" "}
-            <a
-              href="https://upscript.netlify.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-indigo-600 font-semibold hover:underline"
-            >
-              UpScript
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

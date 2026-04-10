@@ -527,9 +527,9 @@ const ManageEvents = () => {
             <button
               className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "manage"
-                  ? "bg-blue-600 text-white shadow"
+                  ? "bg-orange-600 text-white shadow"
                   : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+              } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
               onClick={() => {
                 setActiveTab("manage");
                 resetForms();
@@ -540,9 +540,9 @@ const ManageEvents = () => {
             <button
               className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "add" || activeTab === "edit"
-                  ? "bg-blue-600 text-white shadow"
+                  ? "bg-orange-600 text-white shadow"
                   : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              } focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400`}
+              } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
               onClick={startAdd}
             >
               {editingEventId ? "Edit Event" : "Add Event"}
@@ -560,12 +560,12 @@ const ManageEvents = () => {
                   value={filter.query}
                   onChange={(e) => setFilter({ ...filter, query: e.target.value })}
                   placeholder="Search by name or description"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <select
                   value={filter.mode}
                   onChange={(e) => setFilter({ ...filter, mode: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="all">All Modes</option>
                   {MODES.map((m) => (
@@ -577,7 +577,7 @@ const ManageEvents = () => {
                 <select
                   value={filter.type}
                   onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="all">All Types</option>
                   {EVENT_TYPES.map((t) => (
@@ -588,7 +588,7 @@ const ManageEvents = () => {
                 </select>
                 <button
                   onClick={startAdd}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700"
                 >
                   Add Event
                 </button>
@@ -617,7 +617,7 @@ const ManageEvents = () => {
                         <div className="flex gap-2 shrink-0">
                           {getChip(
                             e.mode,
-                            "bg-blue-50 text-blue-700 border-blue-200"
+                            "bg-orange-50 text-orange-700 border-orange-200"
                           )}
                           {getChip(
                             e.event_type,
@@ -652,7 +652,7 @@ const ManageEvents = () => {
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => startEdit(e)}
-                          className="flex-1 px-3 py-2 min-h-[44px] bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                          className="flex-1 px-3 py-2 min-h-[44px] bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
                         >
                           Edit
                         </button>
@@ -705,7 +705,7 @@ const ManageEvents = () => {
                               <div className="text-sm text-gray-500 line-clamp-1">{e.description}</div>
                             </td>
                             <td className="p-4">
-                              {getChip(e.mode, "bg-blue-50 text-blue-700 border-blue-200")}
+                              {getChip(e.mode, "bg-orange-50 text-orange-700 border-orange-200")}
                             </td>
                             <td className="p-4">
                               {getChip(e.event_type, "bg-purple-50 text-purple-700 border-purple-200")}
@@ -720,7 +720,7 @@ const ManageEvents = () => {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => startEdit(e)}
-                                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                                  className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
                                 >
                                   Edit
                                 </button>
@@ -759,7 +759,7 @@ const ManageEvents = () => {
                       value={eventForm.name}
                       onChange={(e) => handleEventChange("name", e.target.value)}
                       placeholder="Enter event name"
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                         fieldErrors.name ? "border-red-300" : "border-gray-200"
                       }`}
                     />
@@ -772,7 +772,7 @@ const ManageEvents = () => {
                     <select
                       value={eventForm.mode}
                       onChange={(e) => handleEventChange("mode", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       {MODES.map((m) => (
                         <option key={m.value} value={m.value}>
@@ -790,7 +790,7 @@ const ManageEvents = () => {
                       value={eventForm.description}
                       onChange={(e) => handleEventChange("description", e.target.value)}
                       placeholder="Add rules or details for this event"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -805,7 +805,7 @@ const ManageEvents = () => {
                     <select
                       value={eventForm.event_type}
                       onChange={(e) => handleEventChange("event_type", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       {EVENT_TYPES.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -830,7 +830,7 @@ const ManageEvents = () => {
                           : eventForm.min_team_size ?? ""
                       }
                       onChange={(e) => handleEventChange("min_team_size", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 ${
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 ${
                         fieldErrors.min_team_size ? "border-red-300" : "border-gray-200"
                       }`}
                     />
@@ -854,7 +854,7 @@ const ManageEvents = () => {
                           : eventForm.max_team_size ?? ""
                       }
                       onChange={(e) => handleEventChange("max_team_size", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 ${
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 ${
                         fieldErrors.max_team_size ? "border-red-300" : "border-gray-200"
                       }`}
                     />
@@ -875,7 +875,7 @@ const ManageEvents = () => {
                           : eventForm.max_per_house ?? ""
                       }
                       onChange={(e) => handleEventChange("max_per_house", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                         fieldErrors.max_per_house ? "border-red-300" : "border-gray-200"
                       }`}
                     />
@@ -893,7 +893,7 @@ const ManageEvents = () => {
                   <button
                     type="button"
                     onClick={() => setShowSchedule((s) => !s)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-orange-600 hover:text-orange-700"
                   >
                     {showSchedule ? "Hide" : "Show"}
                   </button>
@@ -910,7 +910,7 @@ const ManageEvents = () => {
                           min={1}
                           value={eventForm.rounds ?? ""}
                           onChange={(e) => handleEventChange("rounds", e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                             fieldErrors.rounds ? "border-red-300" : "border-gray-200"
                           }`}
                         />
@@ -944,7 +944,7 @@ const ManageEvents = () => {
                                 type="date"
                                 value={r.date || ""}
                                 onChange={(e) => updateRoundField(idx, "date", e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
                             <div>
@@ -953,7 +953,7 @@ const ManageEvents = () => {
                                 type="time"
                                 value={r.time || ""}
                                 onChange={(e) => updateRoundField(idx, "time", e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
                             <div className="md:col-span-2">
@@ -963,7 +963,7 @@ const ManageEvents = () => {
                                 value={r.venue || ""}
                                 onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
                                 placeholder="Enter venue"
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
                           </div>
@@ -981,7 +981,7 @@ const ManageEvents = () => {
                   <button
                     type="button"
                     onClick={() => setShowPoints((s) => !s)}
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-orange-600 hover:text-orange-700"
                   >
                     {showPoints ? "Hide" : "Show"}
                   </button>
@@ -1003,7 +1003,7 @@ const ManageEvents = () => {
                               min={1}
                               value={row.position}
                               onChange={(e) => updatePointRow(idx, "position", e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
                           <div className="col-span-5 md:col-span-3">
@@ -1015,7 +1015,7 @@ const ManageEvents = () => {
                               min={0}
                               value={row.points}
                               onChange={(e) => updatePointRow(idx, "points", e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
                           <div className="col-span-2 md:col-span-2 flex items-end">
@@ -1033,7 +1033,7 @@ const ManageEvents = () => {
                         <button
                           type="button"
                           onClick={addPointRow}
-                          className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                          className="px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
                         >
                           Add row
                         </button>
@@ -1058,7 +1058,7 @@ const ManageEvents = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 md:flex-none md:min-w-[160px] px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 md:flex-none md:min-w-[160px] px-4 py-3 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50"
                 >
                   {loading ? "Saving..." : editingEventId ? "Update Event" : "Create Event"}
                 </button>

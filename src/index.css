@@ -1,239 +1,268 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
-/* Use a .dark class to control dark mode */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* Light theme tokens (OKLCH channel values) */
+/* SaaS Premium theme tokens (Tailwind v4 style) */
 @theme {
-  /* Main Brand Colors */
-  --color-background: 98% 0.01 240;
-  --color-foreground: 8% 0.01 240;
+  /* Brand palette - Slate & Indigo */
+  --color-primary: #4f46e5; /* Indigo-600 */
+  --color-primary-foreground: #ffffff;
+  --color-primary-dark: #6366f1; /* Indigo-500 */
+  
+  --color-secondary: #7c3aed; /* Violet-600 */
+  --color-secondary-dark: #8b5cf6; /* Violet-500 */
 
-  /* Primary Brand - Deep Blue */
-  --color-primary: 25% 0.1 220;
-  --color-primary-foreground: 100% 0 0;
-  --color-primary-glow: 45% 0.1 220;
+  /* Light Theme */
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-card-border: rgba(15, 23, 42, 0.06);
+  --color-surface: #e2e8f0;
+  
+  /* Dark Theme */
+  --color-background-dark: #020617;
+  --color-foreground-dark: #f8fafc;
+  --color-card-dark: #0f172a;
+  --color-card-foreground-dark: #f8fafc;
+  --color-card-border-dark: rgba(148, 163, 184, 0.1);
+  --color-surface-dark: #1e293b;
 
-  /* Secondary - Light Blue */
-  --color-secondary: 96% 0.02 210;
-  --color-secondary-foreground: 25% 0.1 220;
-
-  /* Card System */
-  --color-card: 100% 0 0;
-  --color-card-foreground: 8% 0.01 240;
-  --color-card-border: 91% 0.01 220;
-
-  /* Interactive Elements */
-  --color-muted: 96% 0.02 210;
-  --color-muted-foreground: 45% 0.005 240;
-  --color-accent: 95% 0.02 220;
-  --color-accent-foreground: 25% 0.1 220;
-
-  /* House Colors */
-  --color-house-red: 55% 0.15 0;
-  --color-house-blue: 55% 0.15 220;
-  --color-house-green: 45% 0.15 142;
-  --color-house-yellow: 58% 0.18 45;
-  --color-house-purple: 55% 0.15 260;
-  --color-house-orange: 58% 0.18 25;
+  /* Typography */
+  --font-sans: "Inter", "system-ui", sans-serif;
+  --font-heading: "Outfit", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "monospace";
 
   /* Status Colors */
-  --color-success: 36% 0.15 142;
-  --color-success-foreground: 100% 0 0;
-  --color-warning: 50% 0.18 38;
-  --color-warning-foreground: 100% 0 0;
-  --color-destructive: 60% 0.2 0;
-  --color-destructive-foreground: 100% 0 0;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #f43f5e;
+  --color-blue: #3b82f6;
+  --color-violet: #8b5cf6;
 
-  /* Input & Border */
-  --color-border: 91% 0.01 220;
-  --color-input: 91% 0.01 220;
-  --color-ring: 25% 0.1 220;
+  /* Radius System */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
 
-  /* Sidebar */
-  --color-sidebar-background: 98% 0 0;
-  --color-sidebar-foreground: 26.1% 0.01 240;
-  --color-sidebar-primary: 10% 0.01 240;
-  --color-sidebar-primary-foreground: 98% 0 0;
-  --color-sidebar-accent: 95.9% 0.01 240;
-  --color-sidebar-accent-foreground: 10% 0.01 240;
-  --color-sidebar-border: 91% 0.01 220;
-  --color-sidebar-ring: 59.8% 0.2 217;
+  /* Animation Eases */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Border Radius */
-  --radius: 0.75rem;
-
-  /* Custom Transitions */
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Dark theme token overrides under a selector */
-@layer theme {
-  .dark {
-    --color-background: 4.9% 0.02 222;
-    --color-foreground: 98% 0.02 210;
-
-    --color-card: 4.9% 0.02 222;
-    --color-card-foreground: 98% 0.02 210;
-
-    --color-primary: 98% 0.02 210;
-    --color-primary-foreground: 11.2% 0.015 222;
-
-    --color-secondary: 17.5% 0.015 217;
-    --color-secondary-foreground: 98% 0.02 210;
-
-    --color-muted: 17.5% 0.015 217;
-    --color-muted-foreground: 65.1% 0.01 215;
-
-    --color-accent: 17.5% 0.015 217;
-    --color-accent-foreground: 98% 0.02 210;
-
-    --color-destructive: 30.6% 0.15 0;
-    --color-destructive-foreground: 98% 0.02 210;
-
-    --color-border: 17.5% 0.015 217;
-    --color-input: 17.5% 0.015 217;
-    --color-ring: 83.9% 0.05 213;
-
-    --color-sidebar-background: 10% 0.01 240;
-    --color-sidebar-foreground: 95.9% 0.01 240;
-    --color-sidebar-primary: 48% 0.15 224;
-    --color-sidebar-primary-foreground: 100% 0 0;
-    --color-sidebar-accent: 15.9% 0.01 240;
-    --color-sidebar-accent-foreground: 95.9% 0.01 240;
-    --color-sidebar-border: 15.9% 0.01 240;
-    --color-sidebar-ring: 59.8% 0.2 217;
-  }
-}
-
-/* Utilities */
-@utility btn-primary {
-  background: linear-gradient(
-    to right,
-    oklch(var(--color-primary)),
-    oklch(var(--color-primary-glow))
-  );
-  color: oklch(var(--color-primary-foreground));
-  box-shadow:
-    0 10px 15px -3px oklch(var(--color-primary) / 0.1),
-    0 4px 6px -4px oklch(var(--color-primary) / 0.1);
-  transition: all 0.3s var(--ease-smooth);
-
-  &:hover {
-    box-shadow:
-      0 20px 25px -5px oklch(var(--color-primary) / 0.1),
-      0 8px 10px -6px oklch(var(--color-primary) / 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@utility btn-success {
-  background: linear-gradient(
-    to right,
-    oklch(var(--color-success)),
-    hsl(142 76% 46%)
-  );
-  color: oklch(var(--color-success-foreground));
-  box-shadow:
-    0 10px 15px -3px oklch(var(--color-success) / 0.1),
-    0 4px 6px -4px oklch(var(--color-success) / 0.1);
-  transition: all 0.3s var(--ease-smooth);
-
-  &:hover {
-    box-shadow:
-      0 20px 25px -5px oklch(var(--color-success) / 0.1),
-      0 8px 10px -6px oklch(var(--color-success) / 0.1);
-  }
-}
-
-@utility card-elevated {
-  background-color: oklch(var(--color-card));
-  border: 1px solid oklch(var(--color-card-border));
-  border-radius: var(--radius);
-  box-shadow:
-    0 4px 6px -1px oklch(var(--color-primary) / 0.1),
-    0 2px 4px -1px oklch(var(--color-primary) / 0.06);
-  transition: all 0.3s var(--ease-smooth);
-}
-
-@utility house-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s var(--ease-smooth);
-}
-
-/* House color variants */
-@utility house-red {
-  background-color: rgb(254 226 226);
-  color: rgb(153 27 27);
-  border: 1px solid rgb(254 202 202);
-}
-
-@utility house-blue {
-  background-color: rgb(219 234 254);
-  color: rgb(30 64 175);
-  border: 1px solid rgb(191 219 254);
-}
-
-@utility house-green {
-  background-color: rgb(220 252 231);
-  color: rgb(21 128 61);
-  border: 1px solid rgb(187 247 208);
-}
-
-@utility house-yellow {
-  background-color: rgb(254 249 195);
-  color: rgb(133 77 14);
-  border: 1px solid rgb(254 240 138);
-}
-
-@utility house-purple {
-  background-color: rgb(243 232 255);
-  color: rgb(107 33 168);
-  border: 1px solid rgb(221 214 254);
-}
-
-@utility house-orange {
-  background-color: rgb(255 237 213);
-  color: rgb(154 52 18);
-  border: 1px solid rgb(254 215 170);
-}
-
-/* Status variants */
-@utility status-pending {
-  background-color: rgb(254 249 195);
-  color: rgb(133 77 14);
-  border: 1px solid rgb(254 240 138);
-}
-
-@utility status-approved {
-  background-color: rgb(220 252 231);
-  color: rgb(21 128 61);
-  border: 1px solid rgb(187 247 208);
-}
-
-@utility status-rejected {
-  background-color: rgb(254 226 226);
-  color: rgb(153 27 27);
-  border: 1px solid rgb(254 202 202);
-}
-
-/* Safe area helper */
-@utility mobile-safe-area {
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Dark Variant Configuration for Tailwind v4 */
+  --variant-dark: .dark &;
 }
 
 /* Base layer */
 @layer base {
-  *, *::before, *::after {
-    border-color: oklch(var(--color-border));
+  :root {
+    --header-h: 64px;
+    --sidebar-w: 280px;
+    --sidebar-w-collapsed: 80px;
+
+    /* ── Light palette ──
+       3-level hierarchy: bg (#f8fafc) → surface (#e2e8f0) → card (#fff)
+       Rule: NO transparency in light mode — solids + shadows only
+    */
+    --bg: #f8fafc;
+    --text: #0f172a;
+    --accent: #4f46e5;
+    --meta-color: #f8fafc;
+    --card: #ffffff;
+    --card-fg: #0f172a;
+    --card-bdr: rgba(15, 23, 42, 0.1);
+    --surface: #e2e8f0;
+
+    /* Elevation (light) — stronger shadows for white cards on light bg */
+    --shadow-card: 0 2px 6px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-card-hover: 0 4px 12px rgba(15, 23, 42, 0.1), 0 12px 32px rgba(15, 23, 42, 0.1);
+    --shadow-section: 0 1px 4px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.05);
+    --border-card: 1px solid rgba(15, 23, 42, 0.06);
+    --border-divider: rgba(15, 23, 42, 0.1);
+
+    /* Chart tokens (light) — solid colors, no transparency */
+    --chart-grid: #e2e8f0;
+    --chart-axis: #64748b;
+    --chart-bar-default: #94a3b8;
+    --chart-surface: #f1f5f9;
   }
+
+  .dark {
+    color-scheme: dark;
+    /* ── Dark palette ── flat solid, no gradient */
+    --bg: #020617;
+    --text: #f1f5f9;
+    --accent: #818cf8;
+    --meta-color: #020617;
+    --card: #0f172a;
+    --card-fg: #e2e8f0;
+    --card-bdr: rgba(148, 163, 184, 0.1);
+    --surface: #1e293b;
+
+    /* Elevation (dark) — subtle ring + depth */
+    --shadow-card: 0 0 0 1px rgba(148, 163, 184, 0.07), 0 1px 4px rgba(0, 0, 0, 0.4);
+    --shadow-card-hover: 0 0 0 1px rgba(99, 102, 241, 0.15), 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 24px rgba(99, 102, 241, 0.04);
+    --shadow-section: 0 0 0 1px rgba(148, 163, 184, 0.05), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --border-card: 1px solid rgba(148, 163, 184, 0.1);
+    --border-divider: rgba(148, 163, 184, 0.08);
+
+    /* Chart tokens (dark) */
+    --chart-grid: rgba(148, 163, 184, 0.08);
+    --chart-axis: #94a3b8;
+    --chart-bar-default: #475569;
+    --chart-surface: #1e293b;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  
   body {
-    background-color: oklch(var(--color-background));
-    color: oklch(var(--color-foreground));
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased transition-colors duration-300;
   }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    @apply tracking-tight font-semibold;
+  }
+}
+
+/* Premium Utilities */
+@layer utilities {
+  /* ── Glass header/nav ──────────────────────────────────── */
+  .glass {
+    @apply backdrop-blur-xl border-b;
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+  
+  .dark .glass {
+    background: rgba(2, 6, 23, 0.85);
+    border-color: rgba(148, 163, 184, 0.06);
+  }
+
+  /* ── Card Premium ──────────────────────────────────────── */
+  .card-premium {
+    @apply w-full rounded-2xl p-6 transition-all duration-300;
+    background-color: var(--card);
+    border: var(--border-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-premium:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* ── Card secondary — reduced visual weight ────────────── */
+  .card-secondary {
+    @apply w-full rounded-2xl p-5 transition-all duration-300;
+    background-color: var(--card);
+    border: var(--border-card);
+    box-shadow: var(--shadow-section);
+  }
+
+  /* ── Card-divider ──────────────────────────────────────── */
+  .card-divider {
+    border-color: var(--border-divider);
+  }
+
+  /* ── Chart surface — inner container for charts ────────── */
+  .chart-surface {
+    @apply rounded-xl;
+    background: var(--chart-surface);
+    padding: 20px;
+  }
+
+  /* ── Theme utilities ───────────────────────────────────── */
+  .theme-card {
+    @apply rounded-2xl p-6 transition-all duration-300;
+    background-color: var(--card);
+    border: var(--border-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .theme-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .theme-panel {
+    background-color: var(--surface);
+    border: var(--border-card);
+  }
+
+  .theme-input {
+    @apply w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20;
+    background-color: var(--card);
+    border: var(--border-card);
+    color: var(--card-fg);
+  }
+
+  .theme-input::placeholder {
+    color: var(--chart-axis);
+  }
+
+  .theme-input:focus {
+    border-color: var(--accent);
+  }
+
+  .theme-text-primary {
+    color: var(--card-fg);
+  }
+
+  .theme-text-secondary {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .theme-text-muted {
+    @apply text-slate-400 dark:text-slate-500;
+  }
+
+  .btn-premium-primary {
+    @apply relative px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(79, 70, 229, 0.06);
+  }
+
+  /* ── Elevation helpers ─────────────────────────────────── */
+  .shadow-soft {
+    box-shadow: var(--shadow-section);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .glow-indigo {
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.15);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.15);
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
 }
