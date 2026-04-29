@@ -1,6 +1,7 @@
 // src/components/ManageResult.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -35,24 +36,14 @@ const ManageResult = () => {
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body,
     });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   // Load events on mount
@@ -328,12 +319,12 @@ const ManageResult = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Search team or student</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Search team or participant</label>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Chest no., house, student name/class"
+            placeholder="Chest no., house, participant name/class"
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>

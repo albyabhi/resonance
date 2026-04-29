@@ -5,6 +5,8 @@ import App from "./App";
 import "./index.css";
 import { AuthProvider } from "./components/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { CompetitionProvider } from "./context/CompetitionContext";
+import { Toaster } from "react-hot-toast";
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -15,7 +17,10 @@ createRoot(document.getElementById("root")).render(
       enableColorScheme        /* Auto-inject <meta name="color-scheme"> */
     >
       <AuthProvider>
-        <App />
+        <CompetitionProvider>
+          <Toaster position="top-center" />
+          <App />
+        </CompetitionProvider>
       </AuthProvider>
     </ThemeProvider>
   </BrowserRouter>

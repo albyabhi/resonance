@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -16,24 +17,14 @@ const EditHouse = () => {
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body,
     });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   useEffect(() => {

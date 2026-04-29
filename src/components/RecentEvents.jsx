@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../components/AuthContext";
+import { apiFetch } from "../utils/apiClient";
 import { FadeIn } from "./AnimateReveal";
 import { Calendar, Filter, ChevronRight, Layout, Users, Trophy, Clock, MapPin, X } from "lucide-react";
 
@@ -21,7 +22,7 @@ const statusConfig = (status) => {
 };
 
 function RecentEvents() {
-  const { token } = useAuth();
+  const { token, isAuthReady } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -39,16 +40,16 @@ function RecentEvents() {
   const apiCall = async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     };
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+    const res = await apiFetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
     if (!res.ok) throw new Error("API call failed");
     return res.json();
   };
 
   useEffect(() => {
     const load = async () => {
+      if (!token || !isAuthReady) return;
       try {
         setLoading(true);
         setError("");
@@ -84,7 +85,7 @@ function RecentEvents() {
       }
     };
     load();
-  }, []);
+  }, [token, isAuthReady]);
 
   const eventStatus = (id) => {
     const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0));
@@ -181,8 +182,9 @@ function RecentEvents() {
       </header>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
-          Stream error: {error}
+        <div className="mb-6 flex items-center gap-2 text-sm text-rose-500 dark:text-rose-400">
+          <Filter className="h-4 w-4" />
+          <span>Stream error: {error}</span>
         </div>
       )}
 

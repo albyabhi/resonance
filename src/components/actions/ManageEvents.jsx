@@ -1,6 +1,9 @@
 // src/components/ManageEvents.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { useCompetition } from "../../context/CompetitionContext";
+import { apiJson } from "../../utils/apiClient";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -45,8 +48,24 @@ const DEFAULT_POINTS = [
   { position: 3, points: 1 },
 ];
 
+const getCurrentScheduleDefaults = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const date = `${year}-${month}-${day}`;
+
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const time = `${hours}:${minutes}`;
+
+  return { date, time };
+};
+
+
 const ManageEvents = () => {
-  const { token } = useAuth();
+  const { token, lastCompetition } = useAuth();
+  const { groupLabel } = useCompetition();
   const [activeTab, setActiveTab] = useState("manage"); // manage | add | edit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +78,10 @@ const ManageEvents = () => {
   // Forms
   const [editingEventId, setEditingEventId] = useState(null);
   const [eventForm, setEventForm] = useState(DEFAULT_EVENT_FORM);
-  const [roundsForm, setRoundsForm] = useState([{ ...DEFAULT_ROUND }]);
+  const [roundsForm, setRoundsForm] = useState(() => {
+    const defaults = getCurrentScheduleDefaults();
+    return [{ ...DEFAULT_ROUND, date: defaults.date, time: defaults.time }];
+  });
   const [pointsForm, setPointsForm] = useState([...DEFAULT_POINTS]);
   const [filter, setFilter] = useState({ mode: "all", type: "all", query: "" });
 
@@ -73,26 +95,14 @@ const ManageEvents = () => {
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const config = {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body || undefined,
-    };
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Invalid JSON:", text);
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
+    });
   };
 
   // Bootstrap data
@@ -136,7 +146,8 @@ const ManageEvents = () => {
   // Helpers
   const resetForms = () => {
     setEventForm(DEFAULT_EVENT_FORM);
-    setRoundsForm([{ ...DEFAULT_ROUND }]);
+    const defaults = getCurrentScheduleDefaults();
+    setRoundsForm([{ ...DEFAULT_ROUND, date: defaults.date, time: defaults.time }]);
     setPointsForm([...DEFAULT_POINTS]);
     setEditingEventId(null);
     setShowSchedule(true);
@@ -157,18 +168,13 @@ const ManageEvents = () => {
       setEditingEventId(eventId);
 
       // Always fetch the core event
-      const { event } = await apiCall(`/api/event/${eventId}`);
+      const { data: event } = await apiCall(`/api/event/${eventId}`);
 
-      // Try to fetch schedules and points
+      // Try to fetch schedules
       let schedules = [];
-      let points = [];
       try {
         const scheduleResp = await apiCall(`/api/schedule?event_id=${eventId}`);
         schedules = scheduleResp.schedules || scheduleResp.schedule || [];
-      } catch {}
-      try {
-        const pointsResp = await apiCall(`/api/event/points?event_id=${eventId}`);
-        points = pointsResp.points || [];
       } catch {}
 
       // Populate forms with safe defaults
@@ -193,13 +199,17 @@ const ManageEvents = () => {
           venue: r.venue || "",
           status: r.status || "upcoming",
         }));
-      setRoundsForm(roundsData.length ? roundsData : [{ ...DEFAULT_ROUND }]);
+      const defaults = getCurrentScheduleDefaults();
+      setRoundsForm(roundsData.length ? roundsData : [{ ...DEFAULT_ROUND, date: defaults.date, time: defaults.time }]);
 
-      const pt = (points || []).map((p) => ({
-        position: p.position,
-        points: p.points,
-      }));
-      setPointsForm(pt.length ? pt : [...DEFAULT_POINTS]);
+      // Parse points_config
+      const pts = [];
+      if (event.points_config) {
+        Object.entries(event.points_config).forEach(([pos, pts_val]) => {
+          pts.push({ position: parseInt(pos, 10), points: pts_val });
+        });
+      }
+      setPointsForm(pts.length ? pts.sort((a, b) => a.position - b.position) : [...DEFAULT_POINTS]);
 
       setActiveTab("edit");
       setShowSchedule(true);
@@ -273,8 +283,9 @@ const ManageEvents = () => {
         setRoundsForm((old) => {
           let arr = [...old];
           if (arr.length < next.rounds) {
+            const defaults = getCurrentScheduleDefaults();
             for (let i = arr.length + 1; i <= next.rounds; i++) {
-              arr.push({ ...DEFAULT_ROUND, round_no: i });
+              arr.push({ ...DEFAULT_ROUND, round_no: i, date: defaults.date, time: defaults.time });
             }
           } else if (arr.length > next.rounds) {
             arr = arr.slice(0, next.rounds);
@@ -298,6 +309,20 @@ const ManageEvents = () => {
       return arr;
     });
   };
+
+  const updateRoundDateTime = (idx, value) => {
+    setRoundsForm((prev) => {
+      const arr = [...prev];
+      if (!value) {
+        arr[idx] = { ...arr[idx], date: "", time: "" };
+      } else {
+        const [date, time] = value.split("T");
+        arr[idx] = { ...arr[idx], date: date || "", time: time || "" };
+      }
+      return arr;
+    });
+  };
+
 
   const addPointRow = () => {
     const maxPos = pointsForm.reduce((m, r) => Math.max(m, r.position), 0);
@@ -363,7 +388,7 @@ const ManageEvents = () => {
       typeof form.max_per_house === "number" &&
       form.max_per_house < 0
     ) {
-      errs.max_per_house = "Max per house cannot be negative";
+      errs.max_per_house = `Max per ${groupLabel.toLowerCase()} cannot be negative`;
     }
 
     setFieldErrors(errs);
@@ -419,12 +444,20 @@ const ManageEvents = () => {
       // Sanitize payload
       const sanitizedEventForm = sanitizeForSubmit(eventForm);
 
+      // Convert pointsForm to points_config object
+      const pointsConfig = {};
+      pointsForm.forEach((p) => {
+        if (p.position > 0) {
+          pointsConfig[String(p.position)] = p.points;
+        }
+      });
+
       // 1) Create or update event
       let savedEvent;
       if (editingEventId) {
-        const { event } = await apiCall(`/api/event/${editingEventId}`, {
+        const { data: event } = await apiCall(`/api/event/${editingEventId}`, {
           method: "PUT",
-          body: JSON.stringify(sanitizedEventForm),
+          body: JSON.stringify({ ...sanitizedEventForm, points_config: pointsConfig }),
         });
         savedEvent = event;
         setEvents((prev) =>
@@ -433,9 +466,14 @@ const ManageEvents = () => {
           )
         );
       } else {
-        const { event } = await apiCall("/api/event", {
+        const payload = { 
+          ...sanitizedEventForm, 
+          competition_id: lastCompetition?._id,
+          points_config: pointsConfig 
+        };
+        const { data: event } = await apiCall("/api/event", {
           method: "POST",
-          body: JSON.stringify(sanitizedEventForm),
+          body: JSON.stringify(payload),
         });
         savedEvent = event;
         setEvents((prev) => [event, ...prev]);
@@ -457,16 +495,7 @@ const ManageEvents = () => {
         body: JSON.stringify({ event_id: eventId, rounds: schedulePayload }),
       });
 
-      // 3) Upsert event-specific points mapping
-      await apiCall(`/api/event/points/bulkUpsert`, {
-        method: "POST",
-        body: JSON.stringify({
-          event_id: eventId,
-          points: pointsForm
-            .filter((p) => p.position > 0)
-            .map((p) => ({ position: p.position, points: p.points })),
-        }),
-      });
+      toast.success("Event saved successfully!");
 
       resetForms();
       setActiveTab("manage");
@@ -632,7 +661,7 @@ const ManageEvents = () => {
                           <p className="font-medium">{e.rounds}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Max/House</span>
+                          <span className="text-gray-500">Max/{groupLabel}</span>
                           <p className="font-medium">{e.max_per_house}</p>
                         </div>
                         <div>
@@ -680,7 +709,7 @@ const ManageEvents = () => {
                       <th className="text-left p-4 text-sm font-semibold text-gray-700">Type</th>
                       <th className="text-left p-4 text-sm font-semibold text-gray-700">Rounds</th>
                       <th className="text-left p-4 text-sm font-semibold text-gray-700">Team Size</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Max/House</th>
+                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Max/{groupLabel}</th>
                       <th className="text-left p-4 text-sm font-semibold text-gray-700">Registered</th>
                       <th className="text-left p-4 text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
@@ -864,7 +893,7 @@ const ManageEvents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Max per house
+                      Max per {groupLabel.toLowerCase()}
                     </label>
                     <input
                       type="number"
@@ -937,25 +966,17 @@ const ManageEvents = () => {
                               ))}
                             </select>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                              <input
-                                type="date"
-                                value={r.date || ""}
-                                onChange={(e) => updateRoundField(idx, "date", e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                              <input
-                                type="time"
-                                value={r.time || ""}
-                                onChange={(e) => updateRoundField(idx, "time", e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              />
-                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                                <input
+                                  type="datetime-local"
+                                  value={r.date && r.time ? `${r.date}T${r.time}` : ""}
+                                  onChange={(e) => updateRoundDateTime(idx, e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                />
+                              </div>
+
                             <div className="md:col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
                               <input

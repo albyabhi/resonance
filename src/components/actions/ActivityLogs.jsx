@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { RefreshCw, Undo as UndoIcon, Repeat as RedoIcon, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -22,26 +23,16 @@ export default function ActivityLogs() {
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const config = {
+    console.log("[ActivityLogs] API CALL", endpoint, options.method || "GET");
+    const data = await apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body,
-    };
-    console.log("[ActivityLogs] API CALL", endpoint, config.method);
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
-    console.log("[ActivityLogs] API RESPONSE", endpoint, { status: res.status, data });
-    if (!res.ok) throw new Error(data?.message || "API error");
+    });
+    console.log("[ActivityLogs] API RESPONSE", endpoint, data);
     return data;
   };
 

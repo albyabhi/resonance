@@ -12,3 +12,7 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Local npm tooling/cache used in sandboxed setup
+.npm-cache/
+.npm-global/

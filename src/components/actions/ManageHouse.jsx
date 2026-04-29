@@ -1,6 +1,7 @@
 // src/components/actions/ManageHouse.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 import Select from "react-select";
 import { FadeIn } from "../AnimateReveal";
 import { House, Grid, PlusCircle, Search, Edit3, Trash2, Shield, Upload, X, Camera, User, Hash } from "lucide-react";
@@ -24,13 +25,10 @@ const ManageHouse = () => {
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     const isFormData = options.body instanceof FormData;
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       ...options,
-      headers: { Authorization: `Bearer ${token}`, ...(isFormData ? {} : { "Content-Type": "application/json" }), ...(options.headers || {}) }
+      headers: { ...(isFormData ? {} : { "Content-Type": "application/json" }), ...(options.headers || {}) }
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   const fetchHouses = async () => {
@@ -88,10 +86,10 @@ const ManageHouse = () => {
             <div className="flex items-center gap-2">
                 <House className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-heading">
-                    Infrastructure Registry
+                    {groupLabelPlural} Registry
                 </h2>
             </div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">House Management & Assets</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">{groupLabel} Management & Assets</p>
         </div>
         
         <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
@@ -101,7 +99,7 @@ const ManageHouse = () => {
               onClick={() => { setActiveTab(t); if(t==='add') resetForm(); }}
               className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'bg-white dark:bg-[#0B1220] text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              {t === 'manage' ? 'Directory' : editingHouseId ? 'Edit Asset' : 'Initialize Asset'}
+              {t === 'manage' ? 'Directory' : editingHouseId ? `Edit ${groupLabel}` : `Initialize ${groupLabel}`}
             </button>
           ))}
         </div>
@@ -191,7 +189,7 @@ const ManageHouse = () => {
              <div className="lg:col-span-4 space-y-8">
                 <div className="space-y-2">
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">Visual Asset</h3>
-                    <p className="text-sm font-medium text-slate-500">Official house identification.</p>
+                    <p className="text-sm font-medium text-slate-500">Official {groupLabel.toLowerCase()} identification.</p>
                 </div>
 
                 <div 
@@ -250,7 +248,7 @@ const ManageHouse = () => {
                         disabled={loading}
                         className="w-full py-5 text-[11px] font-black uppercase tracking-[0.3em] text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-2xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50"
                    >
-                        {loading ? "Writing Strategy..." : editingHouseId ? "Update System Protocol" : "Initialize Infrastructure"}
+                        {loading ? "Writing Strategy..." : editingHouseId ? `Update ${groupLabel} Protocol` : `Initialize ${groupLabel} System`}
                    </button>
 
                    <button 

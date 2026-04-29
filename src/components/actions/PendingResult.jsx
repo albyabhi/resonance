@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -17,24 +18,14 @@ const PendingResult = () => {
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body || undefined,
     });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   const loadEvents = async () => {
@@ -133,7 +124,7 @@ const PendingResult = () => {
 
   const teamLabel = (t) => `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} - ${t.houseName}${t.houseCode ? ` (${t.houseCode})` : ""}`;
 
-  const renderTeamOrStudents = (row) => {
+  const renderTeamOrParticipants = (row) => {
     if (row.chest) return `Chest #${row.chest}`;
     const members = teamMembersMap[row.teamId] || [];
     if (!members.length) return "No chest";
@@ -298,7 +289,7 @@ const PendingResult = () => {
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Position</th>
-              <th className="p-3 text-left text-xs uppercase theme-text-muted">Team/Student</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Team/Participant</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">House</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Submitted By</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
@@ -313,7 +304,7 @@ const PendingResult = () => {
               pending.map((row) => (
                 <tr key={row._id} className="border-t border-gray-200 dark:border-gray-800">
                   <td className="p-3 theme-text-primary">{row.position}</td>
-                  <td className="p-3 theme-text-primary">{renderTeamOrStudents(row)}</td>
+                  <td className="p-3 theme-text-primary">{renderTeamOrParticipants(row)}</td>
                   <td className="p-3 theme-text-primary">{row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}</td>
                   <td className="p-3 theme-text-primary">{row.submittedBy || "-"}</td>
                   <td className="p-3">

@@ -5,6 +5,7 @@ import {
   CheckCircle,
   UserPlus,
   Calendar,
+  Settings,
 } from "lucide-react";
 
 export const roleConfig = {
@@ -14,6 +15,7 @@ export const roleConfig = {
       { label: "Manage Users", icon: Users },
       { label: "Manage Houses", icon: UserPlus },
       { label: "Manage Events", icon: Calendar },
+      { label: "Manage Competition", icon: Settings },
       { label: "System Override", icon: CheckCircle },
       { label: "Activity Logs", icon: Bell },
     ],
@@ -37,6 +39,7 @@ export const roleConfig = {
     actions: [
       { label: "Pending submissions", icon: ClipboardList },
       { label: "My submissions", icon: CheckCircle },
+      { label: "Manage Competition", icon: Settings },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -47,6 +50,12 @@ export const roleConfig = {
       { label: "Pending approvals", icon: ClipboardList },
       { label: "Schedule", icon: Calendar },
     ],
+    modules: { standings: true, events: true, stats: true },
+  },
+
+  participant: {
+    title: "Participant",
+    actions: [],
     modules: { standings: true, events: true, stats: true },
   },
 
@@ -77,11 +86,11 @@ export function normalizeRole(role) {
     return "captain";
   }
 
-  if (
-    ["student", "student coordinator", "student_coordinator"].includes(key)
-  ) {
+  if (["coordinator", "student coordinator", "student_coordinator"].includes(key)) {
     return "student_coordinator";
   }
+
+  if (["participant", "student"].includes(key)) return "participant";
 
   if (
     ["faculty", "faculty coordinator", "faculty_coordinator"].includes(key)

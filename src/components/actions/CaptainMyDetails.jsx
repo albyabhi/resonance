@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Upload, RotateCcw, Save, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -23,16 +24,10 @@ export default function CaptainMyDetails() {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`${API_BASE_URL}/api/captain/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+        const data = await apiJson(`${API_BASE_URL}/api/captain/me`, {
+          headers: { "Content-Type": "application/json" },
         });
 
-        if (!res.ok) throw new Error("Failed to load captain profile");
-
-        const data = await res.json();
         const captain = data.captain;
         setName(captain.name || "");
         setPhone(captain.phone || "");
@@ -87,18 +82,11 @@ export default function CaptainMyDetails() {
 
       if (selectedImage) formData.append("profile_image", selectedImage);
 
-      const res = await fetch(`${API_BASE_URL}/api/captain/me`, {
+      const data = await apiJson(`${API_BASE_URL}/api/captain/me`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      const data = await res.json();
       const updatedCaptain = data.captain;
       setName(updatedCaptain.name);
       setPhone(updatedCaptain.phone || "");

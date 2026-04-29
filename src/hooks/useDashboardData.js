@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { apiJson } from "../utils/apiClient";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const listFrom = (payload, key) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.[key])) return payload[key];
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
 
 export default function useDashboardData() {
-  const { token, role } = useAuth();
+  const { token, role, lastCompetition, isAuthReady } = useAuth();
   const [data, setData] = useState({
     scoreboard: [],
     events: [],
@@ -18,35 +26,42 @@ export default function useDashboardData() {
   useEffect(() => {
     let mounted = true;
     
-    // Don't fetch if token is missing and we aren't a guest (or even for guest, we might need no token endpoints)
-    // Actually, Guest role might need public endpoints, but let's assume public APIs exist or we pass token if exists.
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
-
     const apiCall = async (endpoint) => {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) return null; // Gracefully handle auth error if guest
-        throw new Error(`API error: ${res.status}`);
+      try {
+        return await apiJson(`${API_BASE_URL}${endpoint}`, {
+          headers: { "Content-Type": "application/json" },
+          unwrapData: true,
+          _token: token,
+        });
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) return null;
+        throw err;
       }
-      return res.json();
     };
 
     const fetchAllData = async () => {
+      if (!token || role === "guest" || !isAuthReady) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
+        const competitionId = lastCompetition?.id || lastCompetition?._id || lastCompetition?.competition_id;
+        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+        const scoreboardEndpoint = competitionId ? `/api/scoreboard/${competitionId}` : "/api/scoreboard";
         const endpoints = [
-          apiCall("/api/scoreboard"),
-          apiCall("/api/event")
+          apiCall(scoreboardEndpoint),
+          apiCall(`/api/event${competitionQuery}`)
         ];
         
         // Admins, Coordinators, Faculty might optionally need more, but we can fetch them uniformly or selectively.
-        endpoints.push(apiCall("/api/results"));
+        endpoints.push(apiCall(`/api/results${competitionQuery}`));
         endpoints.push(apiCall("/api/schedule/batch")); // Use explicit batch path if we have it or base route
         
         // Admin specfic usage overview
         if (role === "admin") {
-          endpoints.push(apiCall("/api/event/usage"));
+          endpoints.push(apiCall(`/api/event/usage${competitionQuery}`));
         }
 
         const responses = await Promise.allSettled(endpoints);
@@ -54,9 +69,9 @@ export default function useDashboardData() {
         if (!mounted) return;
 
         const scoreboardRes = responses[0].status === "fulfilled" && responses[0].value ? responses[0].value : { overall: [], byEvent: [] };
-        const eventsRes = responses[1].status === "fulfilled" && responses[1].value ? responses[1].value.events : [];
-        const resultsRes = responses[2]?.status === "fulfilled" && responses[2].value ? responses[2].value.results : [];
-        const schedulesRes = responses[3]?.status === "fulfilled" && responses[3].value ? responses[3].value.schedules : [];
+        const eventsRes = responses[1].status === "fulfilled" ? listFrom(responses[1].value, "events") : [];
+        const resultsRes = responses[2]?.status === "fulfilled" ? listFrom(responses[2].value, "results") : [];
+        const schedulesRes = responses[3]?.status === "fulfilled" ? listFrom(responses[3].value, "schedules") : [];
         
         let sysStats = null;
         if (role === "admin" && responses[4]?.status === "fulfilled" && responses[4].value) {
@@ -64,7 +79,7 @@ export default function useDashboardData() {
         }
 
         setData({
-          scoreboard: scoreboardRes.overall || [],
+          scoreboard: Array.isArray(scoreboardRes) ? scoreboardRes : scoreboardRes.overall || [],
           events: eventsRes || [],
           results: resultsRes || [],
           schedules: schedulesRes || [],
@@ -83,7 +98,7 @@ export default function useDashboardData() {
     return () => {
       mounted = false;
     };
-  }, [token, role]);
+  }, [token, role, lastCompetition, isAuthReady]);
 
   return { data, loading, error };
 }

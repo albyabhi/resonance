@@ -1,6 +1,7 @@
 // src/components/actions/AdminScoreboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -144,25 +145,12 @@ const AdminScoreboard = () => {
   const pulling = useRef(false);
 
   const apiCall = async (endpoint, options = {}) => {
-    const headers = {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    };
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    if (!token) throw new Error("No auth token available");
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
-      headers,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   // Load houses and events

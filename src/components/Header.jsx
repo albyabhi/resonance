@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import Logo from "../assets/Rlogo.jpg";
+import { apiFetch } from "../utils/apiClient";
+import Logo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 
@@ -15,30 +16,33 @@ function Header({
   onToggleSidebar = () => {},
 }) {
   const auth = useAuth();
-  const { user, role, token } = auth || { user: null, role: "guest", token: null };
+  const { user, role, token, isAuthReady } = auth || { user: null, role: "guest", token: null, isAuthReady: false };
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
-    if (token && role !== "guest") {
-      fetch(`${API_BASE_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setNotifications(data.notifications || []))
+    if (token && role !== "guest" && isAuthReady) {
+      apiFetch(`${API_BASE_URL}/api/notifications`, { _token: token })
+        .then((res) => {
+          if (!res.ok) {
+             if (res.status === 401 || res.status === 403) return { notifications: [] };
+             throw new Error('API error');
+          }
+          return res.json();
+        })
+        .then((data) => setNotifications(data?.notifications || []))
         .catch(console.error);
     }
-  }, [token, role]);
+  }, [token, role, isAuthReady]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const displayName = user?.name || "Guest";
 
   const handleMarkAsRead = async (id) => {
-    await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
+    await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
+      method: "PUT"
     });
     setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
   };
@@ -68,7 +72,7 @@ function Header({
             <img
               src={Logo}
               alt="Resonance"
-              className="h-10 w-10 rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
+              className="h-10 w-10 rounded-2xl  object-cover "
             />
             <span className="hidden text-lg font-semibold tracking-tight sm:inline" style={{ color: 'var(--text)' }}>
               Resonance
@@ -76,16 +80,21 @@ function Header({
           </button>
         </div>
 
-        <div className="relative hidden max-w-xl flex-1 lg:block">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search dashboard"
-            className="h-11 w-full rounded-full border border-gray-200 bg-gray-100/80 pl-11 pr-4 text-sm text-gray-900 outline-none transition-colors duration-300 placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white dark:border-gray-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-500"
-          />
+        <div className="hidden flex-1 justify-center px-4 md:flex">
+          <div className="relative w-full max-w-md">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search dashboard"
+              className="h-11 w-full rounded-full border border-gray-200 bg-gray-100/80 pl-11 pr-4 text-sm text-gray-900 outline-none transition-colors duration-300 placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white dark:border-gray-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-500"
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <button className="md:hidden rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white">
+            <Search className="h-5 w-5" />
+          </button>
           <ThemeToggle />
 
           {role !== "guest" && (
@@ -145,12 +154,6 @@ function Header({
             </div>
           )}
 
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-indigo-600 dark:border-gray-800 dark:bg-gray-900 dark:text-indigo-400"
-            title={displayName}
-          >
-            {displayName.charAt(0).toUpperCase()}
-          </div>
         </div>
       </div>
     </header>

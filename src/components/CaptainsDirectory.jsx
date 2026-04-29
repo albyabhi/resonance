@@ -1,48 +1,67 @@
 // src/components/CaptainsDirectory.jsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { useCompetition } from "../context/CompetitionContext";
+import { apiFetch } from "../utils/apiClient";
 import { Phone, AlertCircle, Shield, Contact, Grid, Search, ExternalLink, Mail } from "lucide-react";
 import { FadeIn } from "./AnimateReveal";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CaptainsDirectory() {
-  const { token } = useAuth();
+  const { token, isAuthReady } = useAuth();
+  const { groupLabel } = useCompetition();
   const [captains, setCaptains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchCaptains = async () => {
+      if (!token || !isAuthReady) return;
       try {
         setLoading(true);
         setError("");
-        const housesRes = await fetch(`${API_BASE_URL}/api/house`, {
-          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        const housesRes = await apiFetch(`${API_BASE_URL}/api/house`, {
+          headers: { "Content-Type": "application/json" },
         });
 
-        if (!housesRes.ok) throw new Error(`Operational Failure: ${housesRes.status}`);
+        if (!housesRes.ok) throw new Error(`Failed to load houses (${housesRes.status})`);
         const housesData = await housesRes.json();
         const houses = Array.isArray(housesData) ? housesData : housesData.houses || [];
 
         const captainDetails = [];
         for (const house of houses) {
           try {
-            const captainRes = await fetch(`${API_BASE_URL}/api/house/captain/${house._id}`, {
-              headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            const captainRes = await apiFetch(`${API_BASE_URL}/api/house/captain/${house._id}`, {
+              headers: { "Content-Type": "application/json" },
             });
             const captainData = captainRes.ok ? await captainRes.json() : { captain: null };
-            captainDetails.push({ houseId: house._id, houseName: house.name, houseCode: house.code, captain: captainData.captain || null });
-          } catch {
-            captainDetails.push({ houseId: house._id, houseName: house.name, houseCode: house.code, captain: null });
+            captainDetails.push({ 
+              houseId: house._id, 
+              houseName: house.name, 
+              houseCode: house.code, 
+              captain: captainData.captain || null 
+            });
+          } catch (err) {
+            console.error(`Error fetching captain for house ${house.name}:`, err);
+            captainDetails.push({ 
+              houseId: house._id, 
+              houseName: house.name, 
+              houseCode: house.code, 
+              captain: null 
+            });
           }
         }
         setCaptains(captainDetails);
-      } catch (err) { setError(err.message || "Directory Synchronization Failed"); }
-      finally { setLoading(false); }
+      } catch (err) { 
+        setError(err.message || "Failed to load directory"); 
+      } finally { 
+        setLoading(false); 
+      }
     };
     fetchCaptains();
-  }, [token]);
+  }, [token, isAuthReady]);
 
   if (loading) {
     return (
@@ -52,6 +71,12 @@ export default function CaptainsDirectory() {
     );
   }
 
+  const filteredCaptains = captains.filter(item => 
+    item.houseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.houseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.captain?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-10">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-white/5">
@@ -59,21 +84,21 @@ export default function CaptainsDirectory() {
             <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <h2 className="text-3xl font-semibold tracking-tight font-heading" style={{ color: 'var(--text)' }}>
-                    Strategic Command
+                    {groupLabel}s Directory
                 </h2>
             </div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7 underline decoration-indigo-500/30 underline-offset-4">House Captains Registry</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Manage and contact your {groupLabel.toLowerCase()} leads</p>
         </div>
         
-        <div className="flex items-center gap-3">
-             <div className="relative group flex-1 md:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                <input 
-                    type="text" 
-                    placeholder="Search personnel..." 
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
-                />
-             </div>
+        <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search personnel..." 
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+            />
         </div>
       </header>
 
@@ -85,7 +110,7 @@ export default function CaptainsDirectory() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {captains.map((item, idx) => {
+        {filteredCaptains.map((item, idx) => {
           const { captain, houseName, houseCode } = item;
           const hasCaptain = !!captain?.name;
 
@@ -103,7 +128,7 @@ export default function CaptainsDirectory() {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/[0.02]">
                        <Shield className="w-12 h-12 text-slate-200 dark:text-white/10 mb-4 transition-transform duration-500 group-hover:rotate-12" />
-                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Structure Vacant</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No captain assigned</p>
                     </div>
                   )}
                   
@@ -138,7 +163,7 @@ export default function CaptainsDirectory() {
                                 <Phone className="w-3.5 h-3.5" />
                               </div>
                               <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Direct Comms</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Phone</p>
                                 <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{captain.phone || "---"}</p>
                               </div>
                            </div>
@@ -151,7 +176,7 @@ export default function CaptainsDirectory() {
                                 <Mail className="w-3.5 h-3.5" />
                               </div>
                               <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Intelligence</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Email</p>
                                 <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{houseCode.toLowerCase()}@resonance.edu</p>
                               </div>
                            </div>
@@ -161,14 +186,14 @@ export default function CaptainsDirectory() {
                     ) : (
                       <div className="py-10 text-center space-y-2">
                          <Contact className="w-8 h-8 text-slate-100 dark:text-white/5 mx-auto" />
-                         <p className="text-xs font-semibold text-slate-400">Protocol missing for this node</p>
+                         <p className="text-xs font-semibold text-slate-400">No captain assigned</p>
                       </div>
                     )}
                   </div>
 
                   {hasCaptain && (
                     <button className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white shadow-xl shadow-slate-900/10 dark:shadow-white/5 active:scale-95 group-hover:translate-y-0 translate-y-1 opacity-0 group-hover:opacity-100 duration-500">
-                        Initiate Connection
+                        View profile
                     </button>
                   )}
                 </div>

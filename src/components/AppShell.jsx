@@ -14,7 +14,7 @@ export default function AppShell({ onLogout = () => {}, children }) {
   const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="h-screen h-[100dvh] max-h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <Header
         onLogout={onLogout}
         onMenuClick={handleMenuClick}
@@ -25,7 +25,7 @@ export default function AppShell({ onLogout = () => {}, children }) {
         onToggleSidebar={toggleSidebar}
       />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {typeof children === "function"
           ? children({
               mobileOpen,
@@ -36,7 +36,11 @@ export default function AppShell({ onLogout = () => {}, children }) {
               theme,
               setTheme,
             })
-          : children}
+          : (
+            <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-20 sm:px-6 md:py-6">
+              {children}
+            </main>
+          )}
       </div>
     </div>
   );

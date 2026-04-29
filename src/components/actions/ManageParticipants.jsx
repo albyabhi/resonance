@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-function ManageStudents() {
+function ManageParticipants() {
   const { token } = useAuth();
 
   // UI states
@@ -13,8 +14,8 @@ function ManageStudents() {
 
   // Cached data
   const [houses, setHouses] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [editingStudent, setEditingStudent] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [editingParticipant, setEditingParticipant] = useState(null);
 
   // Filters
   const [filterHouse, setFilterHouse] = useState("");
@@ -34,25 +35,14 @@ function ManageStudents() {
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const config = {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body || undefined,
-    };
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
+    });
   };
 
   // Initial: load houses
@@ -73,17 +63,17 @@ function ManageStudents() {
     load();
   }, [token]);
 
-  // Load students when filters/search change
-  const fetchStudents = async () => {
+  // Load participants when filters/search change
+  const fetchParticipants = async () => {
     setLoading(true);
     setError("");
     try {
-      let url = "/api/students?";
+      let url = "/api/participants?";
       if (filterHouse) url += `house_id=${filterHouse}&`;
       if (filterClass) url += `class=${encodeURIComponent(filterClass)}&`;
       if (search) url += `search=${encodeURIComponent(search)}&`;
-      const { students } = await apiCall(url);
-      setStudents(students || []);
+      const { participants } = await apiCall(url);
+      setParticipants(participants || []);
       setSelectedIds([]);
     } catch (err) {
       setError(err.message);
@@ -93,7 +83,7 @@ function ManageStudents() {
   };
 
   useEffect(() => {
-    if (token && activeTab === "all") fetchStudents();
+    if (token && activeTab === "all") fetchParticipants();
     // eslint-disable-next-line
   }, [token, activeTab, filterHouse, filterClass, search]);
 
@@ -101,11 +91,11 @@ function ManageStudents() {
   const switchTab = (tab) => {
     setActiveTab(tab);
     setError("");
-    setEditingStudent(null);
+    setEditingParticipant(null);
     setAddForm({ name: "", class: "", house_id: "" });
     setBulkJson("");
     setBulkHouse("");
-    if (tab === "all" && token) fetchStudents();
+    if (tab === "all" && token) fetchParticipants();
   };
 
   // Add single
@@ -114,12 +104,12 @@ function ManageStudents() {
     setError("");
     setLoading(true);
     try {
-      const { student } = await apiCall("/api/students", {
+      const { participant } = await apiCall("/api/participants", {
         method: "POST",
         body: JSON.stringify(addForm),
       });
       setAddForm({ name: "", class: "", house_id: "" });
-      setStudents((prev) => [student, ...prev]);
+      setParticipants((prev) => [participant, ...prev]);
       setActiveTab("all");
     } catch (err) {
       setError(err.message);
@@ -138,15 +128,15 @@ function ManageStudents() {
     setLoading(true);
     setError("");
     try {
-      const { inserted } = await apiCall("/api/students/bulkJson", {
+      const { inserted } = await apiCall("/api/participants/bulkJson", {
         method: "POST",
         body: JSON.stringify({ house_id: bulkHouse, json_text: bulkJson }),
       });
       setBulkJson("");
       setBulkHouse("");
       setActiveTab("all");
-      fetchStudents();
-      alert(`Bulk added ${inserted} students`);
+      fetchParticipants();
+      alert(`Bulk added ${inserted} participants`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -156,7 +146,7 @@ function ManageStudents() {
 
   // Update
   const handleEditStart = (stu) => {
-    setEditingStudent({
+    setEditingParticipant({
       ...stu,
       house_id: stu.house_id?._id || stu.house_id,
     });
@@ -168,13 +158,13 @@ function ManageStudents() {
     setLoading(true);
     setError("");
     try {
-      const { student } = await apiCall(`/api/students/${editingStudent._id}`, {
+      await apiCall(`/api/participants/${editingParticipant._id}`, {
         method: "PUT",
-        body: JSON.stringify(editingStudent),
+        body: JSON.stringify(editingParticipant),
       });
       setActiveTab("all");
-      fetchStudents();
-      setEditingStudent(null);
+      fetchParticipants();
+      setEditingParticipant(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -184,12 +174,12 @@ function ManageStudents() {
 
   // Delete
   const handleDeleteSingle = async (id) => {
-    if (!window.confirm("Delete this student?")) return;
+    if (!window.confirm("Delete this participant?")) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall(`/api/students/${id}`, { method: "DELETE" });
-      setStudents((prev) => prev.filter((s) => s._id !== id));
+      await apiCall(`/api/participants/${id}`, { method: "DELETE" });
+      setParticipants((prev) => prev.filter((s) => s._id !== id));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -198,15 +188,15 @@ function ManageStudents() {
   };
 
   const handleDeleteBulk = async () => {
-    if (!selectedIds.length || !window.confirm("Delete selected students?")) return;
+    if (!selectedIds.length || !window.confirm("Delete selected participants?")) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall("/api/students/bulk/remove", {
+      await apiCall("/api/participants/bulk/remove", {
         method: "DELETE",
         body: JSON.stringify({ ids: selectedIds }),
       });
-      fetchStudents();
+      fetchParticipants();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -221,7 +211,7 @@ function ManageStudents() {
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(students.map((s) => s._id));
+    setSelectedIds(participants.map((s) => s._id));
   };
 
   const handleDeselectAll = () => setSelectedIds([]);
@@ -236,10 +226,10 @@ function ManageStudents() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-4">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-            Student Management
+            Participant Management
           </h1>
           <p className="text-gray-600 text-sm md:text-base">
-            Manage all students, classes, and house mapping
+            Manage all participants, classes, and house mapping
           </p>
         </div>
 
@@ -263,7 +253,7 @@ function ManageStudents() {
         <div
           className="bg-white rounded-xl shadow-sm mb-4 p-1 flex"
           role="tablist"
-          aria-label="Student management views"
+          aria-label="Participant management views"
         >
           <button
             role="tab"
@@ -277,7 +267,7 @@ function ManageStudents() {
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
             onClick={() => switchTab("all")}
           >
-            All Students
+            All Participants
           </button>
           <button
             role="tab"
@@ -303,13 +293,13 @@ function ManageStudents() {
                 ? "bg-orange-600 text-white shadow"
                 : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
-            disabled={!editingStudent}
+            disabled={!editingParticipant}
           >
             Update
           </button>
         </div>
 
-        {/* ALL STUDENTS */}
+        {/* ALL PARTICIPANTS */}
         {activeTab === "all" && (
           <section
             id="panel-all"
@@ -349,7 +339,7 @@ function ManageStudents() {
               />
 
               <label className="sr-only" htmlFor="search">
-                Search students
+                Search participants
               </label>
               <input
                 id="search"
@@ -385,8 +375,8 @@ function ManageStudents() {
             </div>
 
             {/* Mobile-first list (cards) */}
-            <ul className="space-y-2 sm:hidden" aria-label="Students list">
-              {students.map((stu) => (
+            <ul className="space-y-2 sm:hidden" aria-label="Participants list">
+              {participants.map((stu) => (
                 <li
                   key={stu._id}
                   className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
@@ -461,7 +451,7 @@ function ManageStudents() {
                       House
                     </th>
                     <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
-                      Student ID
+                      Participant ID
                     </th>
                     <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
                       Actions
@@ -469,7 +459,7 @@ function ManageStudents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((stu) => (
+                  {participants.map((stu) => (
                     <tr key={stu._id} className="border-b">
                       <td className="px-3 align-middle">
                         <input
@@ -518,7 +508,7 @@ function ManageStudents() {
           </section>
         )}
 
-        {/* ADD STUDENTS */}
+        {/* ADD PARTICIPANTS */}
         {activeTab === "add" && (
           <section
             id="panel-add"
@@ -528,7 +518,7 @@ function ManageStudents() {
           >
             {/* Add single */}
             <form className="space-y-3" onSubmit={handleAddSingle}>
-              <h3 className="font-semibold">Add Single Student</h3>
+              <h3 className="font-semibold">Add Single Participant</h3>
               <label className="sr-only" htmlFor="add-house">
                 Select house
               </label>
@@ -575,7 +565,7 @@ function ManageStudents() {
                 className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
                 disabled={loading}
               >
-                Add Student
+                Add Participant
               </button>
             </form>
 
@@ -600,13 +590,13 @@ function ManageStudents() {
                 ))}
               </select>
               <label className="sr-only" htmlFor="bulk-json">
-                Paste students as JSON array
+                Paste participants as JSON array
               </label>
               <textarea
                 id="bulk-json"
                 required
                 rows={7}
-                placeholder='Paste students as JSON array, e.g. [{"NAME":"...","CLASS":"..."}]'
+                placeholder='Paste participants as JSON array, e.g. [{"NAME":"...","CLASS":"..."}]'
                 value={bulkJson}
                 onChange={(e) => setBulkJson(e.target.value)}
                 className="block w-full border border-gray-200 rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
@@ -622,24 +612,24 @@ function ManageStudents() {
           </section>
         )}
 
-        {/* UPDATE STUDENT */}
-        {activeTab === "update" && editingStudent && (
+        {/* UPDATE PARTICIPANT */}
+        {activeTab === "update" && editingParticipant && (
           <section
             id="panel-update"
             role="tabpanel"
             aria-labelledby="tab-update"
             className="max-w-xl bg-white p-4 sm:p-6 rounded-lg shadow space-y-3"
           >
-            <h3 className="font-semibold mb-2">Edit Student</h3>
+            <h3 className="font-semibold mb-2">Edit Participant</h3>
             <label className="sr-only" htmlFor="edit-house">
               House
             </label>
             <select
               id="edit-house"
               required
-              value={editingStudent.house_id}
+              value={editingParticipant.house_id}
               onChange={(e) =>
-                setEditingStudent((stu) => ({ ...stu, house_id: e.target.value }))
+                setEditingParticipant((participant) => ({ ...participant, house_id: e.target.value }))
               }
               className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
             >
@@ -657,9 +647,9 @@ function ManageStudents() {
               id="edit-name"
               required
               type="text"
-              value={editingStudent.name || ""}
+              value={editingParticipant.name || ""}
               onChange={(e) =>
-                setEditingStudent((stu) => ({ ...stu, name: e.target.value }))
+                setEditingParticipant((participant) => ({ ...participant, name: e.target.value }))
               }
               className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               placeholder="Name"
@@ -671,9 +661,9 @@ function ManageStudents() {
               id="edit-class"
               required
               type="text"
-              value={editingStudent.class || ""}
+              value={editingParticipant.class || ""}
               onChange={(e) =>
-                setEditingStudent((stu) => ({ ...stu, class: e.target.value }))
+                setEditingParticipant((participant) => ({ ...participant, class: e.target.value }))
               }
               className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               placeholder="Class"
@@ -690,7 +680,7 @@ function ManageStudents() {
               type="button"
               className="mt-2 w-full border px-3 py-2 min-h-[44px] rounded text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               onClick={() => {
-                setEditingStudent(null);
+                setEditingParticipant(null);
                 setActiveTab("all");
               }}
             >
@@ -703,4 +693,4 @@ function ManageStudents() {
   );
 }
 
-export default ManageStudents;
+export default ManageParticipants;

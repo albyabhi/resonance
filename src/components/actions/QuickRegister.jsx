@@ -1,40 +1,33 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
+import { useCompetition } from "../../context/CompetitionContext";
+import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const QuickRegister = () => {
   const { token, user } = useAuth();
+  const { groupLabel } = useCompetition();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [participants, setParticipants] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState([]);
 
   const captainHouseId = user?.house?.id || user?.house?._id || user?.house || null;
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
       body: options.body,
     });
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response from server");
-    }
-    if (!res.ok) throw new Error(data.message || "API call failed");
-    return data;
   };
 
   useEffect(() => {
@@ -47,10 +40,10 @@ const QuickRegister = () => {
         setEvents(events || []);
 
         if (captainHouseId) {
-          const { students } = await apiCall(`/api/students?house_id=${captainHouseId}`);
-          setStudents(students || []);
+          const { participants } = await apiCall(`/api/participants?house_id=${captainHouseId}`);
+          setParticipants(participants || []);
         } else {
-          setStudents([]);
+          setParticipants([]);
         }
       } catch (err) {
         setError(err.message);
@@ -71,10 +64,10 @@ const QuickRegister = () => {
         setError("");
         const url =
           q.length > 0
-            ? `/api/students?house_id=${captainHouseId}&search=${encodeURIComponent(q)}`
-            : `/api/students?house_id=${captainHouseId}`;
-        const { students } = await apiCall(url);
-        setStudents(students || []);
+            ? `/api/participants?house_id=${captainHouseId}&search=${encodeURIComponent(q)}`
+            : `/api/participants?house_id=${captainHouseId}`;
+        const { participants } = await apiCall(url);
+        setParticipants(participants || []);
       } catch (err) {
         setError(err.message);
       }
@@ -91,10 +84,10 @@ const QuickRegister = () => {
   const isIndividual = selectedEvent?.event_type === "individual";
   const minTeam = selectedEvent?.min_team_size || 1;
   const maxTeam = selectedEvent?.max_team_size || (isIndividual ? 1 : 1);
-  const filteredStudents = useMemo(() => students || [], [students]);
+  const filteredParticipants = useMemo(() => participants || [], [participants]);
 
-  const toggleStudent = (id) => {
-    setSelectedStudentIds((prev) => {
+  const toggleParticipant = (id) => {
+    setSelectedParticipantIds((prev) => {
       if (isIndividual) return prev.includes(id) ? [] : [id];
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= maxTeam) return prev;
@@ -104,9 +97,9 @@ const QuickRegister = () => {
 
   const canSubmit = useMemo(() => {
     if (!selectedEvent || !captainHouseId) return false;
-    if (isIndividual) return selectedStudentIds.length === 1;
-    return selectedStudentIds.length >= minTeam && selectedStudentIds.length <= maxTeam;
-  }, [selectedEvent, captainHouseId, isIndividual, selectedStudentIds, minTeam, maxTeam]);
+    if (isIndividual) return selectedParticipantIds.length === 1;
+    return selectedParticipantIds.length >= minTeam && selectedParticipantIds.length <= maxTeam;
+  }, [selectedEvent, captainHouseId, isIndividual, selectedParticipantIds, minTeam, maxTeam]);
 
   const submitRegistration = async () => {
     if (!canSubmit) return;
@@ -116,13 +109,13 @@ const QuickRegister = () => {
       const payload = {
         event_id: selectedEventId,
         house_id: captainHouseId,
-        member_ids: selectedStudentIds,
+        member_ids: selectedParticipantIds,
       };
       const { team } = await apiCall("/api/team", {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      setSelectedStudentIds([]);
+      setSelectedParticipantIds([]);
       alert(`Registered for ${selectedEvent?.name || "event"} successfully. Team ID: ${team?._id || ""}`);
     } catch (err) {
       setError(err.message);
@@ -135,7 +128,7 @@ const QuickRegister = () => {
     <div className="theme-card p-4">
       <div className="mb-3">
         <h2 className="text-lg font-semibold theme-text-primary">Quick Register</h2>
-        <p className="text-sm theme-text-secondary">Select an event and pick eligible students from the house list.</p>
+        <p className="text-sm theme-text-secondary">Select an event and pick eligible participants from the house list.</p>
       </div>
 
       {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
@@ -147,7 +140,7 @@ const QuickRegister = () => {
             value={selectedEventId}
             onChange={(e) => {
               setSelectedEventId(e.target.value);
-              setSelectedStudentIds([]);
+              setSelectedParticipantIds([]);
             }}
             className="theme-input px-3 py-2"
           >
@@ -163,13 +156,13 @@ const QuickRegister = () => {
           </select>
           {selectedEvent && (
             <p className="mt-1 text-xs theme-text-secondary">
-              {selectedEvent.event_type === "individual" ? "Individual event (select 1 student)" : `Team event (select ${minTeam}-${maxTeam} students)`}
+              {selectedEvent.event_type === "individual" ? "Individual event (select 1 participant)" : `Team event (select ${minTeam}-${maxTeam} participants)`}
             </p>
           )}
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium theme-text-secondary">Search students</label>
+          <label className="mb-1 block text-sm font-medium theme-text-secondary">Search participants</label>
           <input
             type="text"
             value={search}
@@ -182,12 +175,12 @@ const QuickRegister = () => {
         <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
           {loading ? (
             <div className="p-3 text-sm theme-text-secondary">Loading...</div>
-          ) : filteredStudents.length === 0 ? (
-            <div className="p-3 text-sm theme-text-secondary">No students found</div>
+          ) : filteredParticipants.length === 0 ? (
+            <div className="p-3 text-sm theme-text-secondary">No participants found</div>
           ) : (
             <ul className="divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredStudents.map((s) => {
-                const checked = selectedStudentIds.includes(s._id);
+              {filteredParticipants.map((s) => {
+                const checked = selectedParticipantIds.includes(s._id);
                 return (
                   <li key={s._id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900">
                     <div>
@@ -201,7 +194,7 @@ const QuickRegister = () => {
                         type={isIndividual ? "radio" : "checkbox"}
                         name="member"
                         checked={checked}
-                        onChange={() => toggleStudent(s._id)}
+                        onChange={() => toggleParticipant(s._id)}
                         className="h-4 w-4 border-gray-300 text-indigo-600"
                       />
                     </label>
@@ -213,12 +206,12 @@ const QuickRegister = () => {
         </div>
 
         <div className="text-xs theme-text-secondary">
-          Selected: {selectedStudentIds.length}
+          Selected: {selectedParticipantIds.length}
           {selectedEvent && ` (required: ${isIndividual ? "1" : `${minTeam}-${maxTeam}`})`}
         </div>
 
         <div className="flex gap-2">
-          <button type="button" onClick={() => setSelectedStudentIds([])} className="theme-panel flex-1 rounded-lg px-3 py-2 text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800">
+          <button type="button" onClick={() => setSelectedParticipantIds([])} className="theme-panel flex-1 rounded-lg px-3 py-2 text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800">
             Clear
           </button>
           <button

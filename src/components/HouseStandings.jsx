@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { useCompetition } from "../context/CompetitionContext";
+import { apiFetch } from "../utils/apiClient";
 import { FadeIn } from "./AnimateReveal";
 import { Trophy, Medal, Crown, User, Activity } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function HouseStandings({ eventId = null, showCaptain = false }) {
-  const { token } = useAuth();
+  const { token, isAuthReady } = useAuth();
+  const { groupLabel, groupLabelPlural } = useCompetition();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rows, setRows] = useState([]);
@@ -15,9 +18,8 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
   const apiCall = async (endpoint) => {
     const headers = {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+    const res = await apiFetch(`${API_BASE_URL}${endpoint}`, { headers });
     if (!res.ok) throw new Error("API call failed");
     return res.json();
   };
@@ -36,6 +38,7 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
 
   useEffect(() => {
     const load = async () => {
+      if (!token || !isAuthReady) return;
       try {
         setLoading(true);
         setError("");
@@ -60,7 +63,7 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
       }
     };
     load();
-  }, [eventId, showCaptain]);
+  }, [eventId, showCaptain, token, isAuthReady]);
 
   const getRankIcon = (rank) => {
     if (rank === 1) return <Crown className="h-4 w-4 text-indigo-500" />;
@@ -87,8 +90,9 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
       </header>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
-          Error retrieving standings: {error}
+        <div className="mb-6 flex items-center gap-2 text-sm text-rose-500 dark:text-rose-400">
+          <Activity className="h-4 w-4" />
+          <span>Error retrieving standings: {error}</span>
         </div>
       )}
 
@@ -122,7 +126,7 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
                     <p className="truncate font-semibold" style={{ color: 'var(--card-fg)' }}>{house.name || "-"}</p>
                     <div className="flex items-center gap-3">
                       <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>{house.code}</p>
-                      {showCaptain && captain?.name && <p className="truncate text-xs text-indigo-600 dark:text-indigo-400">Captain: {captain.name}</p>}
+                      {showCaptain && captain?.name && <p className="truncate text-xs text-indigo-600 dark:text-indigo-400">{groupLabel} Captain: {captain.name}</p>}
                     </div>
                   </div>
                 </div>
