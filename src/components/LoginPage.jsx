@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { User, KeyRound, Lock, Sparkles, Trophy } from "lucide-react";
 
 export default function LoginPage({ onLogin = () => {} }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
+  const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-  const handleSubmit = async (e) => {
+  // Read redirect parameter from URL
+  const queryParams = new URLSearchParams(location.search);
+  const redirectUrl = queryParams.get("redirect");
+
+  const handleUserSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
@@ -20,7 +26,7 @@ export default function LoginPage({ onLogin = () => {} }) {
       const res = await fetch(`${backendUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "omit", // Using token instead of cookies for this new flow
+        credentials: "omit",
         body: JSON.stringify({ email, password }),
       });
 
@@ -33,7 +39,10 @@ export default function LoginPage({ onLogin = () => {} }) {
       login(data.user, data.access_token, data.refresh_token, data.competition);
       onLogin(data.user?.role || 'admin');
       
-      if (data.competition) {
+      toast.success("Welcome back!");
+      if (redirectUrl) {
+        navigate(redirectUrl, { replace: true });
+      } else if (data.competition) {
         navigate("/dashboard");
       } else {
         navigate("/setup");
@@ -45,55 +54,96 @@ export default function LoginPage({ onLogin = () => {} }) {
     }
   };
 
+  const inputClass = "w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all";
+  const labelClass = "block text-sm font-semibold mb-1.5 text-neutral-700 dark:text-neutral-300";
+  const iconSpan = "absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-400";
+
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex flex-col items-center justify-center p-6 text-neutral-900 dark:text-neutral-100">
-      <div className="max-w-sm w-full">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1220] flex flex-col items-center justify-center p-6 text-neutral-900 dark:text-neutral-100">
+      <div className="max-w-md w-full bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-800 rounded-3xl p-8 shadow-xl relative overflow-hidden transition-all duration-300">
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input 
-              type="email" 
-              required
-              className="w-full p-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+        {/* Glow accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+
+        <div className="text-center mb-8">
+          <div className="h-12 w-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center mx-auto mb-4 border border-blue-100 dark:border-blue-900/40">
+            <Trophy className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
+            Resonance
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+            Staff & Captain Portal • Sign in to manage competitions
+          </p>
+        </div>
+
+        <form onSubmit={handleUserSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input 
-              type="password" 
-              required
-              className="w-full p-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
+            <label className={labelClass}>Email Address</label>
+            <div className="relative">
+              <span className={iconSpan}><User className="h-5 w-5" /></span>
+              <input 
+                type="email" 
+                required 
+                placeholder="name@organization.com" 
+                className={inputClass} 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                autoComplete="email" 
+              />
+            </div>
           </div>
-          
-          <div className="flex flex-col space-y-3 pt-2">
+
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Password</label>
+              <button 
+                type="button" 
+                className="text-xs text-neutral-500 hover:text-blue-600 dark:text-neutral-400 dark:hover:text-blue-400 font-medium hover:underline cursor-pointer"
+                onClick={() => navigate('/forgot-password')}
+              >
+                Forgot Password?
+              </button>
+            </div>
+            <div className="relative">
+              <span className={iconSpan}><KeyRound className="h-5 w-5" /></span>
+              <input 
+                type="password" 
+                required 
+                placeholder="••••••••" 
+                className={inputClass} 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                autoComplete="current-password" 
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col space-y-4 pt-3">
             <button 
               type="submit" 
-              disabled={loading}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
+              disabled={loading} 
+              className="w-full py-3.5 text-white font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2" 
+              style={{ backgroundColor: "#2563EB" }}
             >
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-            <button 
-              type="button"
-              className="text-sm text-blue-600 dark:text-blue-400 font-medium w-full text-center hover:underline"
-              onClick={() => navigate('/forgot-password')}
-            >
-              Forgot Password?
+              {loading ? 'Verifying Credentials...' : <><span>Sign In</span><Sparkles className="h-4 w-4" /></>}
             </button>
           </div>
         </form>
         
-        <div className="mt-8 text-center text-sm text-neutral-500">
-          <Link to="/entry" className="text-blue-600 dark:text-blue-400 hover:underline">Back to Entry Options</Link>
+        {/* Decoupled Participant Portal Link */}
+        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/40 text-center flex flex-col gap-3 items-center justify-center">
+          <button 
+            type="button" 
+            onClick={() => navigate('/participant-login')} 
+            className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold hover:underline cursor-pointer flex items-center gap-1"
+          >
+            Are you a Participant? Go to Participant Portal
+          </button>
+          
+          <Link to="/entry" className="text-xs text-neutral-400 hover:text-blue-500 hover:underline">
+            Back to Main Options
+          </Link>
         </div>
       </div>
     </div>

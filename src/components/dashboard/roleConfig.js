@@ -55,7 +55,9 @@ export const roleConfig = {
 
   participant: {
     title: "Participant",
-    actions: [],
+    actions: [
+      { label: "Event Registration", icon: UserPlus },
+    ],
     modules: { standings: true, events: true, stats: true },
   },
 

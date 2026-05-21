@@ -17,6 +17,9 @@ import InvitePage from './pages/entry/InvitePage';
 import PublicViewPage from './pages/entry/PublicViewPage';
 import ForgotPasswordPage from './pages/entry/ForgotPasswordPage';
 import ResetPasswordPage from './pages/entry/ResetPasswordPage';
+import ParticipateRedirectPage from './components/ParticipateRedirectPage';
+import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
+
 export default function App() {
   const { role, isAuthenticated, lastCompetition, loading, isAuthReady, logout } = useAuth();
   const location = useLocation();
@@ -54,6 +57,8 @@ export default function App() {
         <Route path="/view/:slug" element={<PageTransition><PublicViewPage /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
         <Route path="/reset-password/:token" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
+        <Route path="/participate/:eventId" element={<PageTransition><ParticipateRedirectPage /></PageTransition>} />
+        <Route path="/participant-login" element={<PageTransition><ParticipantLoginPage /></PageTransition>} />
 
         {/* Dashboard wrapper pattern for action-based routes */}
         <Route

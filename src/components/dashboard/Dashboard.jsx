@@ -18,6 +18,7 @@ import ManageUsers from "../actions/ManageUser";
 import ManageHouse from "../actions/ManageHouse";
 import ManageEvents from "../actions/ManageEvents";
 import Register from "../actions/QuickRegister";
+import ParticipantRegister from "../actions/ParticipantRegister";
 import ManageParticipants from "../actions/ManageParticipants";
 import ManageResult from "../actions/ManageResult";
 import SubmissionManager from "../actions/SubmissionManager";
@@ -189,9 +190,18 @@ export default function Dashboard({
                     if (activeAction === "settings") {
                       return <UserSettings />;
                     }
-                    const slugObj = cfg.actions?.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction);
-                    const MappedComponent = slugObj ? actionComponents[slugObj.label] : null;
+                    const slugObj = cfg.actions?.find((a) => {
+                      const dynamicLabel = a.label
+                        .replace('House', groupLabel || 'House')
+                        .replace('Houses', groupLabelPlural || 'Houses');
+                      return dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction;
+                    });
+                    
+                    if (slugObj?.label === "Event Registration" && safeRoleKey === "participant") {
+                      return <ParticipantRegister />;
+                    }
 
+                    const MappedComponent = slugObj ? actionComponents[slugObj.label] : null;
 
                     if (!MappedComponent) {
                       return (

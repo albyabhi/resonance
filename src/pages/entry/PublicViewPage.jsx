@@ -1,17 +1,35 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useLiveScore } from '../../hooks/useLiveScore';
+import { useAuth } from '../../components/AuthContext';
+import GatekeeperModal from '../../components/GatekeeperModal';
 
 export default function PublicViewPage() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const isKiosk = searchParams.get('display') === 'kiosk';
+  const { isAuthenticated } = useAuth();
 
   const [data, setData] = useState(null);
   const [scoreboard, setScoreboard] = useState([]);
   const [ticker, setTicker] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isGatekeeperOpen, setIsGatekeeperOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && data && !isAuthenticated && !isKiosk) {
+      const dismissed = sessionStorage.getItem(`gatekeeper_dismissed_${slug}`);
+      if (dismissed !== 'true') {
+        setIsGatekeeperOpen(true);
+      }
+    }
+  }, [loading, data, isAuthenticated, isKiosk, slug]);
+
+  const handleCloseGatekeeper = () => {
+    setIsGatekeeperOpen(false);
+    sessionStorage.setItem(`gatekeeper_dismissed_${slug}`, 'true');
+  };
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -206,6 +224,13 @@ export default function PublicViewPage() {
           </div>
         </div>
       </main>
+
+      <GatekeeperModal 
+        isOpen={isGatekeeperOpen}
+        onClose={handleCloseGatekeeper}
+        competitionName={data?.name}
+        competitionSlug={slug}
+      />
     </div>
   );
 }
