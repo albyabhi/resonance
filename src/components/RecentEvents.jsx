@@ -65,7 +65,7 @@ function RecentEvents() {
               if (!schedulesMap[s.event_id]) schedulesMap[s.event_id] = [];
               schedulesMap[s.event_id].push(s);
             });
-            const { results } = await apiCall(`/api/results/batch?event_ids=${eventIds}&status=approved`);
+            const { data: results } = await apiCall(`/api/results?event_ids=${eventIds}&status=approved`);
             (results || []).forEach((r) => {
               if (!resultsMap[r.event_id]) resultsMap[r.event_id] = [];
               resultsMap[r.event_id].push(r);
@@ -114,22 +114,22 @@ function RecentEvents() {
       const { schedules } = await apiCall(`/api/schedule?event_id=${eventId}`);
       setEventSchedules((schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0)));
 
-      const teamsResp = await apiCall(`/api/team?event_id=${eventId}`).catch(() => ({ teams: [] }));
-      const baseTeams = (teamsResp.teams || []).map((t) => ({
+      const teamsResp = await apiCall(`/api/team?event_id=${eventId}`).catch(() => ({ success: false, data: [] }));
+      const baseTeams = (teamsResp.data || []).map((t) => ({
         _id: t._id,
-        houseName: t.house_id?.name || "",
-        houseCode: t.house_id?.code || "",
+        houseName: t.group_id?.name || "",
+        houseCode: "",
         chest_no: t.chest_no,
-        members: [],
+        members: t.members || [],
       }));
 
       const withMembers = await Promise.all(
         baseTeams.map(async (t) => {
-          const { members } = await apiCall(`/api/team/${t._id}/members`).catch(() => ({ members: [] }));
+          const members = t.members;
           return { ...t, members: members || [] };
         })
       );
-      setEventTeams(withMembers);
+      setEventTeams(baseTeams);
     } catch (err) {
       setError(err.message);
     } finally {

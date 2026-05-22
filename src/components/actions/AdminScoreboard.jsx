@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
+import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -123,7 +125,9 @@ const MobileRowCard = ({
 
 const AdminScoreboard = () => {
   const { token, role } = useAuth();
-  const isAdmin = String(role || "").toLowerCase() === "admin";
+  const { competition, groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
+  const { hasPermission } = usePermission();
+  const isAdmin = hasPermission('edit_approved_score');
   const [houses, setHouses] = useState([]);
   const [houseId, setHouseId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -160,7 +164,9 @@ const AdminScoreboard = () => {
         setLoading(true);
         setError("");
         const [housesResp, eventsResp] = await Promise.all([
-          apiCall("/api/house"),
+          competition?._id
+            ? apiCall(`/api/competition/${competition._id}/groups`)
+            : apiCall("/api/house"),
           apiCall("/api/event"),
         ]);
         const hs = Array.isArray(housesResp) ? housesResp : housesResp.houses || [];
@@ -183,7 +189,7 @@ const AdminScoreboard = () => {
     try {
       setLoading(true);
       setError("");
-      const data = await apiCall(`/api/scoreboard/house/${houseId}/details`);
+      const data = await apiCall(`/api/scoreboard/group/${houseId}/details`);
       setDetails(data || { total: 0, items: [] });
 
       // Build team selectors per event for editing
@@ -192,10 +198,10 @@ const AdminScoreboard = () => {
       await Promise.all(
         evtIds.map(async (eid) => {
           try {
-            const { teams } = await apiCall(`/api/team?event_id=${eid}`);
-            grouped[eid] = (teams || []).map((t) => ({
+            const teamsResp = await apiCall(`/api/team?event_id=${eid}`);
+            grouped[eid] = (teamsResp.data || []).map((t) => ({
               _id: t._id,
-              label: `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} • ${t.house_id?.name || ""}${t.house_id?.code ? ` (${t.house_id.code})` : ""}`,
+              label: `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} • ${t.group_id?.name || ""}`,
             }));
           } catch {
             grouped[eid] = [];
@@ -240,7 +246,7 @@ const AdminScoreboard = () => {
     try {
       setLoading(true);
       setError("");
-      await apiCall(`/api/scoreboard/result/${row.result_id}`, {
+      await apiCall(`/api/results/${row.result_id}/admin-edit`, {
         method: "PATCH",
         body: JSON.stringify(updates),
       });
@@ -258,7 +264,7 @@ const AdminScoreboard = () => {
     try {
       setLoading(true);
       setError("");
-      await apiCall(`/api/scoreboard/result/${row.result_id}`, { method: "DELETE" });
+      await apiCall(`/api/results/${row.result_id}/admin-delete`, { method: "DELETE" });
       await loadDetails();
     } catch (e) {
       setError(e.message);
@@ -319,7 +325,7 @@ const AdminScoreboard = () => {
     <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
       <div className="mb-3">
         <h2 className="text-base md:text-lg font-semibold text-gray-900">Manage Scoreboard</h2>
-        <p className="text-xs md:text-sm text-gray-600">View, audit, and edit scoreboard contributions per house</p>
+        <p className="text-xs md:text-sm text-gray-600">View, audit, and edit scoreboard contributions per {groupLabel.toLowerCase()}</p>
       </div>
 
       {error && (
@@ -334,13 +340,13 @@ const AdminScoreboard = () => {
       {/* Controls */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         <div>
-          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">House</label>
+          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">{groupLabel}</label>
           <select
             value={houseId}
             onChange={(e) => setHouseId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
           >
-            <option value="">Select house</option>
+            <option value="">Select {groupLabel.toLowerCase()}</option>
             {houses.map((h) => (
               <option key={h._id} value={h._id}>
                 {h.name} {h.code ? `(${h.code})` : ""}
@@ -394,7 +400,7 @@ const AdminScoreboard = () => {
         {/* Mobile layout: cards & collapsible groups */}
         <div className="md:hidden space-y-3">
           {!houseId ? (
-            <div className="p-3 text-sm text-gray-600 border rounded-lg">Select a house to view details</div>
+            <div className="p-3 text-sm text-gray-600 border rounded-lg">Select a {groupLabel.toLowerCase()} to view details</div>
           ) : loading ? (
             <>
               <SkeletonRow />
@@ -467,7 +473,7 @@ const AdminScoreboard = () => {
                   <SkeletonRow />
                 </>
               ) : !houseId ? (
-                <tr><td className="p-3 text-sm text-gray-600" colSpan={6}>Select a house to view details</td></tr>
+                <tr><td className="p-3 text-sm text-gray-600" colSpan={6}>Select a {groupLabel.toLowerCase()} to view details</td></tr>
               ) : groupedByEvent.length === 0 ? (
                 <tr><td className="p-3 text-sm text-gray-600" colSpan={6}>No contributions</td></tr>
               ) : (

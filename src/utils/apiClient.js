@@ -98,12 +98,36 @@ export const apiJson = async (url, options = {}) => {
   const { unwrapData = false, ...fetchOptions } = options;
   const response = await apiFetch(url, fetchOptions);
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  let payload = null;
+
+  if (text && isJson) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      const error = new Error(`Invalid JSON response from API (${response.status})`);
+      error.status = response.status;
+      error.rawBody = text;
+      throw error;
+    }
+  }
 
   if (!response.ok) {
-    const error = new Error(payload?.message || payload?.error || `API error: ${response.status}`);
+    const fallback = response.statusText
+      ? `API error ${response.status}: ${response.statusText}`
+      : `API error: ${response.status}`;
+    const error = new Error(payload?.message || payload?.error || fallback);
     error.status = response.status;
     error.payload = payload;
+    if (!isJson) error.rawBody = text;
+    throw error;
+  }
+
+  if (text && !isJson) {
+    const error = new Error(`Expected JSON response but received ${contentType || "unknown content type"}`);
+    error.status = response.status;
+    error.rawBody = text;
     throw error;
   }
 

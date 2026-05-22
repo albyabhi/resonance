@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const SubmissionManager = () => {
   const { token, role, user } = useAuth();
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -74,10 +76,11 @@ const SubmissionManager = () => {
       params.append("event_id", eventId);
       params.append("round_no", roundNo);
       if (statusFilter) params.append("status", statusFilter);
-      const { results } = await apiCall(`/api/results?${params.toString()}`);
+      const response = await apiCall(`/api/results?${params.toString()}`);
+      const results = response.results || response.data || [];
       const rows = (results || []).map((r) => {
         const team = r.team_id || {};
-        const house = team.house_id || {};
+        const house = team.group_id || {};
         return {
           _id: r._id,
           position: r.position,
@@ -106,7 +109,7 @@ const SubmissionManager = () => {
 
   const isOwnPending = (row) =>
     row.status === "pending" &&
-    role === "student_coordinator" &&
+    hasPermission("submit_score") &&
     !!user?.id &&
     String(row.submittedById) === String(user.id);
 

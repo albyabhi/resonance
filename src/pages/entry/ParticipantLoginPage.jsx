@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../components/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -13,7 +13,6 @@ import {
   UserPlus, 
   LogIn, 
   Trophy, 
-  ChevronRight, 
   ArrowRight,
   Layers,
   Calendar
@@ -33,6 +32,8 @@ export default function ParticipantLoginPage() {
   // Page UI state
   const [participantMode, setParticipantMode] = useState("login"); // "login" | "signup"
   const [loading, setLoading] = useState(false);
+  const [selectionToken, setSelectionToken] = useState("");
+  const [competitionOptions, setCompetitionOptions] = useState([]);
   
   // Input fields
   const [competitionSlug, setCompetitionSlug] = useState(initialSlug);
@@ -48,8 +49,29 @@ export default function ParticipantLoginPage() {
   const [matchedCompetitionName, setMatchedCompetitionName] = useState("");
   const [eventData, setEventData] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(false);
+  const [compType, setCompType] = useState("");
+  const [groupLabel, setGroupLabel] = useState("Group");
 
   const isSlugLocked = !!eventIdFromUrl || !!initialSlug;
+
+  const resolvedLabel = useMemo(() => {
+    const typeLower = compType?.toLowerCase();
+    if (typeLower === "college_departments" || typeLower === "inter_department" || typeLower === "inter-department") {
+      return "Department";
+    }
+    return groupLabel || "Group";
+  }, [compType, groupLabel]);
+
+  const finishParticipantLogin = (data, successMessage) => {
+    login(data.user, data.access_token, data.refresh_token, data.competition);
+    toast.success(successMessage || `Welcome back, ${data.user?.name}!`);
+    
+    if (eventIdFromUrl) {
+      navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  };
 
   // 1. If user is already logged in, redirect immediately
   useEffect(() => {
@@ -82,6 +104,8 @@ export default function ParticipantLoginPage() {
         if (data.competition) {
           setCompetitionSlug(data.competition.slug);
           setMatchedCompetitionName(data.competition.name);
+          if (data.competition.type) setCompType(data.competition.type);
+          if (data.competition.group_label) setGroupLabel(data.competition.group_label);
         }
         if (data.branding) {
           setBranding(data.branding);
@@ -108,6 +132,8 @@ export default function ParticipantLoginPage() {
         setBranding(null);
         setMatchedCompetitionName("");
         setGroups([]);
+        setCompType("");
+        setGroupLabel("Group");
       }
       return;
     }
@@ -124,16 +150,22 @@ export default function ParticipantLoginPage() {
           if (data.branding) setBranding(data.branding);
           if (data.name) setMatchedCompetitionName(data.name);
           if (data.groups) setGroups(data.groups);
+          if (data.type) setCompType(data.type);
+          if (data.group_label) setGroupLabel(data.group_label);
         } else {
           setBranding(null);
           setMatchedCompetitionName("");
           setGroups([]);
+          setCompType("");
+          setGroupLabel("Group");
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
           setBranding(null);
           setMatchedCompetitionName("");
           setGroups([]);
+          setCompType("");
+          setGroupLabel("Group");
         }
       }
     }, 350);
@@ -146,10 +178,6 @@ export default function ParticipantLoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!competitionSlug.trim()) {
-      toast.error("Please enter the Competition Slug");
-      return;
-    }
     if (!pEmail.trim() || !pPassword.trim()) {
       toast.error("Please enter your email and password");
       return;
@@ -162,22 +190,56 @@ export default function ParticipantLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: pEmail.trim(),
-          password: pPassword.trim(),
-          competition_slug: competitionSlug.trim()
+          password: pPassword.trim()
         }),
       });
 
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Login failed");
 
-      login(data.user, data.access_token, data.refresh_token, data.competition);
-      toast.success(`Welcome back, ${data.user?.name}!`);
-      
-      if (eventIdFromUrl) {
-        navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
+      if (data?.requires_competition_selection) {
+        const eventCompetitionId = eventData?.competition?._id || eventData?.competition?.id;
+        const eventCompetitionSlug = eventData?.competition?.slug;
+        const sortedOptions = [...(data.competitions || [])].sort((a, b) => {
+          const aMatch = a._id === eventCompetitionId || a.id === eventCompetitionId || a.slug === eventCompetitionSlug;
+          const bMatch = b._id === eventCompetitionId || b.id === eventCompetitionId || b.slug === eventCompetitionSlug;
+          return Number(bMatch) - Number(aMatch);
+        });
+        setSelectionToken(data.selection_token || "");
+        setCompetitionOptions(sortedOptions);
+        toast.success("Select the competition you want to enter");
+        return;
       }
+
+      finishParticipantLogin(data, `Welcome back, ${data.user?.name}!`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompetitionSelection = async (competitionId) => {
+    if (!selectionToken || !competitionId) {
+      toast.error("Please select a competition");
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${backendUrl}/api/auth/participant-select-competition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selection_token: selectionToken,
+          competition_id: competitionId
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Competition selection failed");
+
+      finishParticipantLogin(data, `Entered ${data.competition?.name || "competition"}`);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -214,14 +276,7 @@ export default function ParticipantLoginPage() {
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || "Signup failed");
 
-      login(data.user, data.access_token, data.refresh_token, data.competition);
-      toast.success(`Welcome, ${data.user?.name}! Account created.`);
-      
-      if (eventIdFromUrl) {
-        navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
+      finishParticipantLogin(data, `Welcome, ${data.user?.name}! Account created.`);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -318,7 +373,11 @@ export default function ParticipantLoginPage() {
                     : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-250"
                 }`}
                 style={participantMode === "login" ? { color: primaryColor } : {}}
-                onClick={() => setParticipantMode("login")}
+                onClick={() => {
+                  setParticipantMode("login");
+                  setSelectionToken("");
+                  setCompetitionOptions([]);
+                }}
               >
                 <LogIn className="h-3.5 w-3.5" />
                 Log In
@@ -331,7 +390,11 @@ export default function ParticipantLoginPage() {
                     : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-250"
                 }`}
                 style={participantMode === "signup" ? { color: primaryColor } : {}}
-                onClick={() => setParticipantMode("signup")}
+                onClick={() => {
+                  setParticipantMode("signup");
+                  setSelectionToken("");
+                  setCompetitionOptions([]);
+                }}
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Sign Up
@@ -341,7 +404,7 @@ export default function ParticipantLoginPage() {
             {/* Inputs & Forms */}
             <div className="space-y-4">
               
-              {/* Competition URL Slug (only enabled/visible if not locked) */}
+              {participantMode === "signup" && (
               <div>
                 <label className={labelClass}>Competition URL Slug</label>
                 <div className="relative">
@@ -370,9 +433,67 @@ export default function ParticipantLoginPage() {
                   </p>
                 )}
               </div>
+              )}
 
               {participantMode === "login" ? (
-                /* Login Form */
+                competitionOptions.length > 0 ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-900 dark:text-white">Select Competition</h2>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        Your account is registered in more than one competition.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {competitionOptions.map((competition) => {
+                        const eventMatch = eventData?.competition && (
+                          competition._id === eventData.competition._id ||
+                          competition.id === eventData.competition._id ||
+                          competition.slug === eventData.competition.slug
+                        );
+                        return (
+                          <button
+                            key={competition._id || competition.id}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleCompetitionSelection(competition._id || competition.id)}
+                            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 hover:border-indigo-300 dark:hover:border-indigo-700 text-left transition-all disabled:opacity-60"
+                          >
+                            {competition.logoUrl ? (
+                              <img src={competition.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800" />
+                            ) : (
+                              <span className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center shrink-0">
+                                <Trophy className="h-5 w-5" style={{ color: primaryColor }} />
+                              </span>
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{competition.name}</span>
+                              <span className="block text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                                {competition.slug}{competition.year ? ` • ${competition.year}` : ""}
+                              </span>
+                              {eventMatch && (
+                                <span className="mt-1 inline-flex text-[10px] font-bold uppercase tracking-wide" style={{ color: primaryColor }}>
+                                  Event match
+                                </span>
+                              )}
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-neutral-400 shrink-0" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectionToken("");
+                        setCompetitionOptions([]);
+                      }}
+                      className="w-full text-xs font-bold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                    >
+                      Back to login
+                    </button>
+                  </div>
+                ) : (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className={labelClass}>Email Address</label>
@@ -415,6 +536,7 @@ export default function ParticipantLoginPage() {
                     {loading ? 'Authenticating...' : <><span>Log In & Enter</span><ArrowRight className="h-4 w-4" /></>}
                   </button>
                 </form>
+                )
               ) : (
                 /* Signup Form */
                 <form onSubmit={handleSignup} className="space-y-3.5">
@@ -482,7 +604,7 @@ export default function ParticipantLoginPage() {
 
                   <div>
                     <label className={labelClass}>
-                      {!competitionSlug.trim() ? "Group (enter slug first)" : "Select Group"}
+                      {!competitionSlug.trim() ? `${resolvedLabel} (enter slug first)` : `Select ${resolvedLabel}`}
                     </label>
                     <select
                       required
@@ -492,7 +614,7 @@ export default function ParticipantLoginPage() {
                       onChange={(e) => setPGroupId(e.target.value)}
                     >
                       <option value="">
-                        {groups.length === 0 ? "Enter valid slug above first" : "Select your group"}
+                        {groups.length === 0 ? "Enter valid slug above first" : `Select your ${resolvedLabel.toLowerCase()}`}
                       </option>
                       {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
                     </select>
@@ -513,8 +635,16 @@ export default function ParticipantLoginPage() {
             {/* Form footer text toggler */}
             <p className="text-xs text-center text-neutral-400 dark:text-neutral-500 mt-5">
               {participantMode === "login" 
-                ? <>Don't have an account? <button type="button" onClick={() => setParticipantMode("signup")} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Sign up</button></>
-                : <>Already registered? <button type="button" onClick={() => setParticipantMode("login")} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Log in</button></>
+                ? <>Don't have an account? <button type="button" onClick={() => {
+                  setParticipantMode("signup");
+                  setSelectionToken("");
+                  setCompetitionOptions([]);
+                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Sign up</button></>
+                : <>Already registered? <button type="button" onClick={() => {
+                  setParticipantMode("login");
+                  setSelectionToken("");
+                  setCompetitionOptions([]);
+                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Log in</button></>
               }
             </p>
           </>

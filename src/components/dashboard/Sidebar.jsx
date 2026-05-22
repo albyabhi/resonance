@@ -15,7 +15,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
-import { roleConfig, normalizeRole } from "./roleConfig";
+import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
+import usePermission from "../../hooks/usePermission";
 
 const sectionNav = [
   { id: "home", label: "Dashboard", icon: LayoutDashboard },
@@ -80,6 +81,7 @@ export default function Sidebar({
 }) {
   const { user, role, isAuthenticated, logout } = useAuth();
   const { groupLabel, groupLabelPlural } = useCompetition();
+  const { hasPermission } = usePermission();
   const navigate = useNavigate();
 
   const roleKey = normalizeRole(role);
@@ -96,13 +98,16 @@ export default function Sidebar({
     [cfg.modules]
   );
 
+  // Filter actions through the permission system
   const visibleActions = useMemo(() => {
-    const actions = cfg.actions ?? [];
-    return actions.map(action => ({
-      ...action,
-      label: action.label.replace('House', groupLabel).replace('Houses', groupLabelPlural)
-    }));
-  }, [cfg.actions, groupLabel, groupLabelPlural]);
+    const actions = getUserActions(roleKey, hasPermission);
+    return actions
+      .filter(action => hasPermission(action.permissionKey))
+      .map(action => ({
+        ...action,
+        label: action.label.replace('House', groupLabel).replace('Houses', groupLabelPlural)
+      }));
+  }, [roleKey, groupLabel, groupLabelPlural, hasPermission]);
 
   useEffect(() => {
     if (!open) return;

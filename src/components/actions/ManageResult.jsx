@@ -2,11 +2,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
+import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const ManageResult = () => {
+  const { hasPermission } = usePermission();
   const { token, role, user } = useAuth(); // expects user.house?._id for student_coordinator
+  const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -95,26 +99,26 @@ const ManageResult = () => {
         try {
           tResp = await apiCall(`/api/team?event_id=${eventId}`);
         } catch {
-          tResp = { teams: [] };
+          tResp = { success: false, data: [] };
         }
         if (cancelled) return;
-        const baseTeams = (tResp.teams || []).map((t) => ({
+        const baseTeams = (tResp.data || []).map((t) => ({
           _id: t._id,
           chest_no: t.chest_no || "",
-          houseId: t.house_id?._id || t.house_id || "",
-          houseName: t.house_id?.name || "",
-          houseCode: t.house_id?.code || "",
-          members: undefined,
+          houseId: t.group_id?._id || t.group_id || "",
+          houseName: t.group_id?.name || "",
+          houseCode: "",
+          members: t.members || [],
         }));
         const scoped =
-          role === "student_coordinator" && coordinatorHouseId
+          hasPermission("submit_score") && role !== "admin" && coordinatorHouseId
             ? baseTeams.filter((t) => String(t.houseId) === String(coordinatorHouseId))
             : baseTeams;
 
         const withMembers = await Promise.all(
           scoped.map(async (t) => {
             try {
-              const { members } = await apiCall(`/api/team/${t._id}/members`);
+              const members = t.members;
               return { ...t, members: members || [] };
             } catch {
               return { ...t, members: [] };
@@ -122,7 +126,7 @@ const ManageResult = () => {
           })
         );
         if (cancelled) return;
-        setTeams(withMembers);
+        setTeams(scoped);
         setTeamsLoaded(true);
       } catch (err) {
         if (!cancelled) setError(err.message);
@@ -138,7 +142,8 @@ const ManageResult = () => {
 
   // Load server results snapshot for event+round and lock those positions
   const loadResultsForRound = async (evtId, rnd) => {
-    const { results } = await apiCall(`/api/results?event_id=${evtId}&round_no=${rnd}`);
+    const response = await apiCall(`/api/results?event_id=${evtId}&round_no=${rnd}`);
+    const results = response.results || response.data || [];
     setServerResults(results || []);
     const serverMap = {};
     const locks = new Set();
@@ -243,7 +248,7 @@ const ManageResult = () => {
         round_no: parseInt(roundNo, 10),
         placements: selected,
       };
-      await apiCall("/api/results/submit", {
+      await apiCall("/api/results", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -272,7 +277,7 @@ const ManageResult = () => {
         </p>
         {role === "student_coordinator" && coordinatorHouseId && (
           <p className="text-xs text-gray-500 mt-1">
-            House restricted: only teams from assigned house are visible
+            {groupLabel} restricted: only teams from assigned {groupLabel.toLowerCase()} are visible
           </p>
         )}
       </div>
@@ -324,7 +329,7 @@ const ManageResult = () => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Chest no., house, participant name/class"
+            placeholder={`Chest no., ${groupLabel.toLowerCase()}, participant name/class`}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>

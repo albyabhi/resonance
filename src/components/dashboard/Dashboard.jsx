@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { roleConfig, normalizeRole } from "./roleConfig";
+import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
 import Sidebar from "./Sidebar";
-import HouseStandings from "../HouseStandings";
 import RecentEvents from "../RecentEvents";
 import CaptainsDirectory from "../CaptainsDirectory";
 import { useAuth } from "../AuthContext";
@@ -13,11 +12,11 @@ import { useCompetition } from "../../context/CompetitionContext";
 import useDashboardData from "../../hooks/useDashboardData";
 import { apiFetch } from "../../utils/apiClient";
 import OnboardingChecklist from "./OnboardingChecklist";
+import usePermission from "../../hooks/usePermission";
 
 import ManageUsers from "../actions/ManageUser";
 import ManageHouse from "../actions/ManageHouse";
 import ManageEvents from "../actions/ManageEvents";
-import Register from "../actions/QuickRegister";
 import ParticipantRegister from "../actions/ParticipantRegister";
 import ManageParticipants from "../actions/ManageParticipants";
 import ManageResult from "../actions/ManageResult";
@@ -29,6 +28,7 @@ import ActivityLogs from "../actions/ActivityLogs";
 import CaptainMyDetails from "../actions/CaptainMyDetails";
 import ManageCompetition from "../actions/ManageCompetition";
 import UserSettings from "../actions/UserSettings";
+import ExportReport from "../actions/ExportReport";
 
 
 const actionComponents = {
@@ -40,14 +40,15 @@ const actionComponents = {
   "System Override": AdminScoreboard,
   "Activity Logs": ActivityLogs,
   "My Teams": ManageParticipants,
-  "My Events": Register,
-  "Event Registration": Register,
+  "My Events": ParticipantRegister,
+  "Event Registration": ParticipantRegister,
   "My Details": CaptainMyDetails,
   "Pending submissions": ManageResult,
   "My submissions": SubmissionManager,
   "Pending approvals": PendingResult,
   "Manage Group Logo": EditHouse,
   "Manage House Logo": EditHouse,
+  "Export Report": ExportReport,
 };
 
 export default function Dashboard({
@@ -58,8 +59,12 @@ export default function Dashboard({
 }) {
   const { user, role: contextRole, token, isAuthReady } = useAuth();
   const { competition, groupLabel, groupLabelPlural } = useCompetition();
+  const { hasPermission } = usePermission();
   const safeRoleKey = normalizeRole(contextRole);
   const cfg = roleConfig[safeRoleKey] ?? roleConfig.guest;
+  const userActions = useMemo(() => {
+    return getUserActions(safeRoleKey, hasPermission);
+  }, [safeRoleKey, hasPermission]);
 
   const standingsRef = useRef(null);
   const eventsRef = useRef(null);
@@ -144,7 +149,7 @@ export default function Dashboard({
         onClose={handleCloseSidebar}
         sidebarOpen={sidebarOpen}
         onActionClick={handleActionClick}
-        activeAction={activeAction === "settings" ? "Settings" : (cfg.actions?.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || null)}
+        activeAction={activeAction === "settings" ? "Settings" : (userActions.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || null)}
 
         onSectionClick={handleSectionClick}
         activeSection={activeAction ? null : "home"}
@@ -190,13 +195,23 @@ export default function Dashboard({
                     if (activeAction === "settings") {
                       return <UserSettings />;
                     }
-                    const slugObj = cfg.actions?.find((a) => {
+                    const slugObj = userActions.find((a) => {
                       const dynamicLabel = a.label
                         .replace('House', groupLabel || 'House')
                         .replace('Houses', groupLabelPlural || 'Houses');
                       return dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction;
                     });
                     
+                    // Permission guard: block if user lacks the permission for this action
+                    if (slugObj?.permissionKey && !hasPermission(slugObj.permissionKey)) {
+                      return (
+                        <div className="card-premium p-10 text-center">
+                          <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Access Denied</h3>
+                          <p className="text-gray-500 dark:text-gray-400">You do not have permission to access this section.</p>
+                        </div>
+                      );
+                    }
+
                     if (slugObj?.label === "Event Registration" && safeRoleKey === "participant") {
                       return <ParticipantRegister />;
                     }
@@ -232,13 +247,8 @@ export default function Dashboard({
                   <DashboardVisuals />
 
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                    {cfg.modules.standings && (
-                      <div ref={standingsRef} className="max-w-full overflow-hidden lg:col-span-8">
-                        <HouseStandings />
-                      </div>
-                    )}
                     {cfg.modules.events && (
-                      <div ref={eventsRef} className="max-w-full overflow-hidden lg:col-span-4">
+                      <div ref={eventsRef} className="max-w-full overflow-hidden lg:col-span-12">
                         <RecentEvents />
                       </div>
                     )}

@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
+import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const PendingResult = () => {
   const { token, role } = useAuth();
+  const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -58,33 +62,38 @@ const PendingResult = () => {
     try {
       tResp = await apiCall(`/api/team?event_id=${evtId}`);
     } catch {
-      tResp = { teams: [] };
+      tResp = { success: false, data: [] };
     }
 
-    const mapped = (tResp.teams || []).map((t) => ({
+    const mapped = (tResp.data || []).map((t) => ({
       _id: t._id,
       chest_no: t.chest_no || "",
-      houseName: t.house_id?.name || "",
-      houseCode: t.house_id?.code || "",
+      houseName: t.group_id?.name || "",
+      houseCode: "",
+      members: t.members || [],
     }));
     setTeams(mapped);
-    const memberMap = await fetchMembersForTeams(mapped);
+    const memberMap = {};
+    for (const t of mapped) {
+      memberMap[t._id] = t.members || [];
+    }
     setTeamMembersMap(memberMap);
   };
 
   const loadPending = async () => {
     if (!eventId || !roundNo) return;
-    const { results } = await apiCall(`/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`);
+    const response = await apiCall(`/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`);
+    const results = response.results || response.data || [];
     const rows = (results || []).map((r) => {
       const team = r.team_id || {};
-      const house = team.house_id || {};
+      const house = team.group_id || {};
       return {
         _id: r._id,
         position: r.position,
         teamId: team._id || team,
         chest: team.chest_no || null,
         houseName: house.name || "",
-        houseCode: house.code || "",
+        houseCode: "",
         submittedBy: r.submitted_by?.name || "",
       };
     });
@@ -139,7 +148,7 @@ const PendingResult = () => {
     setError("");
     try {
       await apiCall(`/api/results/${rowId}`, {
-        method: "PUT",
+        method: "PATCH",
         body: JSON.stringify({ team_id: newTeamId }),
       });
       await loadPending();
@@ -170,9 +179,9 @@ const PendingResult = () => {
     setLoading(true);
     setError("");
     try {
-      await apiCall("/api/results/approve-one", {
-        method: "POST",
-        body: JSON.stringify({ result_id: row._id }),
+      await apiCall(`/api/results/${row._id}/approve`, {
+        method: "PATCH",
+        body: undefined,
       });
       await loadPending();
     } catch (e) {
@@ -188,9 +197,9 @@ const PendingResult = () => {
     setLoading(true);
     setError("");
     try {
-      await apiCall("/api/results/reject-one", {
-        method: "POST",
-        body: JSON.stringify({ result_id: row._id }),
+      await apiCall(`/api/results/${row._id}/reject`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason: "Rejected by faculty" }),
       });
       await loadPending();
     } catch (e) {
@@ -238,14 +247,14 @@ const PendingResult = () => {
     }
   };
 
-  const isFaculty = ["faculty", "faculty_coordinator"].includes(String(role || "").toLowerCase());
+  const canApprove = hasPermission('approve_score');
 
   return (
     <div className="theme-card p-4">
       <div className="mb-3">
         <h2 className="text-lg font-semibold theme-text-primary">Faculty Approvals</h2>
         <p className="text-sm theme-text-secondary">Approve, reject, or correct pending placements.</p>
-        {!isFaculty && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Access requires Faculty role. Current role: {String(role || "")}</p>}
+        {!canApprove && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Access requires Faculty role. Current role: {String(role || "")}</p>}
       </div>
 
       {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
@@ -290,7 +299,7 @@ const PendingResult = () => {
             <tr>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Position</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Team/Participant</th>
-              <th className="p-3 text-left text-xs uppercase theme-text-muted">House</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">{groupLabel}</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Submitted By</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
             </tr>
@@ -309,8 +318,8 @@ const PendingResult = () => {
                   <td className="p-3 theme-text-primary">{row.submittedBy || "-"}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => approveOne(row)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20" disabled={!isFaculty}>Approve</button>
-                      <button type="button" onClick={() => rejectOne(row)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20" disabled={!isFaculty}>Reject</button>
+                      <button type="button" onClick={() => approveOne(row)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20" disabled={!canApprove}>Approve</button>
+                      <button type="button" onClick={() => rejectOne(row)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20" disabled={!canApprove}>Reject</button>
                     </div>
                   </td>
                 </tr>
@@ -320,8 +329,8 @@ const PendingResult = () => {
         </table>
 
         <div className="flex items-center gap-2 px-3 py-2">
-          <button type="button" onClick={approveAll} className="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50" disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}>Approve All</button>
-          <button type="button" onClick={rejectAll} className="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50" disabled={!isFaculty || !eventId || !roundNo || pending.length === 0}>Reject All</button>
+          <button type="button" onClick={approveAll} className="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo || pending.length === 0}>Approve All</button>
+          <button type="button" onClick={rejectAll} className="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo || pending.length === 0}>Reject All</button>
         </div>
 
         <p className="px-3 pb-3 text-xs theme-text-secondary">Approving applies points and updates standings on next refresh.</p>
