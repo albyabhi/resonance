@@ -8,7 +8,6 @@ import CaptainMyDetails from './components/actions/CaptainMyDetails';
 import { useAuth } from './components/AuthContext';
 import PageTransition from './components/PageTransition';
 import WelcomePage from './pages/WelcomePage';
-import EntryPage from './pages/entry/EntryPage';
 import SignupPage from './pages/entry/SignupPage';
 import SetupPage from './pages/entry/SetupPage';
 import JoinPage from './pages/entry/JoinPage';
@@ -19,6 +18,7 @@ import ResetPasswordPage from './pages/entry/ResetPasswordPage';
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
+import WorkspacesPage from './pages/entry/WorkspacesPage';
 
 export default function App() {
   const { role, isAuthenticated, lastCompetition, loading, isAuthReady, logout } = useAuth();
@@ -48,9 +48,17 @@ export default function App() {
         } />
 
         {/* Entry Flows */}
-        <Route path="/entry" element={<PageTransition><EntryPage /></PageTransition>} />
-        <Route path="/signup" element={<PageTransition><SignupPage /></PageTransition>} />
+        <Route path="/signup" element={
+          <PageTransition>
+            {isAuthenticated ? <Navigate to="/setup" replace /> : <SignupPage />}
+          </PageTransition>
+        } />
         <Route path="/setup" element={<PageTransition><SetupPage /></PageTransition>} />
+        <Route path="/workspaces" element={
+          <PageTransition>
+            {isAuthenticated ? <WorkspacesPage /> : <Navigate to="/login" replace />}
+          </PageTransition>
+        } />
         <Route path="/join" element={<PageTransition><JoinPage /></PageTransition>} />
         <Route path="/invite/:token" element={<PageTransition><InvitePage /></PageTransition>} />
         <Route path="/view/:slug" element={<PageTransition><PublicViewPage /></PageTransition>} />
@@ -103,13 +111,12 @@ export default function App() {
           }
         />
 
-        {/* Login only when not authenticated */}
         <Route
           path="/login"
           element={
             <PageTransition>
               {isAuthenticated ? (
-                lastCompetition ? <Navigate to="/dashboard" replace /> : <Navigate to="/setup" replace />
+                <Navigate to="/" replace />
               ) : (
                 <LoginPage />
               )}

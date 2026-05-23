@@ -196,19 +196,19 @@ const ManageUser = () => {
         <div className="space-y-2">
             <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-heading">
+                <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-heading">
                     User Management
                 </h2>
             </div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">Manage users</p>
+            <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">Manage users</p>
         </div>
         
-        <div className="flex p-1 rounded-2xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+        <div className="flex p-1 rounded-2xl border w-full md:w-auto overflow-x-auto shrink-0" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
           {["manage", "add"].map(t => (
             <button
               key={t}
               onClick={() => { setActiveTab(t); if(t==='add') setEditingUserId(null); }}
-              className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'text-indigo-600 dark:text-indigo-400 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 md:flex-initial px-3 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap ${activeTab === t ? 'text-indigo-600 dark:text-indigo-400 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
               style={activeTab === t ? { backgroundColor: 'var(--card)' } : {}}
             >
               {t === 'manage' ? 'Directory' : editingUserId ? 'Edit Node' : 'Initialize Node'}
@@ -226,8 +226,8 @@ const ManageUser = () => {
 
       {activeTab === "manage" ? (
         <FadeIn className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-             <div className="relative group w-full md:w-96">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center items-start justify-between">
+             <div className="relative group w-full sm:w-80 md:w-96">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                 <input 
                     type="text" 
@@ -238,11 +238,12 @@ const ManageUser = () => {
                     style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 />
              </div>
-            <div className="text-xs font-black text-slate-400 underline decoration-indigo-500/20 underline-offset-8 decoration-2">{filteredUsers.length} USERS</div>
+            <div className="text-xs font-black text-slate-400 underline decoration-indigo-500/20 underline-offset-8 decoration-2 pl-1 sm:pl-0">{filteredUsers.length} USERS</div>
           </div>
 
           <div className="card-premium overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-100 dark:border-white/10 uppercase tracking-[0.2em] text-[9px] font-black text-slate-500">
@@ -304,7 +305,7 @@ const ManageUser = () => {
                                       setActiveTab("add"); 
                                     }}
                                     className="p-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 dark:bg-white/5 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400 transition-all active:scale-95 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30"
-                                pug>
+                                >
                                     <Edit3 className="w-4 h-4" />
                                 </button>
                                 <button 
@@ -320,18 +321,84 @@ const ManageUser = () => {
                   })}
                 </tbody>
               </table>
-                {loading && <div className="p-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 animate-pulse">Loading users...</div>}
-                {!loading && filteredUsers.length === 0 && <div className="p-20 text-center space-y-4">
-                  <Filter className="w-10 h-10 text-slate-200 dark:text-white/5 mx-auto" />
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">No users found</p>
-              </div>}
             </div>
+
+            {/* Mobile Cards View */}
+            <div className="block md:hidden divide-y divide-slate-100 dark:divide-white/5">
+              {filteredUsers.map(user => {
+                const cfg = roleConfig(user.role);
+                return (
+                  <div key={user._id} className="p-5 space-y-4 hover:bg-slate-50/30 dark:hover:bg-white/[0.01] transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 shrink-0 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+                          {user.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user.name}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">@{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button 
+                          onClick={() => { 
+                            setFormData({ 
+                              name: user.name, 
+                              username: user.username || user.email, 
+                              password: "", 
+                              role: user.role, 
+                              house: user.house?._id || "" 
+                            }); 
+                            setCustomPermissions(user.permissions || user.custom_permissions || {});
+                            setPermissionScopes(user.permission_scopes || {});
+                            setSelectedTemplateId(user.role_template_id || "");
+                            setEditingUserId(user._id); 
+                            setActiveTab("add"); 
+                          }}
+                          className="p-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 dark:bg-white/5 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-400 transition-all active:scale-95 border border-transparent"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => { if(window.confirm('Terminate Node Presence?')) apiCall(`/api/users/${user._id}`, { method: 'DELETE' }).then(fetchUsers); }}
+                          className="p-2 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 transition-all active:scale-95 border border-transparent"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border ${cfg.classes}`}>
+                        {cfg.label}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+                        <House className="w-3.5 h-3.5 text-slate-300 dark:text-slate-500" />
+                        <span className="capitalize">{user.house?.name || "Global"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                        <Calendar className="w-3.5 h-3.5 text-slate-300 dark:text-slate-500" />
+                        <span>{new Date(user.createdAt || user.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {loading && <div className="p-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 animate-pulse">Loading users...</div>}
+            {!loading && filteredUsers.length === 0 && (
+              <div className="p-20 text-center space-y-4">
+                <Filter className="w-10 h-10 text-slate-200 dark:text-white/5 mx-auto" />
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">No users found</p>
+              </div>
+            )}
           </div>
         </FadeIn>
       ) : (
         <FadeIn className="max-w-2xl mx-auto">
-          <div className="card-premium p-10 space-y-8 relative overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-            <div className="absolute top-0 right-0 p-8 p opacity-5">
+          <div className="card-premium p-5 sm:p-10 space-y-8 relative overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                 <UserPlus className="w-32 h-32 text-indigo-500" />
             </div>
             

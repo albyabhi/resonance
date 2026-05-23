@@ -68,7 +68,7 @@ export default function ParticipantLoginPage() {
     if (eventIdFromUrl) {
       navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
     } else {
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     }
   };
 
@@ -79,7 +79,7 @@ export default function ParticipantLoginPage() {
         if (eventIdFromUrl) {
           navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
         } else {
-          navigate("/dashboard", { replace: true });
+          navigate("/", { replace: true });
         }
       } else {
         toast("You are logged in as Staff. Redirecting to Staff Panel.", { icon: "ℹ️" });

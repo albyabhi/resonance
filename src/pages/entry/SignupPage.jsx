@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import toast from 'react-hot-toast';
 import { User, Mail, KeyRound, ArrowRight, Trophy } from 'lucide-react';
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth(); // using the existing auth context contextually
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -118,7 +119,7 @@ export default function SignupPage() {
         <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/40 text-center">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline">
+            <Link to={`/login${location.search}`} className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline">
               Sign In
             </Link>
           </p>

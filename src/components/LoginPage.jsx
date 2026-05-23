@@ -17,6 +17,7 @@ export default function LoginPage({ onLogin = () => {} }) {
   // Read redirect parameter from URL
   const queryParams = new URLSearchParams(location.search);
   const redirectUrl = queryParams.get("redirect");
+  const intent = queryParams.get("intent");
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
@@ -40,12 +41,13 @@ export default function LoginPage({ onLogin = () => {} }) {
       onLogin(data.user?.role || 'admin');
       
       toast.success("Welcome back!");
+      
+      const isUserAdmin = data.user?.role === 'admin' || data.user?.membership_role === 'admin';
+
       if (redirectUrl) {
         navigate(redirectUrl, { replace: true });
-      } else if (data.competition) {
-        navigate("/dashboard");
       } else {
-        navigate("/setup");
+        navigate("/", { replace: true });
       }
     } catch (err) {
       toast.error(err.message);
@@ -141,7 +143,7 @@ export default function LoginPage({ onLogin = () => {} }) {
             Are you a Participant? Go to Participant Portal
           </button>
           
-          <Link to="/entry" className="text-xs text-neutral-400 hover:text-blue-500 hover:underline">
+          <Link to="/" className="text-xs text-neutral-400 hover:text-blue-500 hover:underline">
             Back to Main Options
           </Link>
         </div>

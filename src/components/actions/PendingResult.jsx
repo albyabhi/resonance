@@ -252,7 +252,7 @@ const PendingResult = () => {
   return (
     <div className="theme-card p-4">
       <div className="mb-3">
-        <h2 className="text-lg font-semibold theme-text-primary">Faculty Approvals</h2>
+        <h2 className="text-lg font-semibold theme-text-primary">Approvals</h2>
         <p className="text-sm theme-text-secondary">Approve, reject, or correct pending placements.</p>
         {!canApprove && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Access requires Faculty role. Current role: {String(role || "")}</p>}
       </div>

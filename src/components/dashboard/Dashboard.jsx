@@ -37,13 +37,13 @@ const actionComponents = {
   "Manage Houses": ManageHouse,
   "Manage Events": ManageEvents,
   "Manage Competition": ManageCompetition,
-  "System Override": AdminScoreboard,
+  "Scoreboard Contributions": AdminScoreboard,
   "Activity Logs": ActivityLogs,
   "My Teams": ManageParticipants,
   "My Events": ParticipantRegister,
   "Event Registration": ParticipantRegister,
   "My Details": CaptainMyDetails,
-  "Pending submissions": ManageResult,
+  "Submit Results": ManageResult,
   "My submissions": SubmissionManager,
   "Pending approvals": PendingResult,
   "Manage Group Logo": EditHouse,
@@ -233,7 +233,7 @@ export default function Dashboard({
                     }
 
                     return (
-                      <div className="card-premium p-6 sm:p-8">
+                      <div className="card-premium p-4 sm:p-6 md:p-8">
                         <MappedComponent />
                       </div>
                     );

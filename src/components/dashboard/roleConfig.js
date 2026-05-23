@@ -29,7 +29,7 @@ export const roleConfig = {
       { label: "Manage Houses", icon: UserPlus, permissionKey: "manage_groups" },
       { label: "Manage Events", icon: Calendar, permissionKey: "create_event" },
       { label: "Manage Competition", icon: Settings, permissionKey: "edit_competition" },
-      { label: "System Override", icon: CheckCircle, permissionKey: "edit_approved_score" },
+      { label: "Scoreboard Contributions", icon: CheckCircle, permissionKey: "edit_approved_score" },
       { label: "Activity Logs", icon: Bell, permissionKey: "view_activity_logs" },
       { label: "Export Report", icon: FileDown, permissionKey: "export_report" },
     ],
@@ -51,7 +51,7 @@ export const roleConfig = {
   student_coordinator: {
     title: "Student Coordinator",
     actions: [
-      { label: "Pending submissions", icon: ClipboardList, permissionKey: "submit_score" },
+      { label: "Submit Results", icon: ClipboardList, permissionKey: "submit_score" },
       { label: "My submissions", icon: CheckCircle, permissionKey: "submit_score" },
       { label: "Manage Competition", icon: Settings, permissionKey: "edit_competition" },
       { label: "Manage Events", icon: Calendar, permissionKey: "create_event" },
@@ -152,14 +152,14 @@ export function getUserActions(roleKey, hasPermission) {
     addActionIfMissing("Export Report", FileDown, "export_report");
   }
   if (hasPermission("submit_score")) {
-    addActionIfMissing("Pending submissions", ClipboardList, "submit_score");
+    addActionIfMissing("Submit Results", ClipboardList, "submit_score");
     addActionIfMissing("My submissions", CheckCircle, "submit_score");
   }
   if (hasPermission("approve_score")) {
     addActionIfMissing("Pending approvals", ClipboardList, "approve_score");
   }
   if (hasPermission("edit_approved_score")) {
-    addActionIfMissing("System Override", CheckCircle, "edit_approved_score");
+    addActionIfMissing("Scoreboard Contributions", CheckCircle, "edit_approved_score");
   }
 
   return actions;

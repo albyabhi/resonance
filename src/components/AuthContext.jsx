@@ -109,7 +109,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     if (!options || options.redirect !== false) {
-      navigate("/login", { replace: true }); // redirect to login
+      navigate("/", { replace: true }); // redirect to Welcome page
     }
   };
 

@@ -255,11 +255,11 @@ export default function DashboardVisuals() {
 
   const renderAdminWidgets = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-4 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6 w-full">
         <StatCard title="Events running" value={liveEvents.length} subtitle={`${nextEvents.length} open or upcoming`} icon={Flag} variant="indigo" delay={0.1} />
         <StatCard title="Completed events" value={completedEvents.length} subtitle={`${events.length} total events`} icon={CheckCircle} variant="emerald" delay={0.2} />
         <StatCard title="Pending results" value={pendingResults.length} subtitle="Need review before points count" icon={ClipboardCheck} variant="amber" delay={0.3} />
-        <StatCard title="Current leader" value={leader ? `#${leader.rank || 1}` : "-"} subtitle={leader ? `${getScoreboardName(leader)} - ${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet"} icon={Trophy} variant="violet" delay={0.4} />
+        <StatCard title="Current leader" value={leader ? getScoreboardName(leader) : "-"} subtitle={leader ? `${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet"} icon={Trophy} variant="violet" delay={0.4} />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-7">
@@ -285,7 +285,7 @@ export default function DashboardVisuals() {
     const currentGroup = normalizedScoreboard.find((h) => getScoreboardId(h) === userGroupId);
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-4 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6 w-full">
           <StatCard title="Registered teams" value={houseTeamsCount} icon={Activity} variant="indigo" delay={0.1} />
           <StatCard title="Available events" value={nextEvents.length} icon={Calendar} variant="violet" delay={0.2} />
           <StatCard title="Group points" value={currentGroup ? getScoreboardPoints(currentGroup) : 0} icon={Trophy} variant="amber" delay={0.3} />
@@ -309,7 +309,7 @@ export default function DashboardVisuals() {
 
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-3 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-6 w-full">
           <StatCard title="My submissions" value={mySubmissions} icon={CheckCircle} variant="emerald" delay={0.1} />
           <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.2} />
           <StatCard title="Live events" value={liveEvents.length} icon={Activity} variant="indigo" delay={0.3} />
@@ -330,7 +330,7 @@ export default function DashboardVisuals() {
     const pendingCount = results.filter((r) => r.status === "pending").length;
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="flex flex-col gap-6 lg:col-span-4">
+        <div className="grid grid-cols-2 lg:flex lg:flex-col gap-2 lg:gap-6 lg:col-span-4 w-full">
           <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.1} />
           <StatCard title="Reviewed results" value={results.length - pendingCount} icon={CheckCircle} variant="emerald" delay={0.2} />
         </div>
