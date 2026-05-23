@@ -3,6 +3,7 @@ import useDashboardData from "../../hooks/useDashboardData";
 import { useAuth } from "../AuthContext";
 import { Calendar, Trophy, AlertCircle, CheckCircle, Activity, TrendingUp, Medal, ClipboardCheck, Flag } from "lucide-react";
 import usePermission from "../../hooks/usePermission";
+import { useCompetition } from "../../context/CompetitionContext";
 
 import StatCard from "../StatCard";
 import TopHouses from "../widgets/TopHouses";
@@ -80,6 +81,7 @@ function EmptyPanel({ icon = Trophy, message }) {
 }
 
 function StandingsTable({ scoreboard = [], userHouseId }) {
+  const { groupLabel = "Group" } = useCompetition() || {};
   const leaders = normalizeScoreboard(scoreboard).slice(0, 6);
 
   if (!leaders.length) {
@@ -90,7 +92,7 @@ function StandingsTable({ scoreboard = [], userHouseId }) {
     <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--border-divider)" }}>
       <div className="grid grid-cols-[56px_1fr_92px] border-b px-4 py-3 text-xs font-semibold uppercase" style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}>
         <span>Rank</span>
-        <span>Group</span>
+        <span>{groupLabel}</span>
         <span className="text-right">Points</span>
       </div>
       {leaders.map((item, index) => {
@@ -208,6 +210,7 @@ export default function DashboardVisuals() {
   const { data, loading, error } = useDashboardData();
   const { role, user } = useAuth();
   const { hasPermission } = usePermission();
+  const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const userHouseId = user?.house?._id || user?.house;
   const userGroupId = getId(userHouseId);
 
@@ -240,6 +243,15 @@ export default function DashboardVisuals() {
   const completedEvents = events.filter((e) => e.status === "completed");
   const nextEvents = events.filter((e) => e.status !== "completed");
   const leader = normalizedScoreboard[0];
+  const dashboardKind = hasPermission("manage_permissions") || hasPermission("manage_groups") || hasPermission("edit_approved_score")
+    ? "admin"
+    : hasPermission("manage_own_group_profile")
+      ? "captain"
+      : hasPermission("submit_score")
+        ? "coordinator"
+        : hasPermission("approve_score")
+          ? "faculty"
+          : "guest";
 
   const renderAdminWidgets = () => (
     <div className="space-y-6">
@@ -250,7 +262,7 @@ export default function DashboardVisuals() {
         <StatCard title="Current leader" value={leader ? `#${leader.rank || 1}` : "-"} subtitle={leader ? `${getScoreboardName(leader)} - ${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet"} icon={Trophy} variant="violet" delay={0.4} />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <SectionCard title="Standings" description="Groups ranked by approved points" className="lg:col-span-7">
+        <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-7">
           <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
         </SectionCard>
         <SectionCard title="Result progress" description="Approval status across submitted results" className="lg:col-span-5">
@@ -330,7 +342,7 @@ export default function DashboardVisuals() {
         <SectionCard title="Recent winners" description="Latest approved first-place results" className="lg:col-span-6">
           <RecentWinners results={results} />
         </SectionCard>
-        <SectionCard title="Standings" description="Groups ranked by approved points" className="lg:col-span-6">
+        <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-6">
           <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
         </SectionCard>
       </div>
@@ -379,22 +391,22 @@ export default function DashboardVisuals() {
   return (
     <div className="flex w-full flex-col gap-6">
       <FadeIn delay={0.1}>
-        {role === "admin" && renderAdminWidgets()}
-        {role === "captain" && renderCaptainWidgets()}
-        {role === "student_coordinator" && renderStudentCoordinatorWidgets()}
-        {(role === "faculty" || role === "faculty_coordinator") && renderFacultyWidgets()}
-        {(!role || role === "guest") && renderGuestWidgets()}
+        {dashboardKind === "admin" && renderAdminWidgets()}
+        {dashboardKind === "captain" && renderCaptainWidgets()}
+        {dashboardKind === "coordinator" && renderStudentCoordinatorWidgets()}
+        {dashboardKind === "faculty" && renderFacultyWidgets()}
+        {dashboardKind === "guest" && renderGuestWidgets()}
       </FadeIn>
 
       <FadeIn delay={0.3}>
-      <SectionCard title="House performance" description="Standings and points">
+      <SectionCard title={`${groupLabel} performance`} description="Standings and points">
           <div className="h-[320px] w-full sm:h-[380px]">
             <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
           </div>
         </SectionCard>
       </FadeIn>
 
-      {role !== "guest" && role !== "admin" && (
+      {dashboardKind !== "guest" && dashboardKind !== "admin" && (
         <FadeIn delay={0.5} className="w-full max-w-sm">
           <TopHouses scoreboard={normalizedScoreboard} />
         </FadeIn>

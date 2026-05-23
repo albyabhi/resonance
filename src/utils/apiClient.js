@@ -25,42 +25,79 @@ export const getRefreshToken = () => {
   return auth?.refreshToken || localStorage.getItem("refresh_token") || "";
 };
 
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp < (now + 10);
+  } catch {
+    return true;
+  }
+};
+
+let refreshPromise = null;
+
 export const refreshAccessToken = async () => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error("No refresh token available");
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-  const response = await fetch(`${backendUrl}/api/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      throw new Error("No refresh token available");
+    }
 
-  if (!response.ok) {
-    throw new Error('Failed to refresh token');
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const response = await fetch(`${backendUrl}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    const newToken = data.access_token;
+
+    // Update localStorage
+    const auth = getAuthState();
+    if (auth) {
+      auth.token = newToken;
+      localStorage.setItem("auth", JSON.stringify(auth));
+    }
+
+    // Dispatch event to update context
+    window.dispatchEvent(new CustomEvent('TOKEN_UPDATED', { detail: { token: newToken } }));
+
+    return newToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-
-  const data = await response.json();
-  const newToken = data.access_token;
-
-  // Update localStorage
-  const auth = getAuthState();
-  if (auth) {
-    auth.token = newToken;
-    localStorage.setItem("auth", JSON.stringify(auth));
-  }
-
-  // Dispatch event to update context
-  window.dispatchEvent(new CustomEvent('TOKEN_UPDATED', { detail: { token: newToken } }));
-
-  return newToken;
 };
 
 export const apiFetch = async (url, options = {}, retry = true) => {
-  const token = getAuthToken();
+  let token = getAuthToken();
   const { _token, ...fetchOptions } = options; // strip internal param
+
+  if (token && isTokenExpired(token) && retry) {
+    console.log("apiFetch: Token expired pre-emptively, refreshing token...");
+    try {
+      token = await refreshAccessToken();
+    } catch (refreshError) {
+      console.error("apiFetch: Pre-emptive token refresh failed:", refreshError);
+    }
+  }
   
   const headers = new Headers(fetchOptions.headers || {});
   if (token && !headers.has('Authorization')) {

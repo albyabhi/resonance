@@ -187,7 +187,8 @@ export default function Dashboard({
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <button
                     onClick={handleGoBack}
-                    className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-gray-800 dark:bg-[#111827] dark:text-gray-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-400"
+                    className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition hover:border-indigo-500 hover:text-indigo-500"
+                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                   >
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
@@ -273,7 +274,7 @@ export default function Dashboard({
           />
         )}
 
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/90 backdrop-blur-lg dark:border-gray-800 dark:bg-[#0B1220]/90 pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: '1px solid var(--border-divider)', backgroundColor: 'var(--card)', opacity: 0.95 }}>
           <div className="flex h-16 justify-around items-center px-2">
             <button 
               onClick={() => handleSectionClick('home')} 

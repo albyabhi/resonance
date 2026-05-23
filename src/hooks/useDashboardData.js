@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
 import { apiJson } from "../utils/apiClient";
+import usePermission from "./usePermission";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -12,7 +13,8 @@ const listFrom = (payload, key) => {
 };
 
 export default function useDashboardData() {
-  const { token, role, lastCompetition, isAuthReady } = useAuth();
+  const { token, lastCompetition, isAuthReady } = useAuth();
+  const { hasPermission } = usePermission();
   const [data, setData] = useState({
     scoreboard: [],
     events: [],
@@ -40,7 +42,7 @@ export default function useDashboardData() {
     };
 
     const fetchAllData = async () => {
-      if (!token || role === "guest" || !isAuthReady) {
+      if (!token || !isAuthReady) {
         if (mounted) setLoading(false);
         return;
       }
@@ -60,7 +62,7 @@ export default function useDashboardData() {
         endpoints.push(apiCall("/api/schedule/batch")); // Use explicit batch path if we have it or base route
         
         // Admin specfic usage overview
-        if (role === "admin") {
+        if (hasPermission("view_event_usage")) {
           endpoints.push(apiCall(`/api/event/usage${competitionQuery}`));
         }
 
@@ -74,7 +76,7 @@ export default function useDashboardData() {
         const schedulesRes = responses[3]?.status === "fulfilled" ? listFrom(responses[3].value, "schedules") : [];
         
         let sysStats = null;
-        if (role === "admin" && responses[4]?.status === "fulfilled" && responses[4].value) {
+        if (hasPermission("view_event_usage") && responses[4]?.status === "fulfilled" && responses[4].value) {
           sysStats = responses[4].value;
         }
 
@@ -98,7 +100,7 @@ export default function useDashboardData() {
     return () => {
       mounted = false;
     };
-  }, [token, role, lastCompetition, isAuthReady]);
+  }, [token, lastCompetition, isAuthReady, hasPermission]);
 
   return { data, loading, error };
 }

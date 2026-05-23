@@ -76,7 +76,7 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
     if (rank === 1) return "bg-indigo-50 dark:bg-indigo-500/15 border-indigo-100 dark:border-indigo-500/30";
     if (rank === 2) return "bg-slate-50 dark:bg-slate-500/10 border-slate-100 dark:border-slate-500/20";
     if (rank === 3) return "bg-violet-50 dark:bg-violet-500/10 border-violet-100 dark:border-violet-500/20";
-    return "bg-slate-50/50 dark:bg-slate-900 border-slate-100 dark:border-white/5";
+    return "";
   };
 
   return (
@@ -84,7 +84,7 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
       <header className="mb-6 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h3 className="text-xl font-semibold" style={{ color: 'var(--card-fg)' }}>House standings</h3>
+          <h3 className="text-xl font-semibold" style={{ color: 'var(--card-fg)' }}>{groupLabel} standings</h3>
         </div>
         <p className="pl-7 text-sm" style={{ color: 'var(--chart-axis)' }}>{eventId ? "Current event standings" : "Aggregate platform performance"}</p>
       </header>
@@ -108,16 +108,16 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
           rows.map((house) => {
             const captain = captainData[house.house_id];
             return (
-              <div key={`${house.rank}-${house.code}`} className={`flex items-center justify-between rounded-2xl border p-4 ${getRankBg(house.rank)}`} style={house.rank > 3 ? { backgroundColor: 'var(--surface)' } : {}}>
+              <div key={`${house.rank}-${house.code}`} className={`flex items-center justify-between rounded-2xl border p-4 ${getRankBg(house.rank)}`} style={house.rank > 3 ? { backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' } : {}}>
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-inherit shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
                     {getRankIcon(house.rank)}
                   </div>
 
                   {showCaptain && captain?.profile_image ? (
-                    <img src={captain.profile_image} alt="" className="h-10 w-10 rounded-xl border border-gray-200 object-cover dark:border-gray-800" />
+                    <img src={captain.profile_image} alt="" className="h-10 w-10 rounded-xl border object-cover" style={{ borderColor: 'var(--border-divider)' }} />
                   ) : showCaptain ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                       <User className="h-5 w-5 text-gray-400" />
                     </div>
                   ) : null}

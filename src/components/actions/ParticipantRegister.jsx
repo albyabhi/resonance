@@ -15,7 +15,6 @@ import {
   Calendar, 
   Clock, 
   ArrowRight,
-  Sparkles,
   Shield,
   Info,
   Lock,
@@ -110,7 +109,7 @@ export default function ParticipantRegister() {
         if (!alreadyReg) {
           toast((t) => (
             <span className="flex items-center gap-2 font-medium">
-              <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
+              <Info className="h-5 w-5 text-indigo-500 shrink-0" />
               You were redirected to register for: <b>{target.name}</b>
             </span>
           ), { duration: 4000 });
@@ -346,7 +345,7 @@ export default function ParticipantRegister() {
         </div>
       ) : activeTab === "available" ? (
         events.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-3xl shadow-sm">
+          <div className="text-center py-20 border rounded-3xl shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <Trophy className="h-14 w-14 text-neutral-300 dark:text-neutral-850 mx-auto mb-4" />
             <p className="text-neutral-500 dark:text-neutral-400 font-semibold text-lg">No events scheduled yet.</p>
             <p className="text-xs text-neutral-400 mt-1">Please coordinate with administrators for announcements.</p>
@@ -360,11 +359,12 @@ export default function ParticipantRegister() {
                 <div 
                   key={id}
                   id={`event-card-${id}`}
-                  className={`group bg-white dark:bg-neutral-950 border rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+                  className={`group border rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
                     registered 
                       ? "border-emerald-500 bg-emerald-50/5 dark:bg-emerald-950/5 shadow-emerald-500/5 shadow-lg" 
                       : "border-neutral-200 dark:border-neutral-850 hover:border-neutral-300 dark:hover:border-neutral-750"
                   }`}
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400 border dark:border-neutral-800">
@@ -448,7 +448,7 @@ export default function ParticipantRegister() {
         )
       ) : (
         myRegistrations.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-neutral-950 border border-dashed border-neutral-300 dark:border-neutral-800 rounded-3xl">
+          <div className="text-center py-20 border border-dashed rounded-3xl" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
             <Users className="h-14 w-14 text-neutral-300 dark:text-neutral-850 mx-auto mb-4" />
             <p className="text-neutral-500 dark:text-neutral-400 font-semibold text-lg">You have no registrations recorded.</p>
             <p className="text-xs text-neutral-400 mt-1">Browse available events to participate.</p>
@@ -467,7 +467,8 @@ export default function ParticipantRegister() {
               return (
                 <div 
                   key={teamId}
-                  className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-3xl p-6 shadow-sm relative overflow-hidden group hover:border-neutral-300 dark:hover:border-neutral-750 transition-all duration-300"
+                  className="border rounded-3xl p-6 shadow-sm relative overflow-hidden group transition-all duration-300"
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
@@ -485,14 +486,14 @@ export default function ParticipantRegister() {
                     </div>
                     
                     {reg.chest_number && (
-                      <div className="bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-4 py-2 rounded-2xl font-mono font-black text-center shadow-lg">
+                      <div className="px-4 py-2 rounded-2xl font-mono font-black text-center shadow-lg" style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}>
                         <div className="text-[8px] uppercase tracking-widest opacity-60">Chest No</div>
                         <div className="text-base">{reg.chest_number}</div>
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-5 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900/50 p-4 rounded-2xl border dark:border-neutral-850">
+                  <div className="grid grid-cols-2 gap-3 mt-5 text-xs text-neutral-500 dark:text-neutral-400 p-4 rounded-2xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                     <div>
                       <span className="block opacity-65 text-[10px] font-black uppercase tracking-wider mb-0.5">Type</span>
                       <span className="font-bold capitalize text-neutral-800 dark:text-neutral-200">{evt.event_type}</span>
@@ -515,8 +516,9 @@ export default function ParticipantRegister() {
                               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs ${
                                 isSelf 
                                   ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-900 dark:text-blue-400 font-extrabold"
-                                  : "bg-neutral-100 border-neutral-200 text-neutral-600 dark:bg-neutral-850 dark:border-neutral-800 dark:text-neutral-300"
+                                  : "text-neutral-600 dark:text-neutral-300"
                               }`}
+                              style={!isSelf ? { backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' } : {}}
                             >
                               <User className="h-3 w-3 shrink-0" />
                               {m.name} {isSelf && "(You)"}
@@ -536,10 +538,10 @@ export default function ParticipantRegister() {
       {/* Dual Mode Team Registration Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-neutral-900 w-full max-w-xl rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-xl rounded-3xl overflow-hidden border shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-neutral-150 dark:border-neutral-800 flex justify-between items-center bg-neutral-50 dark:bg-neutral-900/50">
+            <div className="p-6 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)' }}>
               <div>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 mb-1 border dark:border-blue-800">
                   Team Management
@@ -560,7 +562,7 @@ export default function ParticipantRegister() {
             </div>
 
             {/* Modal Tabs: Create or Join */}
-            <div className="flex border-b border-neutral-150 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/20 px-6">
+            <div className="flex border-b px-6" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)' }}>
               <button
                 type="button"
                 className={`py-3.5 px-4 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${
@@ -612,7 +614,8 @@ export default function ParticipantRegister() {
                           placeholder="e.g. Valkyries"
                           value={teamName}
                           onChange={(e) => setTeamName(e.target.value)}
-                          className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold transition-all"
+                          className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold transition-all"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         />
                         <p className="text-[10px] text-neutral-500 mt-1">Must be unique across all houses/groups for this event.</p>
                       </div>
@@ -632,12 +635,13 @@ export default function ParticipantRegister() {
                             placeholder={`Search members in your ${groupLabel}...`}
                             value={teamSearch}
                             onChange={(e) => setTeamSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs transition-all"
+                            className="w-full pl-9 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs transition-all"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                           />
                         </div>
 
                         {/* Teammates List */}
-                        <div className="border border-neutral-250 dark:border-neutral-850 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                        <div className="border rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y" style={{ borderColor: 'var(--border-divider)' }}>
                           {filteredTeammates.length === 0 ? (
                             <div className="p-6 text-center text-neutral-400 text-xs font-semibold">
                               No matching members found in your {groupLabel}.
@@ -652,8 +656,9 @@ export default function ParticipantRegister() {
                                   className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
                                     isSelected 
                                       ? "bg-blue-500/5 dark:bg-blue-500/10" 
-                                      : "hover:bg-neutral-50 dark:hover:bg-neutral-900/50"
+                                      : "hover:bg-indigo-500/5"
                                   }`}
+                                  style={!isSelected ? { backgroundColor: 'var(--card)' } : {}}
                                 >
                                   <div>
                                     <div className="text-xs font-black text-neutral-800 dark:text-neutral-200">{m.name}</div>
@@ -678,7 +683,7 @@ export default function ParticipantRegister() {
                       </div>
 
                       {/* Rule checklist */}
-                      <div className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 border dark:border-neutral-850 rounded-2xl space-y-1.5 text-xs text-neutral-500">
+                      <div className="p-3.5 border rounded-2xl space-y-1.5 text-xs text-neutral-500" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                         <div className="font-bold text-neutral-700 dark:text-neutral-300">Registration Guidelines:</div>
                         <div className="flex items-center gap-1.5">
                           <CheckCircle className={`h-4 w-4 ${selectedMemberIds.length + 1 >= selectedEvent.min_team_size ? "text-emerald-500" : "text-neutral-300"}`} />
@@ -708,7 +713,7 @@ export default function ParticipantRegister() {
                       <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">Loading house teams...</p>
                     </div>
                   ) : eventTeams.length === 0 ? (
-                    <div className="text-center py-10 border border-dashed dark:border-neutral-800 rounded-2xl bg-neutral-50/50 dark:bg-neutral-900/20">
+                    <div className="text-center py-10 border border-dashed rounded-2xl" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                       <Users className="h-10 w-10 text-neutral-300 dark:text-neutral-800 mx-auto mb-2" />
                       <p className="text-neutral-500 dark:text-neutral-400 font-semibold text-sm">No ongoing teams found.</p>
                       <p className="text-[10px] text-neutral-400 mt-1">Be the first to assemble a squad from your {groupLabel.toLowerCase()}!</p>
@@ -732,7 +737,8 @@ export default function ParticipantRegister() {
                           return (
                             <div 
                               key={team._id}
-                              className="p-4 border dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                              className="p-4 border rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
                             >
                               <div className="space-y-1">
                                 <div className="font-extrabold text-sm text-neutral-850 dark:text-neutral-100 flex items-center gap-1.5">
@@ -776,7 +782,7 @@ export default function ParticipantRegister() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-neutral-150 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="p-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4" style={{ backgroundColor: 'var(--surface)', borderTopColor: 'var(--border-divider)' }}>
               {modalTab === "create" ? (
                 <>
                   <div className="text-xs text-neutral-500 font-semibold">
@@ -786,7 +792,8 @@ export default function ParticipantRegister() {
                     <button
                       type="button"
                       onClick={closeTeamModal}
-                      className="flex-1 sm:flex-none px-5 py-2.5 bg-white dark:bg-neutral-800 border dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 font-bold uppercase tracking-wider text-xs rounded-xl transition-all hover:bg-neutral-50 dark:hover:bg-neutral-750"
+                      className="flex-1 sm:flex-none px-5 py-2.5 border font-bold uppercase tracking-wider text-xs rounded-xl transition-all"
+                      style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                     >
                       Cancel
                     </button>
@@ -807,7 +814,8 @@ export default function ParticipantRegister() {
                   <button
                     type="button"
                     onClick={closeTeamModal}
-                    className="px-5 py-2.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold uppercase tracking-wider text-xs rounded-xl transition-all hover:bg-neutral-300 dark:hover:bg-neutral-750"
+                    className="px-5 py-2.5 border font-bold uppercase tracking-wider text-xs rounded-xl transition-all"
+                    style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                   >
                     Close
                   </button>

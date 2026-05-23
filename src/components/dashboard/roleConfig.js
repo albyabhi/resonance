@@ -15,7 +15,7 @@ import {
  * Role configuration with permissionKey on each action.
  *
  * `permissionKey` ties each dashboard action to a granular permission from
- * DEFAULT_PERMISSIONS. The Sidebar and Dashboard use the `usePermission` hook
+ * the backend permission catalog. The Sidebar and Dashboard use the `usePermission` hook
  * to filter actions dynamically — only actions whose permissionKey resolves
  * to `true` are rendered.
  *
@@ -25,8 +25,8 @@ export const roleConfig = {
   admin: {
     title: "System Administrator",
     actions: [
-      { label: "Manage Users", icon: Users, permissionKey: "manage_roles" },
-      { label: "Manage Houses", icon: UserPlus, permissionKey: null },
+      { label: "Manage Users", icon: Users, permissionKey: "manage_permissions" },
+      { label: "Manage Houses", icon: UserPlus, permissionKey: "manage_groups" },
       { label: "Manage Events", icon: Calendar, permissionKey: "create_event" },
       { label: "Manage Competition", icon: Settings, permissionKey: "edit_competition" },
       { label: "System Override", icon: CheckCircle, permissionKey: "edit_approved_score" },
@@ -39,11 +39,11 @@ export const roleConfig = {
   captain: {
     title: "Captain",
     actions: [
-      { label: "My Teams", icon: Users, permissionKey: null },
-      { label: "My Events", icon: Calendar, permissionKey: null },
-      { label: "Event Registration", icon: UserPlus, permissionKey: null },
-      { label: "Manage House Logo", icon: UserPlus, permissionKey: null },
-      { label: "My Details", icon: Users, permissionKey: null },
+      { label: "My Teams", icon: Users, permissionKey: "view_teams" },
+      { label: "My Events", icon: Calendar, permissionKey: "view_events" },
+      { label: "Event Registration", icon: UserPlus, permissionKey: "participate_events" },
+      { label: "Manage House Logo", icon: UserPlus, permissionKey: "manage_own_group_profile" },
+      { label: "My Details", icon: Users, permissionKey: "manage_own_group_profile" },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -72,7 +72,7 @@ export const roleConfig = {
   participant: {
     title: "Participant",
     actions: [
-      { label: "Event Registration", icon: UserPlus, permissionKey: null },
+      { label: "Event Registration", icon: UserPlus, permissionKey: "participate_events" },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -133,8 +133,11 @@ export function getUserActions(roleKey, hasPermission) {
   };
 
   // Dynamically append permission-based actions if the user has permission
-  if (hasPermission("manage_roles")) {
-    addActionIfMissing("Manage Users", Users, "manage_roles");
+  if (hasPermission("manage_permissions")) {
+    addActionIfMissing("Manage Users", Users, "manage_permissions");
+  }
+  if (hasPermission("manage_groups")) {
+    addActionIfMissing("Manage Houses", UserPlus, "manage_groups");
   }
   if (hasPermission("create_event")) {
     addActionIfMissing("Manage Events", Calendar, "create_event");
@@ -161,4 +164,3 @@ export function getUserActions(roleKey, hasPermission) {
 
   return actions;
 }
-

@@ -1,26 +1,15 @@
 // src/components/actions/ManageUser.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
-import { useIsMobile } from "../utils/useIsMobile";
 import { FadeIn } from "../AnimateReveal";
-import { UserPlus, Users, Edit3, Trash2, Shield, House, Search, Filter, Mail, Calendar, ChevronRight } from "lucide-react";
+import { UserPlus, Users, Edit3, Trash2, Shield, House, Search, Filter, Calendar, Copy, GitCompare } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
+import { PERMISSION_CATALOG, catalogByCategory } from "../../utils/permissionKeys";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const roles = ["admin", "captain", "student_coordinator", "faculty", "guest"];
-
-const mapToBackendRole = (feRole) => {
-  const map = {
-    admin: "admin",
-    student_coordinator: "coordinator",
-    faculty: "faculty",
-    captain: "participant",
-    guest: "participant"
-  };
-  return map[feRole] || "participant";
-};
 
 const ManageUser = () => {
   const { token } = useAuth();
@@ -28,8 +17,12 @@ const ManageUser = () => {
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
   const [houses, setHouses] = useState([]);
-  const [availablePermissions, setAvailablePermissions] = useState({});
+  const [permissionGroups, setPermissionGroups] = useState(catalogByCategory());
+  const [roleTemplates, setRoleTemplates] = useState([]);
   const [customPermissions, setCustomPermissions] = useState({});
+  const [permissionScopes, setPermissionScopes] = useState({});
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [compareTemplateIds, setCompareTemplateIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -41,7 +34,6 @@ const ManageUser = () => {
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const mobileView = useIsMobile();
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -62,12 +54,21 @@ const ManageUser = () => {
 
   const fetchPermissions = async () => {
     try {
-      const resp = await apiCall("/api/users/permissions");
+      const resp = await apiCall("/api/permissions/catalog");
       if (resp.success) {
-        setAvailablePermissions(resp.permissions);
+        setPermissionGroups(resp.categories || catalogByCategory(resp.permissions || PERMISSION_CATALOG));
       }
     } catch (err) {
       console.error("Failed to fetch permissions:", err);
+    }
+  };
+
+  const fetchRoleTemplates = async () => {
+    try {
+      const resp = await apiCall("/api/role-templates");
+      if (resp.success) setRoleTemplates(resp.templates || []);
+    } catch (err) {
+      console.error("Failed to fetch role templates:", err);
     }
   };
 
@@ -85,6 +86,7 @@ const ManageUser = () => {
     if (token) { 
       fetchUsers(); 
       fetchPermissions();
+      fetchRoleTemplates();
     }
   }, [token]);
 
@@ -100,7 +102,17 @@ const ManageUser = () => {
       setLoading(true);
       const requiresHouse = ["captain", "student_coordinator"].includes(formData.role);
       const basePayload = requiresHouse ? { ...formData, house: formData.house || null } : formData;
-      const payload = { ...basePayload, custom_permissions: customPermissions };
+      const permissionGrants = PERMISSION_CATALOG.map((permission) => ({
+        key: permission.key,
+        allowed: !!customPermissions[permission.key],
+        scope: permissionScopes[permission.key] || {},
+        source: selectedTemplateId ? "template" : "manual",
+      }));
+      const payload = {
+        ...basePayload,
+        role_template_id: selectedTemplateId || null,
+        permissions: permissionGrants,
+      };
 
       if (editingUserId) {
         const resp = await apiCall(`/api/users/${editingUserId}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -114,9 +126,55 @@ const ManageUser = () => {
       }
       setFormData({ name: "", username: "", password: "", role: "guest", house: "" });
       setCustomPermissions({});
+      setPermissionScopes({});
+      setSelectedTemplateId("");
       setActiveTab("manage");
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
+  };
+
+  const applyTemplate = (templateId) => {
+    setSelectedTemplateId(templateId);
+    const template = roleTemplates.find((item) => String(item._id) === String(templateId));
+    if (!template) return;
+    const nextPermissions = {};
+    const nextScopes = {};
+    (template.permissions || []).forEach((grant) => {
+      nextPermissions[grant.key] = !!grant.allowed;
+      nextScopes[grant.key] = grant.scope || {};
+    });
+    setCustomPermissions(nextPermissions);
+    setPermissionScopes(nextScopes);
+  };
+
+  const applyRolePreset = (role) => {
+    const presetKey = role === "student_coordinator" ? "coordinator" : role === "guest" ? "participant" : role;
+    const template = roleTemplates.find((item) => item.is_system && item.preset_key === presetKey);
+    if (template) applyTemplate(template._id);
+  };
+
+  const cloneSelectedTemplate = async () => {
+    if (!selectedTemplateId) return;
+    try {
+      const source = roleTemplates.find((item) => String(item._id) === String(selectedTemplateId));
+      await apiCall(`/api/role-templates/${selectedTemplateId}/clone`, {
+        method: "POST",
+        body: JSON.stringify({ name: `${source?.name || "Role"} Copy` }),
+      });
+      await fetchRoleTemplates();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const updateScope = (permissionKey, patch) => {
+    setPermissionScopes((prev) => ({
+      ...prev,
+      [permissionKey]: {
+        ...(prev[permissionKey] || {}),
+        ...patch,
+      },
+    }));
   };
 
   const roleConfig = (role) => {
@@ -145,12 +203,13 @@ const ManageUser = () => {
             <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.3em] leading-none pl-7">Manage users</p>
         </div>
         
-        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
+        <div className="flex p-1 rounded-2xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
           {["manage", "add"].map(t => (
             <button
               key={t}
               onClick={() => { setActiveTab(t); if(t==='add') setEditingUserId(null); }}
-              className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'bg-white dark:bg-[#0B1220] text-indigo-600 dark:text-indigo-400 shadow-xl shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === t ? 'text-indigo-600 dark:text-indigo-400 shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+              style={activeTab === t ? { backgroundColor: 'var(--card)' } : {}}
             >
               {t === 'manage' ? 'Directory' : editingUserId ? 'Edit Node' : 'Initialize Node'}
             </button>
@@ -175,13 +234,14 @@ const ManageUser = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Identify personnel via name or key..." 
-                    className="w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/5 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                    className="w-full border rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 />
              </div>
             <div className="text-xs font-black text-slate-400 underline decoration-indigo-500/20 underline-offset-8 decoration-2">{filteredUsers.length} USERS</div>
           </div>
 
-          <div className="card-premium overflow-hidden border-slate-200 dark:border-white/5 bg-white dark:bg-[#111827]">
+          <div className="card-premium overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -237,7 +297,9 @@ const ManageUser = () => {
                                         role: user.role, 
                                         house: user.house?._id || "" 
                                       }); 
-                                      setCustomPermissions(user.custom_permissions || {});
+                                      setCustomPermissions(user.permissions || user.custom_permissions || {});
+                                      setPermissionScopes(user.permission_scopes || {});
+                                      setSelectedTemplateId(user.role_template_id || "");
                                       setEditingUserId(user._id); 
                                       setActiveTab("add"); 
                                     }}
@@ -268,7 +330,7 @@ const ManageUser = () => {
         </FadeIn>
       ) : (
         <FadeIn className="max-w-2xl mx-auto">
-          <div className="card-premium p-10 bg-white dark:bg-[#111827] space-y-8 relative overflow-hidden">
+          <div className="card-premium p-10 space-y-8 relative overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <div className="absolute top-0 right-0 p-8 p opacity-5">
                 <UserPlus className="w-32 h-32 text-indigo-500" />
             </div>
@@ -285,7 +347,8 @@ const ManageUser = () => {
                         <input 
                             required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                             placeholder="Full name"
-                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         />
                     </div>
                     <div className="space-y-2">
@@ -294,7 +357,8 @@ const ManageUser = () => {
                             required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})}
                             placeholder="Email address"
                             type="email"
-                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         />
                     </div>
                 </div>
@@ -305,7 +369,8 @@ const ManageUser = () => {
                         <input 
                             required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
                             placeholder="Password"
-                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         />
                     </div>
                 )}
@@ -314,8 +379,13 @@ const ManageUser = () => {
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role</label>
                         <select 
-                            value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, house: ['captain', 'student_coordinator'].includes(e.target.value) ? formData.house : ""})}
-                            className="w-full appearance-none bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            value={formData.role} onChange={e => {
+                              const nextRole = e.target.value;
+                              setFormData({...formData, role: nextRole, house: ['captain', 'student_coordinator'].includes(nextRole) ? formData.house : ""});
+                              applyRolePreset(nextRole);
+                            }}
+                            className="w-full appearance-none border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         >
                             {roles.map(r => {
                                 let label = r.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -330,7 +400,8 @@ const ManageUser = () => {
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{groupLabel}</label>
                             <select 
                                 required value={formData.house} onChange={e => setFormData({...formData, house: e.target.value})}
-                                className="w-full appearance-none bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20"
+                                className="w-full appearance-none border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                             >
                                 <option value="" className="bg-white dark:bg-[#0B1220]">Select {groupLabel.toLowerCase()}...</option>
                                 {houses.map(h => <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">{h.name} ({h.code})</option>)}
@@ -339,28 +410,128 @@ const ManageUser = () => {
                     )}
                 </div>
 
-                {/* Custom Permissions Section */}
                 <div className="space-y-4 pt-6 border-t border-slate-100 dark:border-white/5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom Overrides (Policy Node)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.keys(availablePermissions[mapToBackendRole(formData.role)] || {}).map(perm => {
-                      const isChecked = customPermissions[perm] !== undefined 
-                        ? customPermissions[perm] 
-                        : (availablePermissions[mapToBackendRole(formData.role)] || {})[perm];
-                        
-                      return (
-                        <label key={perm} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                          <input 
-                            type="checkbox" 
-                            checked={!!isChecked}
-                            onChange={(e) => setCustomPermissions({...customPermissions, [perm]: e.target.checked})}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 capitalize">{perm.replace(/_/g, ' ')}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role Template</label>
+                    <button
+                      type="button"
+                      onClick={cloneSelectedTemplate}
+                      disabled={!selectedTemplateId}
+                      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+                      style={{ borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Clone
+                    </button>
                   </div>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => applyTemplate(e.target.value)}
+                    className="w-full appearance-none border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20"
+                    style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                  >
+                    <option value="" className="bg-white dark:bg-[#0B1220]">Custom responsibilities</option>
+                    {roleTemplates.map((template) => (
+                      <option key={template._id} value={template._id} className="bg-white dark:bg-[#0B1220]">
+                        {template.name}{template.is_system ? " (preset)" : ""} - {template.assigned_users_count || 0} users
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <GitCompare className="h-4 w-4" /> Compare Roles
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {roleTemplates.slice(0, 4).map((template) => (
+                        <label key={template._id} className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--card-fg)' }}>
+                          <input
+                            type="checkbox"
+                            checked={compareTemplateIds.includes(template._id)}
+                            onChange={(e) => {
+                              setCompareTemplateIds((prev) =>
+                                e.target.checked ? [...prev, template._id].slice(-2) : prev.filter((id) => id !== template._id)
+                              );
+                            }}
+                          />
+                          {template.name}
+                        </label>
+                      ))}
+                    </div>
+                    {compareTemplateIds.length > 0 && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {compareTemplateIds.map((id) => {
+                          const template = roleTemplates.find((item) => item._id === id);
+                          const count = (template?.permissions || []).filter((grant) => grant.allowed).length;
+                          return (
+                            <div key={id} className="rounded-xl border p-3" style={{ borderColor: 'var(--border-divider)' }}>
+                              <p className="text-xs font-black" style={{ color: 'var(--card-fg)' }}>{template?.name}</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{count} permissions enabled</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-5 pt-6 border-t border-slate-100 dark:border-white/5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Permissions and Scopes</label>
+                  {permissionGroups.map((group) => (
+                    <div key={group.category} className="space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--chart-axis)' }}>{group.category}</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        {group.permissions.filter((permission) => !permission.deprecated).map((permission) => {
+                          const isChecked = !!customPermissions[permission.key];
+                          const scope = permissionScopes[permission.key] || {};
+                          return (
+                            <div key={permission.key} className="rounded-xl p-3 transition-colors hover:bg-indigo-500/5" style={{ backgroundColor: 'var(--surface)' }}>
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => setCustomPermissions({ ...customPermissions, [permission.key]: e.target.checked })}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{permission.label}</span>
+                              </label>
+                              {isChecked && (
+                                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 pl-7">
+                                  <select
+                                    value={scope.category || ""}
+                                    onChange={(e) => updateScope(permission.key, { category: e.target.value || null })}
+                                    className="border rounded-xl px-3 py-2 text-xs font-bold"
+                                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                                  >
+                                    <option value="">All categories</option>
+                                    {["sports", "arts", "academic", "cultural", "technical"].map((category) => (
+                                      <option key={category} value={category}>{category}</option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    value={(scope.group_ids || [])[0] || ""}
+                                    onChange={(e) => updateScope(permission.key, { group_ids: e.target.value ? [e.target.value] : [] })}
+                                    className="border rounded-xl px-3 py-2 text-xs font-bold"
+                                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                                  >
+                                    <option value="">All {groupLabelPlural.toLowerCase()}</option>
+                                    {houses.map((h) => <option key={h._id} value={h._id}>{h.name}</option>)}
+                                  </select>
+                                  <label className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--card-fg)' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!scope.assigned_only}
+                                      onChange={(e) => updateScope(permission.key, { assigned_only: e.target.checked })}
+                                    />
+                                    Assigned only
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="pt-8 flex gap-4">

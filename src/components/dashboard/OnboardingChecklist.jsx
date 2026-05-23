@@ -29,8 +29,8 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
   if (hasCoordinator && hasEvents) return null; // Checklist completed
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden animate-in slide-in-from-bottom-5">
-      <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-700/50 bg-blue-50/50 dark:bg-blue-900/10">
+    <div className="fixed bottom-6 right-6 z-50 w-80 rounded-xl shadow-2xl border overflow-hidden animate-in slide-in-from-bottom-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
+      <div className="flex items-center justify-between p-4 border-b" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
         <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-semibold">
           <AlertCircle className="w-4 h-4" />
           <span>Setup Checklist</span>

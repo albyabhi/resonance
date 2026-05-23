@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
-import { User, KeyRound, Lock, Sparkles, Trophy } from "lucide-react";
+import { User, KeyRound, Lock, ArrowRight, Trophy } from "lucide-react";
 
 export default function LoginPage({ onLogin = () => {} }) {
   const [email, setEmail] = useState("");
@@ -126,7 +126,7 @@ export default function LoginPage({ onLogin = () => {} }) {
               className="w-full py-3.5 text-white font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2" 
               style={{ backgroundColor: "#2563EB" }}
             >
-              {loading ? 'Verifying Credentials...' : <><span>Sign In</span><Sparkles className="h-4 w-4" /></>}
+              {loading ? 'Verifying Credentials...' : <><span>Sign In</span><ArrowRight className="h-4 w-4" /></>}
             </button>
           </div>
         </form>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, LogIn, UserCheck, Eye, Sparkles, X } from "lucide-react";
+import { Trophy, LogIn, UserCheck, Eye, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function GatekeeperModal({ isOpen, onClose, competitionName, competitionSlug }) {
@@ -30,7 +30,7 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
       />
       
       {/* Modal content box */}
-      <div className="relative max-w-md w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl transition-all duration-300 z-10 transform scale-100 overflow-hidden animate-fade-in-up">
+      <div className="relative max-w-md w-full border rounded-3xl p-8 shadow-2xl transition-all duration-300 z-10 transform scale-100 overflow-hidden animate-fade-in-up" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
         
         {/* Glow effect in background */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -48,7 +48,6 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
           {/* Main Icon */}
           <div className="relative inline-flex p-4 bg-indigo-50 dark:bg-indigo-950/50 rounded-2xl">
             <Trophy className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
-            <Sparkles className="h-4 w-4 text-yellow-400 absolute top-2 right-2 animate-pulse" />
           </div>
 
           <div className="space-y-2">
@@ -65,7 +64,8 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Log In Option */}
             <button
               onClick={handleLoginClick}
-              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 border hover:border-indigo-500 rounded-2xl group transition-all duration-200 cursor-pointer"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="p-2.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-105 transition-transform">
@@ -85,7 +85,8 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Register Option */}
             <button
               onClick={handleRegisterClick}
-              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 border hover:border-emerald-500 rounded-2xl group transition-all duration-200 cursor-pointer"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl group-hover:scale-105 transition-transform">
@@ -105,7 +106,8 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Just Browsing Option */}
             <button
               onClick={onClose}
-              className="w-full flex items-center justify-between p-4 bg-transparent border border-dashed border-slate-200 dark:border-slate-800 hover:border-slate-400 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 bg-transparent border border-dashed hover:border-slate-400 rounded-2xl group transition-all duration-200 cursor-pointer"
+              style={{ borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl group-hover:scale-105 transition-transform">

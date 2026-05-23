@@ -6,7 +6,6 @@ import LoginPage from './components/LoginPage';
 import Dashboard from './components/dashboard/Dashboard';
 import CaptainMyDetails from './components/actions/CaptainMyDetails';
 import { useAuth } from './components/AuthContext';
-import { normalizeRole } from './components/dashboard/roleConfig';
 import PageTransition from './components/PageTransition';
 import WelcomePage from './pages/WelcomePage';
 import EntryPage from './pages/entry/EntryPage';
@@ -19,9 +18,11 @@ import ForgotPasswordPage from './pages/entry/ForgotPasswordPage';
 import ResetPasswordPage from './pages/entry/ResetPasswordPage';
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
+import usePermission from './hooks/usePermission';
 
 export default function App() {
   const { role, isAuthenticated, lastCompetition, loading, isAuthReady, logout } = useAuth();
+  const { hasPermission } = usePermission();
   const location = useLocation();
 
   useEffect(() => {
@@ -35,8 +36,6 @@ export default function App() {
   }, []);
 
   if (loading || !isAuthReady) return <div>Loading...</div>;
-
-  const normalizedRole = normalizeRole(role);
 
   return (
     <AnimatePresence mode="wait">
@@ -93,7 +92,7 @@ export default function App() {
           path="/my-details"
           element={
             <PageTransition>
-              {isAuthenticated && normalizedRole === 'captain' ? (
+              {isAuthenticated && hasPermission('manage_own_group_profile') ? (
                 <AppShell role={role} onLogout={logout}>
                   <CaptainMyDetails />
                 </AppShell>

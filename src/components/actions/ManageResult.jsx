@@ -9,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const ManageResult = () => {
   const { hasPermission } = usePermission();
-  const { token, role, user } = useAuth(); // expects user.house?._id for student_coordinator
+  const { token, user } = useAuth(); // expects user.house?._id for scoped submissions
   const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -111,7 +111,7 @@ const ManageResult = () => {
           members: t.members || [],
         }));
         const scoped =
-          hasPermission("submit_score") && role !== "admin" && coordinatorHouseId
+          hasPermission("submit_score") && !hasPermission("edit_approved_score") && coordinatorHouseId
             ? baseTeams.filter((t) => String(t.houseId) === String(coordinatorHouseId))
             : baseTeams;
 
@@ -138,7 +138,7 @@ const ManageResult = () => {
     return () => {
       cancelled = true;
     };
-  }, [eventId, role, coordinatorHouseId]);
+  }, [eventId, coordinatorHouseId, hasPermission]);
 
   // Load server results snapshot for event+round and lock those positions
   const loadResultsForRound = async (evtId, rnd) => {
@@ -269,14 +269,14 @@ const ManageResult = () => {
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
       <div className="mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Enter Results</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Enter Results</h2>
+        <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
           Select event and round, assign placements, and submit for approval
         </p>
-        {role === "student_coordinator" && coordinatorHouseId && (
-          <p className="text-xs text-gray-500 mt-1">
+        {hasPermission("submit_score") && coordinatorHouseId && !hasPermission("edit_approved_score") && (
+          <p className="text-xs mt-1" style={{ color: 'var(--chart-axis)' }}>
             {groupLabel} restricted: only teams from assigned {groupLabel.toLowerCase()} are visible
           </p>
         )}
@@ -290,17 +290,18 @@ const ManageResult = () => {
       {/* Event selection */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Event</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Event</label>
           <select
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="">Select event</option>
+            <option value="" className="bg-white dark:bg-[#0B1220]">Select event</option>
             {(events || []).map((e) => {
               const id = e._id || e.event_id;
               return (
-                <option key={id} value={id}>
+                <option key={id} value={id} className="bg-white dark:bg-[#0B1220]">
                   {e.name} • {e.event_type} • {e.mode}
                 </option>
               );
@@ -308,59 +309,61 @@ const ManageResult = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Round</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Round</label>
           <select
             value={roundNo}
             onChange={(e) => setRoundNo(e.target.value)}
             disabled={!schedules.length}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 text-sm"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="">Select round</option>
+            <option value="" className="bg-white dark:bg-[#0B1220]">Select round</option>
             {schedules.map((r) => (
-              <option key={r._id || r.round_no} value={r.round_no}>
+              <option key={r._id || r.round_no} value={r.round_no} className="bg-white dark:bg-[#0B1220]">
                 Round {r.round_no} • {r.status}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Search team or participant</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Search team or participant</label>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Chest no., ${groupLabel.toLowerCase()}, participant name/class`}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           />
         </div>
       </div>
 
       {/* Placements board */}
       <div className="mb-4">
-        <h3 className="font-semibold mb-2 text-gray-900">Placements</h3>
+        <h3 className="font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Placements</h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {[1, 2, 3, 4, 5].map((pos) => {
             const teamId = placements[pos];
             const team = teams.find((t) => t._id === teamId);
             const locked = lockedPositions.has(pos);
             return (
-              <div key={pos} className={`border rounded-lg p-3 ${locked ? "bg-gray-50" : ""}`}>
+              <div key={pos} className="border rounded-lg p-3" style={{ backgroundColor: locked ? 'var(--surface)' : 'var(--card)', borderColor: 'var(--border-card)', color: 'var(--card-fg)' }}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Position</span>
+                  <span className="text-sm" style={{ color: 'var(--chart-axis)' }}>Position</span>
                   <span className="font-semibold">
-                    {pos} {locked ? <span className="ml-2 text-xs text-gray-500">Locked</span> : null}
+                    {pos} {locked ? <span className="ml-2 text-xs" style={{ color: 'var(--chart-axis)' }}>Locked</span> : null}
                   </span>
                 </div>
                 {team ? (
                   <div className="text-sm">
-                    <div className="font-medium">
+                    <div className="font-medium" style={{ color: 'var(--card-fg)' }}>
                       {team.chest_no ? `Chest #${team.chest_no}` : "No chest"}
                     </div>
-                    <div className="text-gray-600">
+                    <div style={{ color: 'var(--chart-axis)' }}>
                       {team.houseName} {team.houseCode ? `(${team.houseCode})` : ""}
                     </div>
                     {Array.isArray(team.members) && team.members.length > 0 && (
-                      <ul className="mt-2 pl-4 list-disc text-xs text-gray-700">
+                      <ul className="mt-2 pl-4 list-disc text-xs" style={{ color: 'var(--chart-axis)' }}>
                         {team.members.map((m) => (
                           <li key={m._id}>
                             {m.name} • {m.class}
@@ -372,14 +375,14 @@ const ManageResult = () => {
                       <button
                         type="button"
                         onClick={() => clearPlacement(pos)}
-                        className="mt-2 text-xs text-red-600"
+                        className="mt-2 text-xs text-red-600 dark:text-red-400"
                       >
                         Clear
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500">Not assigned</div>
+                  <div className="text-sm" style={{ color: 'var(--chart-axis)' }}>Not assigned</div>
                 )}
               </div>
             );
@@ -388,28 +391,28 @@ const ManageResult = () => {
       </div>
 
       {/* Teams list with members */}
-      <div className="border rounded-lg">
-        <div className="px-3 py-2 border-b bg-gray-50 text-sm font-medium">Eligible Teams</div>
-        <ul className="max-h-80 overflow-y-auto divide-y">
+      <div className="border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
+        <div className="px-3 py-2 border-b text-sm font-medium" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>Eligible Teams</div>
+        <ul className="max-h-80 overflow-y-auto divide-y" style={{ backgroundColor: 'var(--card)', divideColor: 'var(--border-divider)' }}>
           {loading ? (
-            <li className="p-3 text-sm text-gray-600">Loading…</li>
+            <li className="p-3 text-sm" style={{ color: 'var(--chart-axis)' }}>Loading…</li>
           ) : filteredTeams.length === 0 ? (
-            <li className="p-3 text-sm text-gray-600">No teams found</li>
+            <li className="p-3 text-sm" style={{ color: 'var(--chart-axis)' }}>No teams found</li>
           ) : (
             filteredTeams.map((t) => {
               const selectedPos = Object.entries(placements).find(([, id]) => id === t._id)?.[0] || "";
               return (
-                <li key={t._id} className="p-3 text-sm">
+                <li key={t._id} className="p-3 text-sm border-b last:border-0" style={{ borderBottomColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium">
+                      <div className="font-medium" style={{ color: 'var(--card-fg)' }}>
                         {t.chest_no ? `Chest #${t.chest_no}` : "No chest"}
                       </div>
-                      <div className="text-gray-600">
+                      <div style={{ color: 'var(--chart-axis)' }}>
                         {t.houseName} {t.houseCode ? `(${t.houseCode})` : ""}
                       </div>
                       {Array.isArray(t.members) && t.members.length > 0 && (
-                        <ul className="mt-1 pl-4 list-disc text-xs text-gray-700">
+                        <ul className="mt-1 pl-4 list-disc text-xs" style={{ color: 'var(--chart-axis)' }}>
                           {t.members.map((m) => (
                             <li key={m._id}>
                               {m.name} • {m.class}
@@ -426,11 +429,11 @@ const ManageResult = () => {
                           if (!p) return;
                           setPlacement(p, t._id);
                         }}
-                        className="px-2 py-1 border rounded bg-white"
+                        className="px-2 py-1 border rounded text-sm" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                       >
-                        <option value="">Set position</option>
+                        <option value="" className="bg-white dark:bg-[#0B1220]">Set position</option>
                         {[1, 2, 3, 4, 5].map((p) => (
-                          <option
+                          <option className="bg-white dark:bg-[#0B1220]"
                             key={p}
                             value={p}
                             disabled={lockedPositions.has(p) || (!!placements[p] && placements[p] !== t._id)}
@@ -453,7 +456,8 @@ const ManageResult = () => {
         <button
           type="button"
           onClick={() => setPlacements({})}
-          className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+          className="flex-1 px-4 py-3 border rounded-lg hover:bg-indigo-500/5 transition text-sm font-medium"
+          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
         >
           Clear All
         </button>

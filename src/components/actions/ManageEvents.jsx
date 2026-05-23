@@ -527,11 +527,11 @@ const ManageEvents = () => {
   );
 
   return (
-    <div className="min-h-dvh bg-gray-50 p-4">
+    <div className="min-h-dvh p-4" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+          <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: 'var(--card-fg)' }}>
             Events Management
           </h1>
           <p className="text-gray-600 text-sm md:text-base">
@@ -553,14 +553,15 @@ const ManageEvents = () => {
         )}
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm mb-4 p-1">
+        <div className="rounded-xl shadow-sm mb-4 p-1 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
           <div className="flex gap-1">
             <button
               className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "manage"
                   ? "bg-orange-600 text-white shadow"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  : "hover:bg-indigo-500/5"
               } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+              style={activeTab !== "manage" ? { color: 'var(--card-fg)' } : {}}
               onClick={() => {
                 setActiveTab("manage");
                 resetForms();
@@ -572,8 +573,9 @@ const ManageEvents = () => {
               className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
                 activeTab === "add" || activeTab === "edit"
                   ? "bg-orange-600 text-white shadow"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  : "hover:bg-indigo-500/5"
               } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+              style={(activeTab !== "add" && activeTab !== "edit") ? { color: 'var(--card-fg)' } : {}}
               onClick={startAdd}
             >
               {editingEventId ? "Edit Event" : "Add Event"}
@@ -585,22 +587,24 @@ const ManageEvents = () => {
         {activeTab === "manage" && (
           <div className="space-y-4">
             {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <input
                   value={filter.query}
                   onChange={(e) => setFilter({ ...filter, query: e.target.value })}
                   placeholder="Search by name or description"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 />
                 <select
                   value={filter.mode}
                   onChange={(e) => setFilter({ ...filter, mode: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 >
-                  <option value="all">All Modes</option>
+                  <option value="all" className="bg-white dark:bg-[#0B1220]">All Modes</option>
                   {MODES.map((m) => (
-                    <option key={m.value} value={m.value}>
+                    <option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">
                       {m.label}
                     </option>
                   ))}
@@ -608,11 +612,12 @@ const ManageEvents = () => {
                 <select
                   value={filter.type}
                   onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 >
-                  <option value="all">All Types</option>
+                  <option value="all" className="bg-white dark:bg-[#0B1220]">All Types</option>
                   {EVENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
+                    <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">
                       {t.label}
                     </option>
                   ))}
@@ -637,65 +642,67 @@ const ManageEvents = () => {
                   const id = e._id || e.event_id;
                   const usage = usageByEventId[id] || { totalTeams: 0, byHouse: {} };
                   return (
-                    <div key={id} className="bg-white rounded-xl shadow-sm p-4">
+                    <div key={id} className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-gray-900">{e.name}</h3>
-                          <p className="text-sm text-gray-500 line-clamp-2">
+                          <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>{e.name}</h3>
+                          <p className="text-sm line-clamp-2" style={{ color: 'var(--chart-axis)' }}>
                             {e.description}
                           </p>
                         </div>
                         <div className="flex gap-2 shrink-0">
                           {getChip(
                             e.mode,
-                            "bg-orange-50 text-orange-700 border-orange-200"
+                            "bg-orange-50 border-orange-200 text-orange-700"
                           )}
                           {getChip(
                             e.event_type,
-                            "bg-purple-50 text-purple-700 border-purple-200"
+                            "bg-purple-50 border-purple-200 text-purple-700"
                           )}
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
                         <div>
-                          <span className="text-gray-500">Rounds</span>
-                          <p className="font-medium">{e.rounds}</p>
+                          <span style={{ color: 'var(--chart-axis)' }}>Rounds</span>
+                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.rounds}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Max/{groupLabel}</span>
-                          <p className="font-medium">{e.max_per_house}</p>
+                          <span style={{ color: 'var(--chart-axis)' }}>Max/{groupLabel}</span>
+                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_house}</p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Team size</span>
-                          <p className="font-medium">
+                          <span style={{ color: 'var(--chart-axis)' }}>Team size</span>
+                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>
                             {e.event_type === "individual"
                               ? "1"
                               : `${e.min_team_size}–${e.max_team_size}`}
                           </p>
                         </div>
                         <div>
-                          <span className="text-gray-500">Registered teams</span>
-                          <p className="font-medium">{usage.totalTeams}</p>
+                          <span style={{ color: 'var(--chart-axis)' }}>Registered teams</span>
+                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{usage.totalTeams}</p>
                         </div>
                       </div>
 
                       <div className="flex gap-2 mt-3 flex-wrap">
                         <button
                           onClick={() => startEdit(e)}
-                          className="flex-1 px-3 py-2 min-h-[44px] bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
+                          className="flex-1 px-3 py-2 min-h-[44px] border rounded-lg text-sm font-bold"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => setSharingEvent(e)}
-                          className="flex-1 px-3 py-2 min-h-[44px] bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 text-sm font-medium flex items-center justify-center gap-1"
+                          className="flex-1 px-3 py-2 min-h-[44px] border rounded-lg text-sm font-bold flex items-center justify-center gap-1"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         >
-                          <Share2 className="h-4 w-4" /> Share
+                          <Share2 className="h-4 w-4 text-orange-600" /> Share
                         </button>
                         <button
                           onClick={() => deleteEvent(id)}
-                          className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                          className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-bold"
                         >
                           Delete
                         </button>
@@ -707,19 +714,19 @@ const ManageEvents = () => {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="hidden md:block rounded-xl shadow-sm overflow-hidden border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="border-b" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)' }}>
                     <tr>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Event</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Mode</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Type</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Rounds</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Team Size</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Max/{groupLabel}</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Registered</th>
-                      <th className="text-left p-4 text-sm font-semibold text-gray-700">Actions</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Event</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Mode</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Type</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Rounds</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Team Size</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Max/{groupLabel}</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Registered</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -736,40 +743,42 @@ const ManageEvents = () => {
                         const id = e._id || e.event_id;
                         const usage = usageByEventId[id] || { totalTeams: 0 };
                         return (
-                          <tr key={id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={id} className="border-b hover:bg-indigo-500/5" style={{ borderBottomColor: 'var(--border-divider)' }}>
                             <td className="p-4">
-                              <div className="font-semibold text-gray-900">{e.name}</div>
-                              <div className="text-sm text-gray-500 line-clamp-1">{e.description}</div>
+                              <div className="font-semibold text-base" style={{ color: 'var(--card-fg)' }}>{e.name}</div>
+                              <div className="text-sm line-clamp-1" style={{ color: 'var(--chart-axis)' }}>{e.description}</div>
                             </td>
                             <td className="p-4">
-                              {getChip(e.mode, "bg-orange-50 text-orange-700 border-orange-200")}
+                              {getChip(e.mode, "bg-orange-50 border-orange-200 text-orange-700")}
                             </td>
                             <td className="p-4">
-                              {getChip(e.event_type, "bg-purple-50 text-purple-700 border-purple-200")}
+                              {getChip(e.event_type, "bg-purple-50 border-purple-200 text-purple-700")}
                             </td>
-                            <td className="p-4 text-gray-700">{e.rounds}</td>
-                            <td className="p-4 text-gray-700">
+                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.rounds}</td>
+                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>
                               {e.event_type === "individual" ? "1" : `${e.min_team_size}–${e.max_team_size}`}
                             </td>
-                            <td className="p-4 text-gray-700">{e.max_per_house}</td>
-                            <td className="p-4 text-gray-700">{usage.totalTeams}</td>
+                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_house}</td>
+                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{usage.totalTeams}</td>
                             <td className="p-4">
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => startEdit(e)}
-                                  className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
+                                  className="px-3 py-1 border rounded-lg text-sm font-bold"
+                                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => setSharingEvent(e)}
-                                  className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 text-sm font-medium flex items-center gap-1"
+                                  className="px-3 py-1 border rounded-lg text-sm font-bold flex items-center gap-1"
+                                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                                 >
-                                  <Share2 className="h-3.5 w-3.5" /> Share
+                                  <Share2 className="h-3.5 w-3.5 text-orange-600" /> Share
                                 </button>
                                 <button
                                   onClick={() => deleteEvent(id)}
-                                  className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
+                                  className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-bold"
                                 >
                                   Delete
                                 </button>
@@ -788,44 +797,48 @@ const ManageEvents = () => {
 
         {/* Add/Edit Form */}
         {(activeTab === "add" || activeTab === "edit") && (
-          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
+          <div className="rounded-xl shadow-sm p-4 md:p-6 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <form onSubmit={saveEvent} className="space-y-6" noValidate>
               {/* Event Basics */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Event details</h2>
+                <h2 className="text-lg font-semibold mb-3 text-xl" style={{ color: 'var(--card-fg)' }}>Event details</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Name</label>
                     <input
                       type="text"
                       required
                       value={eventForm.name}
                       onChange={(e) => handleEventChange("name", e.target.value)}
                       placeholder="Enter event name"
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                        fieldErrors.name ? "border-red-300" : "border-gray-200"
-                      }`}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: fieldErrors.name ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                        color: 'var(--card-fg)'
+                      }}
                     />
                     {fieldErrors.name && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Mode</label>
                     <select
                       value={eventForm.mode}
                       onChange={(e) => handleEventChange("mode", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                     >
                       {MODES.map((m) => (
-                        <option key={m.value} value={m.value}>
+                        <option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">
                           {m.label}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                       Description / Rules
                     </label>
                     <textarea
@@ -833,7 +846,8 @@ const ManageEvents = () => {
                       value={eventForm.description}
                       onChange={(e) => handleEventChange("description", e.target.value)}
                       placeholder="Add rules or details for this event"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                     />
                   </div>
                 </div>
@@ -841,24 +855,25 @@ const ManageEvents = () => {
 
               {/* Type & Team sizes */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Type & participation</h2>
+                <h2 className="text-lg font-semibold mb-3 text-xl" style={{ color: 'var(--card-fg)' }}>Type & participation</h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Type</label>
                     <select
                       value={eventForm.event_type}
                       onChange={(e) => handleEventChange("event_type", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                     >
                       {EVENT_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
+                        <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">
                           {t.label}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                       Min team size
                     </label>
                     <input
@@ -873,16 +888,20 @@ const ManageEvents = () => {
                           : eventForm.min_team_size ?? ""
                       }
                       onChange={(e) => handleEventChange("min_team_size", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 ${
-                        fieldErrors.min_team_size ? "border-red-300" : "border-gray-200"
-                      }`}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: fieldErrors.min_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                        color: 'var(--card-fg)',
+                        opacity: eventForm.event_type === "individual" ? 0.5 : 1
+                      }}
                     />
                     {fieldErrors.min_team_size && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.min_team_size}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                       Max team size
                     </label>
                     <input
@@ -897,16 +916,20 @@ const ManageEvents = () => {
                           : eventForm.max_team_size ?? ""
                       }
                       onChange={(e) => handleEventChange("max_team_size", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 ${
-                        fieldErrors.max_team_size ? "border-red-300" : "border-gray-200"
-                      }`}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: fieldErrors.max_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                        color: 'var(--card-fg)',
+                        opacity: eventForm.event_type === "individual" ? 0.5 : 1
+                      }}
                     />
                     {fieldErrors.max_team_size && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.max_team_size}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                       Max per {groupLabel.toLowerCase()}
                     </label>
                     <input
@@ -918,9 +941,12 @@ const ManageEvents = () => {
                           : eventForm.max_per_house ?? ""
                       }
                       onChange={(e) => handleEventChange("max_per_house", e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                        fieldErrors.max_per_house ? "border-red-300" : "border-gray-200"
-                      }`}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        borderColor: fieldErrors.max_per_house ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                        color: 'var(--card-fg)'
+                      }}
                     />
                     {fieldErrors.max_per_house && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_house}</p>
@@ -932,7 +958,7 @@ const ManageEvents = () => {
               {/* Rounds & Schedule (toggle) */}
               <section>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900">Rounds & schedule</h2>
+                  <h2 className="text-lg font-semibold text-xl" style={{ color: 'var(--card-fg)' }}>Rounds & schedule</h2>
                   <button
                     type="button"
                     onClick={() => setShowSchedule((s) => !s)}
@@ -945,7 +971,7 @@ const ManageEvents = () => {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3 mt-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                           Total rounds
                         </label>
                         <input
@@ -953,9 +979,12 @@ const ManageEvents = () => {
                           min={1}
                           value={eventForm.rounds ?? ""}
                           onChange={(e) => handleEventChange("rounds", e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
-                            fieldErrors.rounds ? "border-red-300" : "border-gray-200"
-                          }`}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{
+                            backgroundColor: 'var(--surface)',
+                            borderColor: fieldErrors.rounds ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                            color: 'var(--card-fg)'
+                          }}
                         />
                         {fieldErrors.rounds && (
                           <p className="mt-1 text-xs text-red-600">{fieldErrors.rounds}</p>
@@ -965,16 +994,17 @@ const ManageEvents = () => {
 
                     <div className="space-y-4">
                       {roundsForm.map((r, idx) => (
-                        <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                        <div key={idx} className="border rounded-lg p-3" style={{ borderColor: 'var(--border-divider)' }}>
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-900">Round {r.round_no}</h3>
+                            <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Round {r.round_no}</h3>
                             <select
                               value={r.status}
                               onChange={(e) => updateRoundField(idx, "status", e.target.value)}
-                              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm"
+                              className="px-3 py-2 border rounded-lg text-sm"
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                             >
                               {STATUS_OPTIONS.map((s) => (
-                                <option key={s.value} value={s.value}>
+                                <option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">
                                   {s.label}
                                 </option>
                               ))}
@@ -982,23 +1012,25 @@ const ManageEvents = () => {
                           </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                               <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Date & Time</label>
                                 <input
                                   type="datetime-local"
                                   value={r.date && r.time ? `${r.date}T${r.time}` : ""}
                                   onChange={(e) => updateRoundDateTime(idx, e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                                 />
                               </div>
 
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
+                              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Venue</label>
                               <input
                                 type="text"
                                 value={r.venue || ""}
                                 onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
                                 placeholder="Enter venue"
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                               />
                             </div>
                           </div>
@@ -1012,7 +1044,7 @@ const ManageEvents = () => {
               {/* Points Config (toggle) */}
               <section>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900">Points configuration</h2>
+                  <h2 className="text-lg font-semibold text-xl" style={{ color: 'var(--card-fg)' }}>Points configuration</h2>
                   <button
                     type="button"
                     onClick={() => setShowPoints((s) => !s)}
@@ -1030,7 +1062,7 @@ const ManageEvents = () => {
                       {pointsForm.map((row, idx) => (
                         <div key={idx} className="grid grid-cols-12 gap-2">
                           <div className="col-span-5 md:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                               Position
                             </label>
                             <input
@@ -1038,11 +1070,12 @@ const ManageEvents = () => {
                               min={1}
                               value={row.position}
                               onChange={(e) => updatePointRow(idx, "position", e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                             />
                           </div>
                           <div className="col-span-5 md:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                               Points
                             </label>
                             <input
@@ -1050,7 +1083,8 @@ const ManageEvents = () => {
                               min={0}
                               value={row.points}
                               onChange={(e) => updatePointRow(idx, "points", e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                             />
                           </div>
                           <div className="col-span-2 md:col-span-2 flex items-end">
@@ -1086,7 +1120,8 @@ const ManageEvents = () => {
                     resetForms();
                     setActiveTab("manage");
                   }}
-                  className="flex-1 md:flex-none md:min-w-[140px] px-4 py-3 border border-gray-200 text-gray-600 font-medium rounded-lg hover:bg-gray-50"
+                  className="flex-1 md:flex-none md:min-w-[140px] px-4 py-3 border font-medium rounded-lg"
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 >
                   Cancel
                 </button>

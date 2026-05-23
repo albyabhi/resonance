@@ -66,7 +66,7 @@ export default function CaptainsDirectory() {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-64 bg-slate-100 dark:bg-white/5 rounded-3xl animate-pulse" />)}
+        {[1, 2, 3, 4].map(i => <div key={i} className="h-64 rounded-3xl animate-pulse" style={{ backgroundColor: 'var(--surface)' }} />)}
       </div>
     );
   }
@@ -97,7 +97,8 @@ export default function CaptainsDirectory() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search personnel..." 
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                className="w-full border rounded-2xl pl-11 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             />
         </div>
       </header>
@@ -116,9 +117,9 @@ export default function CaptainsDirectory() {
 
           return (
             <FadeIn key={item.houseId} delay={idx * 0.1}>
-              <div className="card-premium group bg-white dark:bg-[#111827] overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 hover:-translate-y-1">
+              <div className="card-premium group overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 hover:-translate-y-1" style={{ backgroundColor: 'var(--card)' }}>
                 {/* Hero Section */}
-                <div className="relative h-56 overflow-hidden bg-slate-100 dark:bg-white/5">
+                <div className="relative h-56 overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
                   {hasCaptain && captain?.profile_image ? (
                     <img 
                       src={captain.profile_image} 
@@ -126,7 +127,7 @@ export default function CaptainsDirectory() {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/[0.02]">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br" style={{ backgroundImage: 'linear-gradient(to bottom right, var(--surface), var(--bg))' }}>
                        <Shield className="w-12 h-12 text-slate-200 dark:text-white/10 mb-4 transition-transform duration-500 group-hover:rotate-12" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No captain assigned</p>
                     </div>
@@ -134,16 +135,16 @@ export default function CaptainsDirectory() {
                   
                   {/* Glass Header */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                      <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm border border-white/20 dark:border-white/5 text-slate-600 dark:text-slate-300">
+                      <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg backdrop-blur-md shadow-sm border text-slate-600 dark:text-slate-300" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
                         {houseCode}
                       </span>
                       {hasCaptain && (
-                        <div className="h-8 w-8 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50 border-2 border-white dark:border-[#111827] animate-pulse" />
+                        <div className="h-8 w-8 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50 border-2 animate-pulse" style={{ borderColor: 'var(--card)' }} />
                       )}
                   </div>
 
                   {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/10 to-transparent opacity-0 group-hover:opacity-100 dark:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t opacity-0 group-hover:opacity-100 dark:opacity-100 transition-opacity duration-500" style={{ backgroundImage: 'linear-gradient(to top, var(--card), transparent)' }} />
                   
                   {/* Name Overlay */}
                   <div className="absolute bottom-6 left-6 right-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
@@ -157,7 +158,7 @@ export default function CaptainsDirectory() {
                   <div className="space-y-4">
                     {hasCaptain ? (
                       <div className="space-y-3">
-                         <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-white/5 group/row transition-colors hover:bg-white dark:hover:bg-slate-800" style={{ backgroundColor: 'var(--surface)' }}>
+                         <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-indigo-500/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                            <div className="flex items-center gap-3">
                               <div className="p-2 rounded-xl text-indigo-600 dark:text-indigo-400 shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
                                 <Phone className="w-3.5 h-3.5" />
@@ -170,7 +171,7 @@ export default function CaptainsDirectory() {
                            <ExternalLink className="w-3 h-3 text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all" />
                          </div>
 
-                         <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-white/5 group/row transition-colors hover:bg-white dark:hover:bg-slate-800" style={{ backgroundColor: 'var(--surface)' }}>
+                         <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-indigo-500/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                            <div className="flex items-center gap-3">
                               <div className="p-2 rounded-xl text-violet-600 dark:text-violet-400 shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
                                 <Mail className="w-3.5 h-3.5" />
@@ -192,7 +193,7 @@ export default function CaptainsDirectory() {
                   </div>
 
                   {hasCaptain && (
-                    <button className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white shadow-xl shadow-slate-900/10 dark:shadow-white/5 active:scale-95 group-hover:translate-y-0 translate-y-1 opacity-0 group-hover:opacity-100 duration-500">
+                    <button className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 hover:text-white shadow-xl active:scale-95 group-hover:translate-y-0 translate-y-1 opacity-0 group-hover:opacity-100 duration-500" style={{ backgroundColor: 'var(--card-fg)', color: 'var(--card)' }}>
                         View profile
                     </button>
                   )}

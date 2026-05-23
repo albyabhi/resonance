@@ -165,13 +165,13 @@ function RecentEvents() {
           <p className="pl-7 text-sm text-gray-500 dark:text-gray-400">Upcoming, live, and completed events</p>
         </div>
 
-        <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 p-1 dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center gap-1 rounded-full border p-1" style={{ borderColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
           {["all", "live", "upcoming", "completed"].map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}
               className={`rounded-full px-3 py-1.5 text-xs transition-all ${
-                category === c ? "border border-gray-200 shadow-sm font-semibold" : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
+                category === c ? "border shadow-sm font-semibold" : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
               }`}
               style={category === c ? { backgroundColor: 'var(--card)', color: 'var(--accent)', borderColor: 'var(--border-divider)' } : {}}
             >
@@ -203,11 +203,11 @@ function RecentEvents() {
               <button
                 key={evt.key}
                 onClick={() => openDetails(evt.key)}
-                className="group flex w-full items-center justify-between rounded-2xl border border-gray-200 p-4 text-left transition hover:border-indigo-200 hover:shadow-md dark:border-gray-800 dark:hover:border-indigo-500/20"
-                style={{ backgroundColor: 'var(--card)' }}
+                className="group flex w-full items-center justify-between rounded-2xl border p-4 text-left transition hover:border-indigo-500 hover:shadow-md"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}
               >
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-400 transition-colors group-hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:text-indigo-400">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors group-hover:text-indigo-600" style={{ backgroundColor: 'var(--surface)', color: 'var(--chart-axis)' }}>
                     <Layout className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
@@ -236,8 +236,8 @@ function RecentEvents() {
 
       {openId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xl transition-all duration-300 sm:p-6">
-          <FadeIn className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-[#0B1220]">
-            <header className="flex items-center justify-between border-b border-gray-200 bg-gray-50/70 p-6 dark:border-gray-800 dark:bg-gray-900/50">
+          <FadeIn className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border shadow-2xl" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
+            <header className="flex items-center justify-between border-b p-6" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
               <div className="space-y-1">
                 <h4 className="text-2xl font-semibold text-gray-900 dark:text-white">{eventDetail?.name || "Event details"}</h4>
                 <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
@@ -246,7 +246,7 @@ function RecentEvents() {
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {eventDetail?.event_type}</span>
                 </div>
               </div>
-              <button onClick={closeDetails} className="rounded-xl border border-gray-200 bg-white p-2 text-gray-400 transition hover:text-rose-500 dark:border-gray-800 dark:bg-slate-900">
+              <button onClick={closeDetails} className="rounded-xl border p-2 transition hover:text-rose-500" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>
                 <X className="h-6 w-6" />
               </button>
             </header>
@@ -263,7 +263,7 @@ function RecentEvents() {
                       { label: "Max team", value: eventDetail?.max_team_size || 1, icon: Users },
                       { label: "House cap", value: eventDetail?.max_per_house, icon: Layout },
                     ].map((m, i) => (
-                      <div key={i} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900">
+                      <div key={i} className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                         <m.icon className="mb-2 h-4 w-4 text-indigo-500" />
                         <p className="text-xs text-gray-400 dark:text-gray-500">{m.label}</p>
                         <p className="text-lg font-semibold text-gray-900 dark:text-white">{m.value}</p>
@@ -277,7 +277,7 @@ function RecentEvents() {
                     </h5>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {eventSchedules.map((r) => (
-                        <div key={r._id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
+                        <div key={r._id} className="rounded-2xl border p-5 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
                           <div className="mb-3 flex items-start justify-between">
                             <p className="text-xs text-gray-400 dark:text-gray-500">Round {r.round_no}</p>
                             <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
@@ -311,7 +311,7 @@ function RecentEvents() {
                       <div className="space-y-4">
                         {winnersView.length ? (
                           winnersView.map((w) => (
-                            <div key={w.resultId} className="flex items-center gap-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
+                            <div key={w.resultId} className="flex items-center gap-6 rounded-2xl border p-6 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
                               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-semibold ${w.position === 1 ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300"}`}>
                                 {w.position === 1 ? <Trophy className="h-6 w-6" /> : w.position}
                               </div>
@@ -319,7 +319,7 @@ function RecentEvents() {
                                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{w.houseText}</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {w.members.map((m) => (
-                                    <span key={m._id} className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                                    <span key={m._id} className="rounded-lg border px-2 py-1 text-xs" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>
                                       {m.name}
                                     </span>
                                   ))}
@@ -334,7 +334,7 @@ function RecentEvents() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {eventTeams.map((t) => (
-                          <div key={t._id} className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-[#111827]">
+                          <div key={t._id} className="rounded-2xl border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
                             <p className="mb-1 text-xs text-indigo-600 dark:text-indigo-400">{t.houseName}</p>
                             <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">{t.chest_no ? `Chest Node #${t.chest_no}` : "Chest Node unassigned"}</p>
                             <div className="space-y-2">

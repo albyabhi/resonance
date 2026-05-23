@@ -8,7 +8,6 @@ import {
   Ticket, 
   Lock, 
   Globe, 
-  Sparkles, 
   Mail, 
   UserPlus, 
   LogIn, 
@@ -297,7 +296,7 @@ export default function ParticipantLoginPage() {
           className="w-full max-w-lg mb-6 py-2.5 px-4 text-center text-xs font-semibold tracking-wider uppercase rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300 flex items-center justify-center gap-1.5"
           style={{ backgroundColor: `${primaryColor}15`, color: primaryColor, border: `1px solid ${primaryColor}30` }}
         >
-          <Sparkles className="h-3.5 w-3.5" />
+          <Trophy className="h-3.5 w-3.5" />
           {matchedCompetitionName} • Participant Portal
         </div>
       )}
@@ -424,7 +423,7 @@ export default function ParticipantLoginPage() {
                 </div>
                 {isSlugLocked && (
                   <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-1 ml-1 flex items-center gap-1 font-medium" style={{ color: primaryColor }}>
-                    <Sparkles className="h-2.5 w-2.5" /> Auto-detected and locked
+                    <Lock className="h-2.5 w-2.5" /> Auto-detected and locked
                   </p>
                 )}
                 {matchedCompetitionName && !isSlugLocked && (

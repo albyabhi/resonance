@@ -45,29 +45,29 @@ const MobileRowCard = ({
   const [posValue, setPosValue] = useState("");
 
   return (
-    <div className="p-3 border rounded-lg bg-white shadow-xs">
+    <div className="p-3 border rounded-lg shadow-xs" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)', color: 'var(--card-fg)' }}>
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-900">{grp.event_name}</div>
-        <div className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Round {row.round_no}</div>
+        <div className="text-sm font-medium" style={{ color: 'var(--card-fg)' }}>{grp.event_name}</div>
+        <div className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}>Round {row.round_no}</div>
       </div>
 
-      <div className="mt-2 text-sm text-gray-700">
+      <div className="mt-2 text-sm">
         <div className="flex items-center justify-between">
-          <span className="text-gray-500">Placement</span>
-          <span className="font-medium">{row.position}</span>
+          <span style={{ color: 'var(--chart-axis)' }}>Placement</span>
+          <span className="font-medium" style={{ color: 'var(--card-fg)' }}>{row.position}</span>
         </div>
         <div className="mt-1 flex items-center justify-between">
-          <span className="text-gray-500">Points</span>
-          <span className="font-semibold">{row.points}</span>
+          <span style={{ color: 'var(--chart-axis)' }}>Points</span>
+          <span className="font-semibold" style={{ color: 'var(--card-fg)' }}>{row.points}</span>
         </div>
         <div className="mt-1">
-          <span className="text-gray-500">Team/Members: </span>
+          <span style={{ color: 'var(--chart-axis)' }}>Team/Members: </span>
           {row.chest_no ? (
-            <span className="text-gray-900">Chest #{row.chest_no}</span>
+            <span style={{ color: 'var(--card-fg)' }}>Chest #{row.chest_no}</span>
           ) : (row.members || []).length ? (
-            <span className="text-gray-900">{row.members.map((m) => m.name).join(", ")}</span>
+            <span style={{ color: 'var(--card-fg)' }}>{row.members.map((m) => m.name).join(", ")}</span>
           ) : (
-            <span className="text-gray-900">No chest</span>
+            <span style={{ color: 'var(--card-fg)' }}>No chest</span>
           )}
         </div>
       </div>
@@ -82,11 +82,12 @@ const MobileRowCard = ({
               onChangeTeam(newTeamId);
               e.target.value = "";
             }}
-            className="px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="">Change team</option>
+            <option value="" className="bg-white dark:bg-[#0B1220]">Change team</option>
             {(teamsByEvent[grp.event_id] || []).map((t) => (
-              <option key={t._id} value={t._id}>{t.label}</option>
+              <option key={t._id} value={t._id} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
             ))}
           </select>
           <div className="flex items-center gap-2">
@@ -97,6 +98,7 @@ const MobileRowCard = ({
               onChange={(e) => setPosValue(e.target.value)}
               placeholder="Position"
               className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const v = parseInt(posValue, 10);
@@ -110,7 +112,7 @@ const MobileRowCard = ({
             <button
               type="button"
               onClick={() => onDelete()}
-              className="px-3 py-2 rounded-lg text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition"
+              className="px-3 py-2 rounded-lg text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
             >
               Delete
             </button>
@@ -322,16 +324,16 @@ const AdminScoreboard = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
+    <div className="rounded-xl shadow-sm p-3 md:p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
       <div className="mb-3">
-        <h2 className="text-base md:text-lg font-semibold text-gray-900">Manage Scoreboard</h2>
-        <p className="text-xs md:text-sm text-gray-600">View, audit, and edit scoreboard contributions per {groupLabel.toLowerCase()}</p>
+        <h2 className="text-base md:text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Manage Scoreboard</h2>
+        <p className="text-xs md:text-sm" style={{ color: 'var(--chart-axis)' }}>View, audit, and edit scoreboard contributions per {groupLabel.toLowerCase()}</p>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3"
+          className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
         >
           {error}
         </div>
@@ -340,15 +342,16 @@ const AdminScoreboard = () => {
       {/* Controls */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         <div>
-          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">{groupLabel}</label>
+          <label className="block text-xs md:text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>{groupLabel}</label>
           <select
             value={houseId}
             onChange={(e) => setHouseId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="">Select {groupLabel.toLowerCase()}</option>
+            <option value="" className="bg-white dark:bg-[#0B1220]">Select {groupLabel.toLowerCase()}</option>
             {houses.map((h) => (
-              <option key={h._id} value={h._id}>
+              <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
                 {h.name} {h.code ? `(${h.code})` : ""}
               </option>
             ))}
@@ -356,22 +359,23 @@ const AdminScoreboard = () => {
         </div>
 
         <div>
-          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Filter event</label>
+          <label className="block text-xs md:text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Filter event</label>
           <select
             value={filterEvent}
             onChange={(e) => setFilterEvent(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="">All events</option>
+            <option value="" className="bg-white dark:bg-[#0B1220]">All events</option>
             {events.map((ev) => (
-              <option key={ev._id} value={ev._id}>{ev.name}</option>
+              <option key={ev._id} value={ev._id} className="bg-white dark:bg-[#0B1220]">{ev.name}</option>
             ))}
           </select>
         </div>
 
         <div className="flex items-end">
-          <div className="px-3 py-2 bg-gray-50 rounded-lg border text-sm w-full md:w-auto flex justify-between md:block">
-            <span className="text-gray-600">Overall total:</span>{" "}
+          <div className="px-3 py-2 rounded-lg border text-sm w-full md:w-auto flex justify-between md:block" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+            <span style={{ color: 'var(--chart-axis)' }}>Overall total:</span>{" "}
             <span className="font-semibold">{details.total || 0}</span>
           </div>
         </div>
@@ -400,29 +404,31 @@ const AdminScoreboard = () => {
         {/* Mobile layout: cards & collapsible groups */}
         <div className="md:hidden space-y-3">
           {!houseId ? (
-            <div className="p-3 text-sm text-gray-600 border rounded-lg">Select a {groupLabel.toLowerCase()} to view details</div>
+            <div className="p-3 text-sm border rounded-lg" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} to view details</div>
           ) : loading ? (
             <>
               <SkeletonRow />
               <SkeletonRow />
             </>
           ) : groupedByEvent.length === 0 ? (
-            <div className="p-3 text-sm text-gray-600 border rounded-lg">No contributions</div>
+            <div className="p-3 text-sm border rounded-lg" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>No contributions</div>
           ) : (
             groupedByEvent.map((grp) => {
               const isOpen = expandedEvents.has(grp.event_id);
               return (
-                <div key={grp.event_id} className="border rounded-lg overflow-hidden">
+                <div key={grp.event_id} className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-divider)' }}>
                   <button
                     type="button"
                     onClick={() => toggleEvent(grp.event_id)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                    style={{ backgroundColor: 'var(--surface)' }}
                   >
-                    <div className="text-sm font-medium text-gray-900">{grp.event_name}</div>
+                    <div className="text-sm font-medium" style={{ color: 'var(--card-fg)' }}>{grp.event_name}</div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xs text-gray-600">Subtotal: <span className="font-semibold">{grp.subtotal}</span></div>
+                      <div className="text-xs" style={{ color: 'var(--chart-axis)' }}>Subtotal: <span className="font-semibold" style={{ color: 'var(--card-fg)' }}>{grp.subtotal}</span></div>
                       <svg
-                        className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        style={{ color: 'var(--chart-axis)' }}
                         viewBox="0 0 20 20"
                         fill="currentColor"
                         aria-hidden="true"
@@ -454,16 +460,16 @@ const AdminScoreboard = () => {
         </div>
 
         {/* Desktop/tablet layout */}
-        <div className="hidden md:block overflow-x-auto border rounded-lg">
+        <div className="hidden md:block overflow-x-auto border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
           <table className="min-w-full">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--surface)' }}>
               <tr>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Event</th>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Round</th>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Placement</th>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Points</th>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Team/Members</th>
-                <th className="text-left p-3 text-xs uppercase text-gray-500">Action</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Event</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Round</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Placement</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Points</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Team/Members</th>
+                <th className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -473,14 +479,14 @@ const AdminScoreboard = () => {
                   <SkeletonRow />
                 </>
               ) : !houseId ? (
-                <tr><td className="p-3 text-sm text-gray-600" colSpan={6}>Select a {groupLabel.toLowerCase()} to view details</td></tr>
+                <tr><td className="p-3 text-sm text-center" colSpan={6} style={{ color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} to view details</td></tr>
               ) : groupedByEvent.length === 0 ? (
-                <tr><td className="p-3 text-sm text-gray-600" colSpan={6}>No contributions</td></tr>
+                <tr><td className="p-3 text-sm text-center" colSpan={6} style={{ color: 'var(--chart-axis)' }}>No contributions</td></tr>
               ) : (
                 groupedByEvent.map((grp) => (
                   <React.Fragment key={grp.event_id}>
                     {grp.rows.map((row, idx) => (
-                      <tr key={row.result_id} className="border-t hover:bg-gray-50">
+                      <tr key={row.result_id} className="border-t hover:bg-indigo-500/5" style={{ borderTopColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                         <td className="p-3">{idx === 0 ? grp.event_name : ""}</td>
                         <td className="p-3">Round {row.round_no}</td>
                         <td className="p-3">{row.position}</td>
@@ -505,11 +511,12 @@ const AdminScoreboard = () => {
                                   editRow(row, { team_id: newTeamId });
                                   e.target.value = "";
                                 }}
-                                className="px-2 py-1 border rounded bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                               >
-                                <option value="">Change team</option>
+                                <option value="" className="bg-white dark:bg-[#0B1220]">Change team</option>
                                 {(teamsByEvent[row.event_id] || []).map((t) => (
-                                  <option key={t._id} value={t._id}>{t.label}</option>
+                                  <option key={t._id} value={t._id} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
                                 ))}
                               </select>
                               <input
@@ -517,6 +524,7 @@ const AdminScoreboard = () => {
                                 min={1}
                                 placeholder="Position"
                                 className="w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     const v = parseInt(e.currentTarget.value, 10);
@@ -530,7 +538,7 @@ const AdminScoreboard = () => {
                               <button
                                 type="button"
                                 onClick={() => deleteRow(row)}
-                                className="px-3 py-1 rounded text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition"
+                                className="px-3 py-1 rounded text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
                               >
                                 Delete
                               </button>
@@ -541,7 +549,7 @@ const AdminScoreboard = () => {
                         </td>
                       </tr>
                     ))}
-                    <tr className="bg-gray-50 border-t">
+                    <tr className="border-t" style={{ backgroundColor: 'var(--surface)', borderTopColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                       <td className="p-3 font-medium" colSpan={3}>Subtotal</td>
                       <td className="p-3 font-semibold">{grp.subtotal}</td>
                       <td className="p-3" colSpan={2}></td>

@@ -53,7 +53,8 @@ function Header({
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onMenuClick}
-            className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+            className="rounded-full p-2 transition-colors hover:text-indigo-600 md:hidden"
+            style={{ color: 'var(--chart-axis)' }}
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
@@ -62,7 +63,8 @@ function Header({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="hidden rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:inline-flex dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+            className="hidden rounded-full p-2 transition-colors hover:text-indigo-600 md:inline-flex"
+            style={{ color: 'var(--chart-axis)' }}
             aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
             {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
@@ -86,7 +88,8 @@ function Header({
             <input
               type="text"
               placeholder="Search dashboard"
-              className="h-11 w-full rounded-full border border-gray-200 bg-gray-100/80 pl-11 pr-4 text-sm text-gray-900 outline-none transition-colors duration-300 placeholder:text-gray-400 focus:border-indigo-400 focus:bg-white dark:border-gray-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-500"
+              className="h-11 w-full rounded-full border pl-11 pr-4 text-sm outline-none transition-colors duration-300 focus:border-indigo-500"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             />
           </div>
         </div>
@@ -102,7 +105,8 @@ function Header({
               <button
                 type="button"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative rounded-full border border-gray-200 bg-white p-2.5 text-gray-500 transition-colors duration-300 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                className="relative rounded-full border p-2.5 transition-colors duration-300 hover:text-indigo-600"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -114,9 +118,9 @@ function Header({
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-[#111827]">
-                  <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/80 p-4 dark:border-gray-800 dark:bg-gray-900/70">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</span>
+                <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
+                  <div className="flex items-center justify-between border-b p-4" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
+                    <span className="text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Notifications</span>
                     {unreadCount > 0 && (
                       <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
                         {unreadCount} New
@@ -137,12 +141,13 @@ function Header({
                               setShowNotifications(false);
                             }
                           }}
-                          className={`cursor-pointer border-b border-gray-100 p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/70 ${!n.read ? "border-l-2 border-l-indigo-600" : ""}`}
+                          className={`cursor-pointer border-b p-4 transition-colors hover:bg-indigo-500/5 ${!n.read ? "border-l-2 border-l-indigo-600" : ""}`}
+                          style={{ borderBottom: '1px solid var(--border-divider)' }}
                         >
-                          <p className={`text-sm ${!n.read ? "font-semibold text-gray-900 dark:text-white" : "font-medium text-gray-600 dark:text-gray-400"}`}>
+                          <p className={`text-sm ${!n.read ? "font-semibold" : "font-medium"}`} style={{ color: !n.read ? 'var(--card-fg)' : 'var(--chart-axis)' }}>
                             {n.title}
                           </p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: 'var(--chart-axis)' }}>
                             {n.message}
                           </p>
                         </div>

@@ -88,7 +88,7 @@ export default function UserSettings() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="card-premium p-10 bg-white dark:bg-[#111827] space-y-8 relative overflow-hidden">
+      <div className="card-premium p-10 space-y-8 relative overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <User className="w-32 h-32 text-indigo-500" />
         </div>
@@ -116,7 +116,7 @@ export default function UserSettings() {
           {/* Profile Image Upload */}
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="relative group">
-              <div className="h-24 w-24 rounded-full bg-slate-100 dark:bg-white/5 border-2 border-slate-200 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-xl shadow-indigo-500/5">
+              <div className="h-24 w-24 rounded-full border-2 flex items-center justify-center overflow-hidden shadow-xl shadow-indigo-500/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                 {previewUrl ? (
                   <img src={previewUrl} alt="Avatar Preview" className="h-full w-full object-cover" />
                 ) : (
@@ -150,7 +150,8 @@ export default function UserSettings() {
                 value={name} 
                 onChange={e => setName(e.target.value)}
                 placeholder="Full name"
-                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
             </div>
             
@@ -164,7 +165,8 @@ export default function UserSettings() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="Email address"
                 type="email"
-                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
             </div>
           </div>
@@ -178,7 +180,8 @@ export default function UserSettings() {
               value={password} 
               onChange={e => setPassword(e.target.value)}
               placeholder="New password (min 6 chars)"
-              className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-900 dark:text-white transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+              className="w-full border rounded-2xl px-5 py-3.5 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             />
           </div>
 

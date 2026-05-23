@@ -190,7 +190,7 @@ const SubmissionManager = () => {
           <li className="py-2 text-center text-sm theme-text-secondary">No submissions found</li>
         ) : (
           submissions.map((row) => (
-            <li key={row._id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-[#111827]">
+            <li key={row._id} className="rounded-xl border p-3 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs theme-text-secondary">Position</p>

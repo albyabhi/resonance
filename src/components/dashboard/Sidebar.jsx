@@ -52,7 +52,8 @@ function SidebarButton({
       {active && (
         <motion.div
           layoutId="active-pill"
-          className="absolute inset-y-1 left-2 right-2 -z-10 rounded-lg bg-slate-100 dark:bg-slate-800"
+          className="absolute inset-y-1 left-2 right-2 -z-10 rounded-lg"
+          style={{ backgroundColor: 'var(--surface)' }}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
         />
       )}
@@ -117,7 +118,7 @@ export default function Sidebar({
   }, [open, onClose]);
 
   const SidebarContent = (
-    <div className="flex h-full flex-col bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+    <div className="flex h-full flex-col" style={{ backgroundColor: 'var(--card)', borderRight: '1px solid var(--border-divider)' }}>
       
 
       {/* Main Navigation */}
@@ -175,9 +176,9 @@ export default function Sidebar({
       </div>
 
       {/* User Footer */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/20">
+      <div className="p-4" style={{ borderTop: '1px solid var(--border-divider)', backgroundColor: 'var(--bg)' }}>
         <div className={`flex items-center ${sidebarOpen ? "mb-4 gap-3" : "justify-center mb-0"}`}>
-          <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
             {user?.profile_image ? (
               <img src={user.profile_image} alt="Profile" className="h-full w-full object-cover" />
             ) : (
@@ -187,7 +188,7 @@ export default function Sidebar({
 
           {sidebarOpen && (
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate dark:text-white leading-tight">{displayName}</p>
+              <p className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--card-fg)' }}>{displayName}</p>
               <div className="flex items-center gap-1 text-slate-500">
                 <Shield className="h-3 w-3" />
                 <p className="text-[11px] truncate uppercase">{roleKey}</p>
@@ -198,8 +199,8 @@ export default function Sidebar({
 
         <button
           onClick={isAuthenticated ? logout : () => navigate("/login")}
-          className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors
-            ${sidebarOpen ? "bg-slate-900 text-white hover:bg-slate-800" : "text-slate-500 hover:text-slate-900"}`}
+          className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors"
+          style={sidebarOpen ? { backgroundColor: 'var(--card-fg)', color: 'var(--card)' } : { color: 'var(--chart-axis)' }}
         >
           {isAuthenticated ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
           {sidebarOpen && <span>{isAuthenticated ? "Logout" : "Login"}</span>}

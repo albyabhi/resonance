@@ -222,10 +222,10 @@ function ManageParticipants() {
 
   // Render
   return (
-    <div className="min-h-dvh bg-gray-50 p-4">
+    <div className="min-h-dvh p-4" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="mx-auto max-w-7xl">
         <div className="mb-4">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
+          <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ color: 'var(--card-fg)' }}>
             Participant Management
           </h1>
           <p className="text-gray-600 text-sm md:text-base">
@@ -251,7 +251,8 @@ function ManageParticipants() {
 
         {/* Tabs */}
         <div
-          className="bg-white rounded-xl shadow-sm mb-4 p-1 flex"
+          className="rounded-xl shadow-sm mb-4 p-1 flex border"
+          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}
           role="tablist"
           aria-label="Participant management views"
         >
@@ -263,8 +264,9 @@ function ManageParticipants() {
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "all"
                 ? "bg-orange-600 text-white shadow"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                : "hover:bg-indigo-500/5"
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+            style={activeTab !== "all" ? { color: 'var(--card-fg)' } : {}}
             onClick={() => switchTab("all")}
           >
             All Participants
@@ -277,8 +279,9 @@ function ManageParticipants() {
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "add"
                 ? "bg-orange-600 text-white shadow"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                : "hover:bg-indigo-500/5"
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+            style={activeTab !== "add" ? { color: 'var(--card-fg)' } : {}}
             onClick={() => switchTab("add")}
           >
             Add
@@ -291,8 +294,9 @@ function ManageParticipants() {
             className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
               activeTab === "update"
                 ? "bg-orange-600 text-white shadow"
-                : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                : "hover:bg-indigo-500/5"
             } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+            style={activeTab !== "update" ? { color: 'var(--card-fg)' } : {}}
             disabled={!editingParticipant}
           >
             Update
@@ -316,11 +320,12 @@ function ManageParticipants() {
                 id="filter-house"
                 value={filterHouse}
                 onChange={(e) => setFilterHouse(e.target.value)}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="">Filter by house</option>
+                <option value="" className="bg-white dark:bg-[#0B1220]">Filter by house</option>
                 {houses.map((h) => (
-                  <option key={h._id} value={h._id}>
+                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
                     {h.name}
                   </option>
                 ))}
@@ -335,7 +340,8 @@ function ManageParticipants() {
                 value={filterClass}
                 onChange={(e) => setFilterClass(e.target.value)}
                 placeholder="Filter by class"
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
 
               <label className="sr-only" htmlFor="search">
@@ -347,18 +353,21 @@ function ManageParticipants() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
 
               <button
-                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 font-bold"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 onClick={handleDeselectAll}
                 type="button"
               >
                 Clear Selection
               </button>
               <button
-                className="px-3 py-2 min-h-[44px] bg-gray-100 border border-gray-200 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 font-bold"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 onClick={handleSelectAll}
                 type="button"
               >
@@ -379,24 +388,25 @@ function ManageParticipants() {
               {participants.map((stu) => (
                 <li
                   key={stu._id}
-                  className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
+                  className="rounded-xl border p-3 shadow-sm"
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 break-words">
+                      <p className="text-sm font-medium break-words" style={{ color: 'var(--card-fg)' }}>
                         {stu.name}
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>
                         Class:{" "}
-                        <span className="font-medium">{stu.class}</span>
+                        <span className="font-medium" style={{ color: 'var(--card-fg)' }}>{stu.class}</span>
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>
                         House:{" "}
-                        <span className="font-medium">
+                        <span className="font-medium" style={{ color: 'var(--card-fg)' }}>
                           {getHouseName(stu.house_id?._id || stu.house_id)}
                         </span>
                       </p>
-                      <p className="text-[11px] text-gray-500 mt-1">
+                      <p className="text-[11px] mt-1" style={{ color: 'var(--chart-axis)' }}>
                         ID: {stu.unique_id}
                       </p>
                     </div>
@@ -412,14 +422,15 @@ function ManageParticipants() {
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
-                      className="flex-1 px-3 py-2 min-h-[44px] bg-orange-50 text-orange-700 border border-orange-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                      className="flex-1 px-3 py-2 min-h-[44px] border rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 font-bold"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                       onClick={() => handleEditStart(stu)}
                       type="button"
                     >
                       Edit
                     </button>
                     <button
-                      className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-700 border border-red-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                      className="flex-1 px-3 py-2 min-h-[44px] bg-red-50 text-red-700 border border-red-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 font-bold"
                       onClick={() => handleDeleteSingle(stu._id)}
                       type="button"
                     >
@@ -436,31 +447,31 @@ function ManageParticipants() {
             </ul>
 
             {/* Desktop/tablet table view */}
-            <div className="hidden sm:block overflow-x-auto bg-white rounded-lg shadow border">
+            <div className="hidden sm:block overflow-x-auto rounded-lg shadow border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
               <table className="min-w-full table-auto">
-                <thead className="bg-gray-50">
+                <thead style={{ backgroundColor: 'var(--surface)' }}>
                   <tr>
                     <th scope="col" className="w-10" />
-                    <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
+                    <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       Name
                     </th>
-                    <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
+                    <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       Class
                     </th>
-                    <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
+                    <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       House
                     </th>
-                    <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
+                    <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       Participant ID
                     </th>
-                    <th scope="col" className="text-left p-3 text-xs uppercase text-gray-500">
+                    <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {participants.map((stu) => (
-                    <tr key={stu._id} className="border-b">
+                    <tr key={stu._id} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
                       <td className="px-3 align-middle">
                         <input
                           aria-label={`Select ${stu.name}`}
@@ -470,23 +481,24 @@ function ManageParticipants() {
                           onChange={() => handleSelect(stu._id)}
                         />
                       </td>
-                      <td className="p-3 align-middle">{stu.name}</td>
-                      <td className="p-3 align-middle">{stu.class}</td>
-                      <td className="p-3 align-middle">
+                      <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.name}</td>
+                      <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.class}</td>
+                      <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>
                         {getHouseName(stu.house_id?._id || stu.house_id)}
                       </td>
-                      <td className="p-3 align-middle">{stu.unique_id}</td>
+                      <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.unique_id}</td>
                       <td className="p-3 align-middle">
                         <div className="flex flex-wrap gap-2">
                           <button
-                            className="px-3 py-2 min-h-[40px] bg-orange-50 text-orange-700 border border-orange-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                            className="px-3 py-2 min-h-[40px] border rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 font-bold"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                             onClick={() => handleEditStart(stu)}
                             type="button"
                           >
                             Edit
                           </button>
                           <button
-                            className="px-3 py-2 min-h-[40px] bg-red-50 text-red-700 border border-red-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                            className="px-3 py-2 min-h-[40px] bg-red-50 text-red-700 border border-red-200 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 font-bold"
                             onClick={() => handleDeleteSingle(stu._id)}
                             type="button"
                           >
@@ -514,11 +526,12 @@ function ManageParticipants() {
             id="panel-add"
             role="tabpanel"
             aria-labelledby="tab-add"
-            className="space-y-8 max-w-2xl bg-white p-4 sm:p-6 rounded-lg shadow-sm"
+            className="space-y-8 max-w-2xl p-4 sm:p-6 rounded-lg shadow-sm border"
+            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
           >
             {/* Add single */}
             <form className="space-y-3" onSubmit={handleAddSingle}>
-              <h3 className="font-semibold">Add Single Participant</h3>
+              <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Add Single Participant</h3>
               <label className="sr-only" htmlFor="add-house">
                 Select house
               </label>
@@ -527,11 +540,12 @@ function ManageParticipants() {
                 required
                 value={addForm.house_id}
                 onChange={(e) => setAddForm((f) => ({ ...f, house_id: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="">Select house</option>
+                <option value="" className="bg-white dark:bg-[#0B1220]">Select house</option>
                 {houses.map((h) => (
-                  <option key={h._id} value={h._id}>
+                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
                     {h.name}
                   </option>
                 ))}
@@ -546,7 +560,8 @@ function ManageParticipants() {
                 placeholder="Name"
                 value={addForm.name}
                 onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
               <label className="sr-only" htmlFor="add-class">
                 Class
@@ -558,7 +573,8 @@ function ManageParticipants() {
                 placeholder="Class"
                 value={addForm.class}
                 onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
               <button
                 type="submit"
@@ -571,7 +587,7 @@ function ManageParticipants() {
 
             {/* Add bulk */}
             <form className="space-y-3" onSubmit={handleBulkJson}>
-              <h3 className="font-semibold">Bulk Add via JSON Paste</h3>
+              <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Bulk Add via JSON Paste</h3>
               <label className="sr-only" htmlFor="bulk-house">
                 Select house for this bulk
               </label>
@@ -580,11 +596,12 @@ function ManageParticipants() {
                 required
                 value={bulkHouse}
                 onChange={(e) => setBulkHouse(e.target.value)}
-                className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="">Select house for this bulk</option>
+                <option value="" className="bg-white dark:bg-[#0B1220]">Select house for this bulk</option>
                 {houses.map((h) => (
-                  <option key={h._id} value={h._id}>
+                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
                     {h.name}
                   </option>
                 ))}
@@ -599,7 +616,8 @@ function ManageParticipants() {
                 placeholder='Paste participants as JSON array, e.g. [{"NAME":"...","CLASS":"..."}]'
                 value={bulkJson}
                 onChange={(e) => setBulkJson(e.target.value)}
-                className="block w-full border border-gray-200 rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="block w-full border rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               />
               <button
                 type="submit"
@@ -618,9 +636,10 @@ function ManageParticipants() {
             id="panel-update"
             role="tabpanel"
             aria-labelledby="tab-update"
-            className="max-w-xl bg-white p-4 sm:p-6 rounded-lg shadow space-y-3"
+            className="max-w-xl p-4 sm:p-6 rounded-lg shadow space-y-3 border"
+            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
           >
-            <h3 className="font-semibold mb-2">Edit Participant</h3>
+            <h3 className="font-semibold mb-2 text-lg" style={{ color: 'var(--card-fg)' }}>Edit Participant</h3>
             <label className="sr-only" htmlFor="edit-house">
               House
             </label>
@@ -631,11 +650,12 @@ function ManageParticipants() {
               onChange={(e) =>
                 setEditingParticipant((participant) => ({ ...participant, house_id: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             >
-              <option value="">House</option>
+              <option value="" className="bg-white dark:bg-[#0B1220]">House</option>
               {houses.map((h) => (
-                <option key={h._id} value={h._id}>
+                <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
                   {h.name}
                 </option>
               ))}
@@ -651,7 +671,8 @@ function ManageParticipants() {
               onChange={(e) =>
                 setEditingParticipant((participant) => ({ ...participant, name: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               placeholder="Name"
             />
             <label className="sr-only" htmlFor="edit-class">
@@ -665,7 +686,8 @@ function ManageParticipants() {
               onChange={(e) =>
                 setEditingParticipant((participant) => ({ ...participant, class: e.target.value }))
               }
-              className="px-3 py-2 min-h-[44px] border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               placeholder="Class"
             />
             <button
@@ -678,10 +700,10 @@ function ManageParticipants() {
             </button>
             <button
               type="button"
-              className="mt-2 w-full border px-3 py-2 min-h-[44px] rounded text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+              className="mt-2 w-full border px-3 py-2 min-h-[44px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 font-bold"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               onClick={() => {
                 setEditingParticipant(null);
-                setActiveTab("all");
               }}
             >
               Cancel
@@ -691,6 +713,6 @@ function ManageParticipants() {
       </div>
     </div>
   );
-}
+};
 
 export default ManageParticipants;

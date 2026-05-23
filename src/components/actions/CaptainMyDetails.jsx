@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Upload, RotateCcw, Save, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CaptainMyDetails() {
-  const { user, token } = useAuth();
+  const { token } = useAuth();
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -40,8 +42,8 @@ export default function CaptainMyDetails() {
       }
     };
 
-    if (token && user?.role === "captain") loadProfile();
-  }, [token, user?.role]);
+    if (token && hasPermission("manage_own_group_profile")) loadProfile();
+  }, [token, hasPermission]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
@@ -103,7 +105,7 @@ export default function CaptainMyDetails() {
     }
   };
 
-  if (!token || user?.role !== "captain") {
+  if (!token || !hasPermission("manage_own_group_profile")) {
     return (
       <div className="theme-card">
         <div className="text-center theme-text-secondary">Access denied. Only captains can view this page.</div>

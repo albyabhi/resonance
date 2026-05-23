@@ -152,18 +152,19 @@ export default function ActivityLogs() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen p-4" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="max-w-7xl mx-auto">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--card-fg)' }}>Activity Logs</h1>
             <p className="text-gray-600 text-sm">Audit trail of user actions</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setPage(1); fetchLogs(); }}
               title="Refresh"
-              className="inline-flex items-center gap-2 px-3 py-2 bg-white border rounded shadow-sm text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-3 py-2 border rounded shadow-sm text-sm"
+              style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             >
               <RefreshCw className="h-4 w-4" /> Refresh
             </button>
@@ -173,40 +174,43 @@ export default function ActivityLogs() {
         {/* Filters */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm text-gray-600">Role</label>
+            <label className="block text-sm" style={{ color: 'var(--chart-axis)' }}>Role</label>
             <select
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-              className="mt-1 block w-full rounded border px-3 py-2 bg-white"
+              className="mt-1 block w-full rounded border px-3 py-2 focus:outline-none"
+              style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             >
-              <option value="">All</option>
+              <option value="" className="bg-white dark:bg-[#0B1220]">All</option>
               {roles.map((r) => (
-                <option key={r} value={r}>{r.replace("_", " ")}</option>
+                <option key={r} value={r} className="bg-white dark:bg-[#0B1220]">{r.replace("_", " ")}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600">Resource type</label>
+            <label className="block text-sm" style={{ color: 'var(--chart-axis)' }}>Resource type</label>
             <select
               value={resourceFilter}
               onChange={(e) => { setResourceFilter(e.target.value); setPage(1); }}
-              className="mt-1 block w-full rounded border px-3 py-2 bg-white"
+              className="mt-1 block w-full rounded border px-3 py-2 focus:outline-none"
+              style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             >
-              <option value="">All</option>
+              <option value="" className="bg-white dark:bg-[#0B1220]">All</option>
               {resourceTypes.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r} className="bg-white dark:bg-[#0B1220]">{r}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600">User</label>
+            <label className="block text-sm" style={{ color: 'var(--chart-axis)' }}>User</label>
             <input
               value={userSearch}
               onChange={(e) => { setUserSearch(e.target.value); setPage(1); }}
               placeholder="Search by name"
-              className="mt-1 block w-full rounded border px-3 py-2 bg-white"
+              className="mt-1 block w-full rounded border px-3 py-2 focus:outline-none"
+              style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             />
           </div>
         </div>
@@ -223,18 +227,18 @@ export default function ActivityLogs() {
           <div className="mb-4 p-3 rounded bg-orange-50 text-orange-700 border border-orange-100 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="rounded-xl shadow-sm overflow-hidden border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
           {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="border-b" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)' }}>
                 <tr>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">User</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Role</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Action</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Resource</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Timestamp</th>
-                  <th className="text-left p-4 text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>User</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Role</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Action</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Resource</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Timestamp</th>
+                  <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,7 +247,7 @@ export default function ActivityLogs() {
                 ) : null}
 
                 {logs.map((l) => (
-                  <tr key={l._id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={l._id} className="border-b transition-colors hover:bg-indigo-500/5" style={{ borderBottomColor: 'var(--border-divider)' }}>
                     <td className="p-4">
                       {(() => {
                         const performed = l.user ?? (typeof l.performed_by === 'object' ? l.performed_by : (l.performed_by ? { name: l.performed_by, username: '' } : {}));
@@ -251,17 +255,17 @@ export default function ActivityLogs() {
                         const displayUsername = performed?.username || performed?.handle || "";
                         return (
                           <>
-                            <div className="font-semibold text-gray-900">{displayName}</div>
+                            <div className="font-semibold" style={{ color: 'var(--card-fg)' }}>{displayName}</div>
                             <div className="text-sm text-gray-500">{displayUsername ? `@${displayUsername}` : ""}</div>
                           </>
                         );
                       })()}
                     </td>
                     <td className="p-4">
-                      <span className="px-3 py-1 text-xs font-medium rounded-full border bg-gray-50 text-gray-700">{(l.role || "").replace("_", " ")}</span>
+                      <span className="px-3 py-1 text-xs font-medium rounded-full border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>{(l.role || "").replace("_", " ")}</span>
                     </td>
-                    <td className="p-4 text-gray-700">{l.action || l.action_type || "-"}</td>
-                    <td className="p-4 text-gray-700">
+                    <td className="p-4 text-gray-700" style={{ color: 'var(--card-fg)' }}>{l.action || l.action_type || "-"}</td>
+                    <td className="p-4 text-gray-700" style={{ color: 'var(--card-fg)' }}>
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-medium">{l.resource_type || "-"}</div>
                         {l.resource_id ? (
@@ -274,7 +278,7 @@ export default function ActivityLogs() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600 text-sm">{(l.timestamp || l.createdAt || l.created_at) ? new Date(l.timestamp || l.createdAt || l.created_at).toLocaleString() : "-"}</td>
+                    <td className="p-4 text-gray-600 text-sm" style={{ color: 'var(--chart-axis)' }}>{(l.timestamp || l.createdAt || l.created_at) ? new Date(l.timestamp || l.createdAt || l.created_at).toLocaleString() : "-"}</td>
                     <td className="p-4">
                       <div className="flex gap-2">
                         <button
@@ -310,17 +314,17 @@ export default function ActivityLogs() {
             ) : null}
 
             {logs.map((l) => (
-              <div key={l._id} className="border rounded-lg p-3 bg-white shadow-sm">
+              <div key={l._id} className="border rounded-lg p-3 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold" style={{ color: 'var(--card-fg)' }}>
                       {(() => {
                         const performed = l.user ?? (typeof l.performed_by === 'object' ? l.performed_by : (l.performed_by ? { name: l.performed_by, username: '' } : {}));
                         return performed?.name || performed?.displayName || performed?.full_name || "-";
                       })()}
                     </div>
                     <div className="text-sm text-gray-500">{l.user?.username ? `@${l.user.username}` : (l.performed_by && typeof l.performed_by === 'string' ? l.performed_by : '')}</div>
-                    <div className="text-sm text-gray-700 mt-2">{l.action || l.action_type || "-"}</div>
+                    <div className="text-sm mt-2" style={{ color: 'var(--card-fg)' }}>{l.action || l.action_type || "-"}</div>
                     <div className="text-sm text-gray-500 mt-1">{l.resource_type || "-"} {l.resource_id ? (<button onClick={() => handleCopyOrOpen(l.resource_type, l.resource_id)} className="text-xs text-orange-600 ml-2">{l.resource_id}</button>) : null}</div>
                   </div>
                   <div className="text-right text-sm text-gray-500">{(l.timestamp || l.createdAt || l.created_at) ? new Date(l.timestamp || l.createdAt || l.created_at).toLocaleString() : "-"}</div>
@@ -334,18 +338,20 @@ export default function ActivityLogs() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 border-t bg-white flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="text-sm text-gray-600">Page {page} of {totalPages}</div>
+          <div className="p-4 border-t flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: '1px solid var(--border-divider)', backgroundColor: 'var(--card)' }}>
+            <div className="text-sm" style={{ color: 'var(--chart-axis)' }}>Page {page} of {totalPages}</div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-3 py-1 bg-gray-50 rounded disabled:opacity-50"
+                className="px-3 py-1 rounded disabled:opacity-50 text-sm font-bold border"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >Prev</button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="px-3 py-1 bg-gray-50 rounded disabled:opacity-50"
+                className="px-3 py-1 rounded disabled:opacity-50 text-sm font-bold border"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >Next</button>
             </div>
           </div>

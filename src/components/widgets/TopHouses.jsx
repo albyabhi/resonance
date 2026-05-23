@@ -1,5 +1,6 @@
 import React from "react";
 import { Trophy, Medal, Star, Crown, TrendingUp } from "lucide-react";
+import { useCompetition } from "../../context/CompetitionContext";
 
 const getIcon = (index) => {
   if (index === 0) return <Crown className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />;
@@ -22,6 +23,7 @@ const getRankClasses = (index) => {
 };
 
 export default function TopHouses({ scoreboard = [] }) {
+  const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const topHouses = scoreboard.slice(0, 3);
 
   if (!topHouses.length) {
@@ -41,11 +43,11 @@ export default function TopHouses({ scoreboard = [] }) {
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
           <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--card-fg)" }}>
-            Top houses
+            Top {groupLabelPlural.toLowerCase()}
           </h3>
         </div>
         <p className="pl-6 text-xs" style={{ color: "var(--chart-axis)" }}>
-          Top performing teams
+          Top performing {groupLabelPlural.toLowerCase()}
         </p>
       </div>
 
@@ -61,7 +63,7 @@ export default function TopHouses({ scoreboard = [] }) {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium" style={{ color: "var(--card-fg)" }}>
-                  {houseObj.house?.name || "Unknown House"}
+                  {houseObj.house?.name || `Unknown ${groupLabel}`}
                 </p>
                 <div className="flex items-center gap-2">
                   <p className="text-[11px]" style={{ color: "var(--chart-axis)" }}>
