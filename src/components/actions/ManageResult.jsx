@@ -152,7 +152,7 @@ const ManageResult = () => {
     (results || []).forEach((r) => {
       const teamId = r.team_id?._id || r.team_id;
       serverMap[r.position] = teamId;
-      if (r.status === "approved" || r.status === "pending") {
+      if (["submitted", "approved", "published", "locked"].includes(r.status)) {
         locks.add(r.position);
       }
     });

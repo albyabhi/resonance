@@ -19,6 +19,7 @@ const PendingResult = () => {
   const [rounds, setRounds] = useState([]);
   const [roundNo, setRoundNo] = useState("");
   const [pending, setPending] = useState([]);
+  const [allResults, setAllResults] = useState([]);
   const [teams, setTeams] = useState([]);
   const [teamMembersMap, setTeamMembersMap] = useState({});
 
@@ -86,21 +87,26 @@ const PendingResult = () => {
 
   const loadPending = async () => {
     if (!eventId || !roundNo) return;
-    const response = await apiCall(`/api/results?event_id=${eventId}&round_no=${roundNo}&status=pending`);
+    const response = await apiCall(`/api/results?event_id=${eventId}&round_no=${roundNo}`);
     const results = response.results || response.data || [];
-    const rows = (results || []).map((r) => {
-      const team = r.team_id || {};
-      const house = team.group_id || {};
-      return {
-        _id: r._id,
-        position: r.position,
-        teamId: team._id || team,
-        chest: team.chest_no || null,
-        houseName: house.name || "",
-        houseCode: "",
-        submittedBy: r.submitted_by?.name || "",
-      };
-    });
+    setAllResults(results || []);
+    const rows = (results || [])
+      .filter((r) => ["draft", "submitted"].includes(r.status))
+      .map((r) => {
+        const team = r.team_id || {};
+        const house = team.group_id || {};
+        return {
+          _id: r._id,
+          position: r.position,
+          teamId: team._id || team,
+          chest: team.chest_no || null,
+          houseName: house.name || "",
+          houseCode: "",
+          submittedBy: r.submitted_by?.name || "",
+          status: r.status,
+          average_score: r.average_score,
+        };
+      });
     setPending(rows.sort((a, b) => a.position - b.position));
   };
 
@@ -251,6 +257,73 @@ const PendingResult = () => {
     }
   };
 
+  const publishOne = async (rowId) => {
+    if (!rowId) return;
+    setLoading(true);
+    setError("");
+    try {
+      await apiCall(`/api/results/${rowId}/publish`, { method: "PATCH" });
+      await loadPending();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lockOne = async (rowId) => {
+    if (!rowId) return;
+    if (!window.confirm("Lock this result? This cannot be undone.")) return;
+    setLoading(true);
+    setError("");
+    try {
+      await apiCall(`/api/results/${rowId}/lock`, { method: "PATCH" });
+      await loadPending();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const publishAll = async () => {
+    if (!eventId || !roundNo) return;
+    if (!window.confirm("Publish all approved results for this round?")) return;
+    setLoading(true);
+    setError("");
+    try {
+      await apiCall("/api/results/publish", {
+        method: "POST",
+        body: JSON.stringify({ event_id: eventId, round_no: parseInt(roundNo, 10) }),
+      });
+      await loadPending();
+      alert("Results published");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lockAll = async () => {
+    if (!eventId || !roundNo) return;
+    if (!window.confirm("Lock all published results for this round?")) return;
+    setLoading(true);
+    setError("");
+    try {
+      await apiCall("/api/results/lock", {
+        method: "POST",
+        body: JSON.stringify({ event_id: eventId, round_no: parseInt(roundNo, 10) }),
+      });
+      await loadPending();
+      alert("Results locked");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const canApprove = hasAnyRole('organizer', 'super_admin');
 
   return (
@@ -297,7 +370,7 @@ const PendingResult = () => {
       </div>
 
       <div className="mb-6 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
-        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium theme-text-primary dark:border-gray-800 dark:bg-gray-900">Pending Approval</div>
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium theme-text-primary dark:border-gray-800 dark:bg-gray-900">Results (Round {roundNo})</div>
         <table className="min-w-full">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
@@ -305,39 +378,69 @@ const PendingResult = () => {
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Team/Participant</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">{groupLabel}</th>
               <th className="p-3 text-left text-xs uppercase theme-text-muted">Submitted By</th>
-              <th className="p-3 text-left text-xs uppercase theme-text-muted">Action</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Status</th>
+              <th className="p-3 text-left text-xs uppercase theme-text-muted">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={5}>Loading...</td></tr>
-            ) : pending.length === 0 ? (
-              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={5}>No pending submissions</td></tr>
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={6}>Loading...</td></tr>
+            ) : allResults.length === 0 ? (
+              <tr><td className="p-3 text-sm theme-text-secondary" colSpan={6}>No results for this round</td></tr>
             ) : (
-              pending.map((row) => (
-                <tr key={row._id} className="border-t border-gray-200 dark:border-gray-800">
-                  <td className="p-3 theme-text-primary">{row.position}</td>
-                  <td className="p-3 theme-text-primary">{renderTeamOrParticipants(row)}</td>
-                  <td className="p-3 theme-text-primary">{row.houseName} {row.houseCode ? `(${row.houseCode})` : ""}</td>
-                  <td className="p-3 theme-text-primary">{row.submittedBy || "-"}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => approveOne(row)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20" disabled={!canApprove}>Approve</button>
-                      <button type="button" onClick={() => rejectOne(row)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20" disabled={!canApprove}>Reject</button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              allResults.map((r) => {
+                const team = r.team_id || {};
+                const house = team.group_id || {};
+                const status = r.status;
+                return (
+                  <tr key={r._id} className="border-t border-gray-200 dark:border-gray-800">
+                    <td className="p-3 theme-text-primary">{r.position}</td>
+                    <td className="p-3 theme-text-primary">
+                      {team.chest_no ? `Chest #${team.chest_no}` : "No chest"}
+                      {r.average_score != null && <span className="ml-2 text-xs text-indigo-500">avg: {Number(r.average_score).toFixed(1)}</span>}
+                    </td>
+                    <td className="p-3 theme-text-primary">{house.name || ""}</td>
+                    <td className="p-3 theme-text-primary">{r.submitted_by?.name || "-"}</td>
+                    <td className="p-3">
+                      <span className={`rounded px-2 py-1 text-xs ${
+                        status === "draft" ? "bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400" :
+                        status === "submitted" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400" :
+                        status === "approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400" :
+                        status === "published" ? "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400" :
+                        "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/10 dark:text-purple-400"
+                      }`}>{status}</span>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {status === "submitted" && (
+                          <>
+                            <button type="button" onClick={() => approveOne(r._id)} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400" disabled={!canApprove}>Approve</button>
+                            <button type="button" onClick={() => rejectOne(r)} className="rounded bg-rose-50 px-3 py-1 text-sm text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400" disabled={!canApprove}>Reject</button>
+                          </>
+                        )}
+                        {status === "approved" && (
+                          <button type="button" onClick={() => publishOne(r._id)} className="rounded bg-blue-50 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400" disabled={!canApprove}>Publish</button>
+                        )}
+                        {status === "published" && (
+                          <button type="button" onClick={() => lockOne(r._id)} className="rounded bg-purple-50 px-3 py-1 text-sm text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-400" disabled={!canApprove}>Lock</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
 
-        <div className="flex items-center gap-2 px-3 py-2">
-          <button type="button" onClick={approveAll} className="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo || pending.length === 0}>Approve All</button>
-          <button type="button" onClick={rejectAll} className="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo || pending.length === 0}>Reject All</button>
+        <div className="flex items-center gap-2 px-3 py-2 flex-wrap">
+          <button type="button" onClick={approveAll} className="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo}>Approve All Submitted</button>
+          <button type="button" onClick={rejectAll} className="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white hover:bg-rose-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo}>Reject All Submitted</button>
+          <button type="button" onClick={publishAll} className="rounded-lg bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo}>Publish All Approved</button>
+          <button type="button" onClick={lockAll} className="rounded-lg bg-purple-600 px-3 py-1 text-sm text-white hover:bg-purple-700 disabled:opacity-50" disabled={!canApprove || !eventId || !roundNo}>Lock All Published</button>
         </div>
 
-        <p className="px-3 pb-3 text-xs theme-text-secondary">Approving applies points and updates standings on next refresh.</p>
+        <p className="px-3 pb-3 text-xs theme-text-secondary">Submit → Approve → Publish → Lock. Locked results cannot be changed.</p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">

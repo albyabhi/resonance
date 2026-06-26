@@ -29,6 +29,9 @@ import CaptainMyDetails from "../actions/CaptainMyDetails";
 import ManageCompetition from "../actions/ManageCompetition";
 import UserSettings from "../actions/UserSettings";
 import ExportReport from "../actions/ExportReport";
+import JudgeScoring from "../actions/JudgeScoring";
+import MyScores from "../actions/MyScores";
+import ManageVenue from "../actions/ManageVenue";
 
 
 const actionComponents = {
@@ -49,6 +52,9 @@ const actionComponents = {
   "Manage Group Logo": EditHouse,
   "Manage House Logo": EditHouse,
   "Export Report": ExportReport,
+  "My Assignments": JudgeScoring,
+  "My Scores": MyScores,
+  "Manage Venues": ManageVenue,
 };
 
 export default function Dashboard({

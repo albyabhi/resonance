@@ -30,6 +30,10 @@ export const RealtimeProvider = ({ children }) => {
         if (
           data.type === 'RESULT_APPROVED' ||
           data.type === 'BULK_RESULTS_APPROVED' ||
+          data.type === 'RESULT_PUBLISHED' ||
+          data.type === 'BULK_RESULTS_PUBLISHED' ||
+          data.type === 'RESULT_LOCKED' ||
+          data.type === 'BULK_RESULTS_LOCKED' ||
           data.type === 'SCOREBOARD_UPDATED' ||
           data.type === 'EVENT_UPDATED' ||
           data.type === 'EVENT_CREATED' ||

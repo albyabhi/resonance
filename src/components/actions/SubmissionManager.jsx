@@ -93,6 +93,7 @@ const SubmissionManager = () => {
           houseCode: house.code || "",
           submittedBy: r.submitted_by?.name || "",
           submittedById: r.submitted_by?._id || r.submitted_by || "",
+          average_score: r.average_score,
         };
       });
       setSubmissions(rows.sort((a, b) => a.position - b.position));
@@ -110,7 +111,7 @@ const SubmissionManager = () => {
   }, [eventId, roundNo, statusFilter]);
 
   const isOwnPending = (row) =>
-    row.status === "pending" &&
+    ["draft", "submitted"].includes(row.status) &&
     hasAnyRole("judge", "event_coordinator", "organizer", "super_admin") &&
     !!user?.id &&
     String(row.submittedById) === String(user.id);
@@ -130,10 +131,16 @@ const SubmissionManager = () => {
     }
   };
 
-  const statusChipClass = (status) =>
-    status === "pending"
-      ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
-      : "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20";
+  const statusChipClass = (status) => {
+    switch (status) {
+      case "draft": return "bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400";
+      case "submitted": return "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400";
+      case "approved": return "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400";
+      case "published": return "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400";
+      case "locked": return "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/10 dark:text-purple-400";
+      default: return "bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400";
+    }
+  };
 
   return (
     <div className="theme-card p-4">
@@ -174,8 +181,11 @@ const SubmissionManager = () => {
           <label className="mb-1 block text-sm font-medium theme-text-secondary">Status</label>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="theme-input min-h-[44px] px-3 py-2">
             <option value="">All</option>
-            <option value="pending">Pending</option>
+            <option value="draft">Draft</option>
+            <option value="submitted">Submitted</option>
             <option value="approved">Approved</option>
+            <option value="published">Published</option>
+            <option value="locked">Locked</option>
           </select>
         </div>
         <div className="flex items-end">

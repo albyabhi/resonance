@@ -55,10 +55,10 @@ export const roleConfig = {
   judge: {
     title: "Judge",
     actions: [
-      { label: "Submit Results", icon: ClipboardList },
-      { label: "My Submissions", icon: CheckCircle },
+      { label: "My Assignments", icon: ClipboardList },
+      { label: "My Scores", icon: CheckCircle },
     ],
-    modules: { standings: true, events: true, stats: true },
+    modules: { standings: false, events: false, stats: false },
   },
 
   house_captain: {

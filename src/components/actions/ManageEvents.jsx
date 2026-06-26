@@ -4,10 +4,18 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
-import { Share2, Copy, Download, X, QrCode } from "lucide-react";
+import { Share2, Copy, Download, X, QrCode, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useRealtime } from "../../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
+const CATEGORIES = [
+  { value: "sports", label: "Sports" },
+  { value: "arts", label: "Arts" },
+  { value: "academic", label: "Academic" },
+  { value: "cultural", label: "Cultural" },
+  { value: "technical", label: "Technical" },
+];
 
 const MODES = [
   { value: "onstage", label: "Onstage" },
@@ -19,21 +27,45 @@ const EVENT_TYPES = [
   { value: "team", label: "Team" },
 ];
 
+const PARTICIPANT_TYPES = [
+  { value: "individual", label: "Individual" },
+  { value: "pair", label: "Pair" },
+  { value: "group", label: "Group" },
+];
+
 const STATUS_OPTIONS = [
   { value: "upcoming", label: "Upcoming" },
   { value: "live", label: "Live" },
   { value: "completed", label: "Completed" },
 ];
 
+const GENDER_OPTIONS = [
+  { value: "all", label: "Any" },
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+];
+
 const DEFAULT_EVENT_FORM = {
-  name: "",
+  title: "",
   description: "",
+  category: "cultural",
+  subcategory: "",
   rounds: 1,
   min_team_size: 1,
   max_team_size: 1,
+  min_participants: 1,
+  max_participants: 1,
   mode: "onstage",
   event_type: "individual",
+  participant_type: "individual",
+  gender_filter: "all",
+  age_group: { min: "", max: "" },
   max_per_group: 1,
+  duration: "",
+  instructions: "",
+  requirements: [],
+  rules: "",
+  eligibility: "",
   status: "upcoming",
 };
 
@@ -76,7 +108,6 @@ const ManageEvents = () => {
 
   // Data stores
   const [events, setEvents] = useState([]);
-  const [houses, setHouses] = useState([]);
   const [usageByEventId, setUsageByEventId] = useState({}); // eventId -> { totalTeams, byHouse: {house_id: count} }
 
   // Forms
@@ -87,11 +118,14 @@ const ManageEvents = () => {
     return [{ ...DEFAULT_ROUND, date: defaults.date, time: defaults.time }];
   });
   const [pointsForm, setPointsForm] = useState([...DEFAULT_POINTS]);
-  const [filter, setFilter] = useState({ mode: "all", type: "all", query: "" });
+  const [filter, setFilter] = useState({ mode: "all", type: "all", category: "all", query: "" });
 
   // UI toggles
+  const [showParticipation, setShowParticipation] = useState(false);
+  const [showEventDetails, setShowEventDetails] = useState(false);
   const [showSchedule, setShowSchedule] = useState(true);
   const [showPoints, setShowPoints] = useState(false);
+  const [newRequirement, setNewRequirement] = useState("");
 
   // Client-side validation state
   const [fieldErrors, setFieldErrors] = useState({});
@@ -119,12 +153,10 @@ const ManageEvents = () => {
       const competitionId = competition?._id || competition?.id || competition?.competition_id;
       const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
 
-      const [{ events }, housesResp] = await Promise.all([
+      const [{ events }] = await Promise.all([
         apiCall(`/api/event${competitionQuery}`),
-        apiCall("/api/house"),
       ]);
       setEvents(events || []);
-      setHouses(Array.isArray(housesResp) ? housesResp : housesResp.houses || []);
 
       // Usage snapshot
       try {
@@ -153,13 +185,16 @@ const ManageEvents = () => {
 
   // Helpers
   const resetForms = () => {
-    setEventForm(DEFAULT_EVENT_FORM);
+    setEventForm({ ...DEFAULT_EVENT_FORM });
     const defaults = getCurrentScheduleDefaults();
     setRoundsForm([{ ...DEFAULT_ROUND, date: defaults.date, time: defaults.time }]);
     setPointsForm([...DEFAULT_POINTS]);
     setEditingEventId(null);
+    setShowParticipation(false);
+    setShowEventDetails(false);
     setShowSchedule(true);
     setShowPoints(false);
+    setNewRequirement("");
     setFieldErrors({});
   };
 
@@ -183,19 +218,30 @@ const ManageEvents = () => {
       try {
         const scheduleResp = await apiCall(`/api/schedule?event_id=${eventId}`);
         schedules = scheduleResp.schedules || scheduleResp.schedule || [];
-      } catch {}
+      } catch { /* schedule fetch is optional */ }
 
       // Populate forms with safe defaults
       setEventForm({
-        name: event.name || "",
+        title: event.title || event.name || "",
         description: event.description || "",
+        category: event.category || "cultural",
+        subcategory: event.subcategory || "",
         rounds: event.rounds ?? 1,
         min_team_size: event.min_team_size ?? 1,
-        max_team_size:
-          event.max_team_size ?? Math.max(1, event.min_team_size ?? 1),
+        max_team_size: event.max_team_size ?? Math.max(1, event.min_team_size ?? 1),
+        min_participants: event.min_participants ?? event.min_team_size ?? 1,
+        max_participants: event.max_participants ?? event.max_team_size ?? 1,
         mode: event.mode || "onstage",
         event_type: event.event_type || "individual",
+        participant_type: event.participant_type || "individual",
+        gender_filter: event.gender_filter || "all",
+        age_group: event.age_group ? { min: event.age_group.min ?? "", max: event.age_group.max ?? "" } : { min: "", max: "" },
         max_per_group: event.max_per_group ?? 1,
+        duration: event.duration || "",
+        instructions: event.instructions || "",
+        requirements: event.requirements || [],
+        rules: event.rules || "",
+        eligibility: event.eligibility || "",
         status: event.status || "upcoming",
       });
 
@@ -359,9 +405,8 @@ const ManageEvents = () => {
   const validateFields = (form) => {
     const errs = {};
 
-    // Name required
-    if (!form.name || !String(form.name).trim()) {
-      errs.name = "Name is required";
+    if (!form.title || !String(form.title).trim()) {
+      errs.title = "Title is required";
     }
 
     // rounds: allow "" or 0 -> interpret later; if provided as number and < 1, flag
@@ -461,12 +506,43 @@ const ManageEvents = () => {
         }
       });
 
+      const ageGroupPayload = (eventForm.age_group?.min || eventForm.age_group?.max)
+        ? { min: eventForm.age_group.min || null, max: eventForm.age_group.max || null }
+        : null;
+
+      const eventPayload = {
+        title: eventForm.title,
+        description: eventForm.description,
+        category: eventForm.category,
+        subcategory: eventForm.subcategory,
+        mode: eventForm.mode,
+        event_type: eventForm.event_type,
+        participant_type: eventForm.participant_type,
+        gender_filter: eventForm.gender_filter,
+        age_group: ageGroupPayload,
+        rounds: sanitizedEventForm.rounds,
+        min_participants: sanitizedEventForm.min_team_size,
+        max_participants: sanitizedEventForm.max_team_size,
+        max_per_group: sanitizedEventForm.max_per_group,
+        duration: eventForm.duration,
+        instructions: eventForm.instructions,
+        requirements: eventForm.requirements.filter(Boolean),
+        rules: eventForm.rules,
+        eligibility: eventForm.eligibility,
+        status: sanitizedEventForm.status,
+        points_config: pointsConfig,
+        coordinator_id: sanitizedEventForm.coordinator_id,
+        venue_id: sanitizedEventForm.venue_id,
+        volunteers: sanitizedEventForm.volunteers,
+        enable_blind_judging: sanitizedEventForm.enable_blind_judging,
+      };
+
       // 1) Create or update event
       let savedEvent;
       if (editingEventId) {
         const { data: event } = await apiCall(`/api/event/${editingEventId}`, {
           method: "PUT",
-          body: JSON.stringify({ ...sanitizedEventForm, points_config: pointsConfig }),
+          body: JSON.stringify(eventPayload),
         });
         savedEvent = event;
         setEvents((prev) =>
@@ -477,9 +553,8 @@ const ManageEvents = () => {
       } else {
       const competitionId = competition?._id || competition?.id || competition?.competition_id;
         const payload = { 
-          ...sanitizedEventForm, 
+          ...eventPayload, 
           competition_id: competitionId,
-          points_config: pointsConfig 
         };
         const { data: event } = await apiCall("/api/event", {
           method: "POST",
@@ -520,13 +595,14 @@ const ManageEvents = () => {
   const filteredEvents = useMemo(() => {
     const q = filter.query.trim().toLowerCase();
     return (events || []).filter((e) => {
+      const catOk = filter.category === "all" || e.category === filter.category;
       const modeOk = filter.mode === "all" || e.mode === filter.mode;
       const typeOk = filter.type === "all" || e.event_type === filter.type;
       const queryOk =
         !q ||
-        (e.name || "").toLowerCase().includes(q) ||
+        (e.title || e.name || "").toLowerCase().includes(q) ||
         (e.description || "").toLowerCase().includes(q);
-      return modeOk && typeOk && queryOk;
+      return catOk && modeOk && typeOk && queryOk;
     });
   }, [events, filter]);
 
@@ -596,7 +672,7 @@ const ManageEvents = () => {
           <div className="space-y-4">
             {/* Filters */}
             <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <input
                   value={filter.query}
                   onChange={(e) => setFilter({ ...filter, query: e.target.value })}
@@ -605,6 +681,17 @@ const ManageEvents = () => {
                   style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 />
                 <select
+                  value={filter.category}
+                  onChange={(e) => setFilter({ ...filter, category: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                >
+                  <option value="all" className="bg-white dark:bg-[#0B1220]">All Categories</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value} className="bg-white dark:bg-[#0B1220]">{c.label}</option>
+                  ))}
+                </select>
+                <select
                   value={filter.mode}
                   onChange={(e) => setFilter({ ...filter, mode: e.target.value })}
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -612,9 +699,7 @@ const ManageEvents = () => {
                 >
                   <option value="all" className="bg-white dark:bg-[#0B1220]">All Modes</option>
                   {MODES.map((m) => (
-                    <option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">
-                      {m.label}
-                    </option>
+                    <option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">{m.label}</option>
                   ))}
                 </select>
                 <select
@@ -625,9 +710,7 @@ const ManageEvents = () => {
                 >
                   <option value="all" className="bg-white dark:bg-[#0B1220]">All Types</option>
                   {EVENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">
-                      {t.label}
-                    </option>
+                    <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
                   ))}
                 </select>
                 <button
@@ -658,7 +741,11 @@ const ManageEvents = () => {
                             {e.description}
                           </p>
                         </div>
-                        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end max-w-[150px]">
+                        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end max-w-[200px]">
+                          {e.category && getChip(
+                            e.category,
+                            "bg-indigo-50 border-indigo-200 text-indigo-700"
+                          )}
                           {getChip(
                             e.mode,
                             "bg-orange-50 border-orange-200 text-orange-700"
@@ -688,17 +775,29 @@ const ManageEvents = () => {
                           <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_group}</p>
                         </div>
                         <div>
-                          <span style={{ color: 'var(--chart-axis)' }}>Team size</span>
+                          <span style={{ color: 'var(--chart-axis)' }}>Participants</span>
                           <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>
                             {e.event_type === "individual"
                               ? "1"
-                              : `${e.min_team_size}–${e.max_team_size}`}
+                              : `${e.min_participants ?? e.min_team_size}–${e.max_participants ?? e.max_team_size}`}
                           </p>
                         </div>
                         <div>
-                          <span style={{ color: 'var(--chart-axis)' }}>Registered teams</span>
+                          <span style={{ color: 'var(--chart-axis)' }}>Registered</span>
                           <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{usage.totalTeams}</p>
                         </div>
+                        {e.gender_filter && e.gender_filter !== "all" && (
+                          <div>
+                            <span style={{ color: 'var(--chart-axis)' }}>Gender</span>
+                            <p className="font-semibold capitalize" style={{ color: 'var(--card-fg)' }}>{e.gender_filter}</p>
+                          </div>
+                        )}
+                        {e.duration && (
+                          <div>
+                            <span style={{ color: 'var(--chart-axis)' }}>Duration</span>
+                            <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.duration}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2 mt-3 flex-wrap">
@@ -736,11 +835,13 @@ const ManageEvents = () => {
                   <thead className="border-b" style={{ backgroundColor: 'var(--surface)', borderBottomColor: 'var(--border-divider)' }}>
                     <tr>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Event</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Category</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Mode</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Type</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Status</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Rounds</th>
-                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Team Size</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Participants</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Gender</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Max/{groupLabel}</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Registered</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Actions</th>
@@ -766,6 +867,9 @@ const ManageEvents = () => {
                               <div className="text-sm line-clamp-1" style={{ color: 'var(--chart-axis)' }}>{e.description}</div>
                             </td>
                             <td className="p-4">
+                              {getChip(e.category || "general", "bg-indigo-50 border-indigo-200 text-indigo-700")}
+                            </td>
+                            <td className="p-4">
                               {getChip(e.mode, "bg-orange-50 border-orange-200 text-orange-700")}
                             </td>
                             <td className="p-4">
@@ -783,7 +887,10 @@ const ManageEvents = () => {
                             </td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.rounds}</td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>
-                              {e.event_type === "individual" ? "1" : `${e.min_team_size}–${e.max_team_size}`}
+                              {e.event_type === "individual" ? "1" : `${e.min_participants ?? e.min_team_size}–${e.max_participants ?? e.max_team_size}`}
+                            </td>
+                            <td className="p-4 font-semibold capitalize" style={{ color: 'var(--card-fg)' }}>
+                              {e.gender_filter === "all" ? "Any" : e.gender_filter}
                             </td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_group}</td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{usage.totalTeams}</td>
@@ -825,341 +932,352 @@ const ManageEvents = () => {
         {/* Add/Edit Form */}
         {(activeTab === "add" || activeTab === "edit") && (
           <div className="rounded-xl shadow-sm p-4 md:p-6 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-            <form onSubmit={saveEvent} className="space-y-6" noValidate>
-              {/* Event Basics */}
-              <section>
-                <h2 className="text-lg font-semibold mb-3 text-xl" style={{ color: 'var(--card-fg)' }}>Event details</h2>
+            <form onSubmit={saveEvent} className="space-y-4" noValidate>
+
+              {/* ───── SECTION 1: Event Basics (always open) ───── */}
+              <section className="border rounded-lg p-4" style={{ borderColor: 'var(--border-divider)' }}>
+                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--card-fg)' }}>Event Basics</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={eventForm.name}
-                      onChange={(e) => handleEventChange("name", e.target.value)}
-                      placeholder="Enter event name"
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Title *</label>
+                    <input type="text" required value={eventForm.title}
+                      onChange={(e) => handleEventChange("title", e.target.value)}
+                      placeholder="Enter event title"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: fieldErrors.name ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
-                        color: 'var(--card-fg)'
-                      }}
-                    />
-                    {fieldErrors.name && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Mode</label>
-                    <select
-                      value={eventForm.mode}
-                      onChange={(e) => handleEventChange("mode", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    >
-                      {MODES.map((m) => (
-                        <option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
+                      style={{ backgroundColor: 'var(--surface)', borderColor: fieldErrors.title ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                    {fieldErrors.title && <p className="mt-1 text-xs text-red-600">{fieldErrors.title}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Status</label>
-                    <select
-                      value={eventForm.status}
+                    <select value={eventForm.status}
                       onChange={(e) => handleEventChange("status", e.target.value)}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">
-                          {s.label}
-                        </option>
-                      ))}
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                      {STATUS_OPTIONS.map((s) => (<option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">{s.label}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Category *</label>
+                    <select value={eventForm.category}
+                      onChange={(e) => handleEventChange("category", e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                      {CATEGORIES.map((c) => (<option key={c.value} value={c.value} className="bg-white dark:bg-[#0B1220]">{c.label}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Subcategory</label>
+                    <input type="text" value={eventForm.subcategory}
+                      onChange={(e) => handleEventChange("subcategory", e.target.value)}
+                      placeholder="e.g. Mono Act, Solo Dance"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Mode</label>
+                    <select value={eventForm.mode}
+                      onChange={(e) => handleEventChange("mode", e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                      {MODES.map((m) => (<option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">{m.label}</option>))}
                     </select>
                   </div>
                   <div className="md:col-span-3">
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                      Description / Rules
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={eventForm.description}
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Description</label>
+                    <textarea rows={3} value={eventForm.description}
                       onChange={(e) => handleEventChange("description", e.target.value)}
-                      placeholder="Add rules or details for this event"
+                      placeholder="Brief description of the event"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    />
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                   </div>
                 </div>
               </section>
 
-              {/* Type & Team sizes */}
-              <section>
-                <h2 className="text-lg font-semibold mb-3 text-xl" style={{ color: 'var(--card-fg)' }}>Type & participation</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Type</label>
-                    <select
-                      value={eventForm.event_type}
-                      onChange={(e) => handleEventChange("event_type", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    >
-                      {EVENT_TYPES.map((t) => (
-                        <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                      Min team size
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      disabled={eventForm.event_type === "individual"}
-                      value={
-                        eventForm.event_type === "individual"
-                          ? 1
-                          : eventForm.min_team_size === 0
-                          ? 0
-                          : eventForm.min_team_size ?? ""
-                      }
-                      onChange={(e) => handleEventChange("min_team_size", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: fieldErrors.min_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
-                        color: 'var(--card-fg)',
-                        opacity: eventForm.event_type === "individual" ? 0.5 : 1
-                      }}
-                    />
-                    {fieldErrors.min_team_size && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.min_team_size}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                      Max team size
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      disabled={eventForm.event_type === "individual"}
-                      value={
-                        eventForm.event_type === "individual"
-                          ? 1
-                          : eventForm.max_team_size === 0
-                          ? 0
-                          : eventForm.max_team_size ?? ""
-                      }
-                      onChange={(e) => handleEventChange("max_team_size", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: fieldErrors.max_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
-                        color: 'var(--card-fg)',
-                        opacity: eventForm.event_type === "individual" ? 0.5 : 1
-                      }}
-                    />
-                    {fieldErrors.max_team_size && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_team_size}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                      Max per {groupLabel.toLowerCase()}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={
-                        eventForm.max_per_group === 0
-                          ? 0
-                          : eventForm.max_per_group ?? ""
-                      }
-                      onChange={(e) => handleEventChange("max_per_group", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: fieldErrors.max_per_group ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
-                        color: 'var(--card-fg)'
-                      }}
-                    />
-                    {fieldErrors.max_per_group && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_group}</p>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Rounds & Schedule (toggle) */}
-              <section>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-xl" style={{ color: 'var(--card-fg)' }}>Rounds & schedule</h2>
-                  <button
-                    type="button"
-                    onClick={() => setShowSchedule((s) => !s)}
-                    className="text-sm text-orange-600 hover:text-orange-700"
-                  >
-                    {showSchedule ? "Hide" : "Show"}
-                  </button>
-                </div>
-                {showSchedule && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3 mt-3">
+              {/* ───── SECTION 2: Participation (collapsible) ───── */}
+              <section className="border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
+                <button type="button" onClick={() => setShowParticipation((s) => !s)}
+                  className="w-full flex items-center justify-between p-4 text-left"
+                  style={{ color: 'var(--card-fg)' }}>
+                  <h2 className="text-lg font-bold">Participation Rules</h2>
+                  {showParticipation ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+                {showParticipation && (
+                  <div className="px-4 pb-4 space-y-4 border-t pt-4" style={{ borderTopColor: 'var(--border-divider)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Event Type</label>
+                        <select value={eventForm.event_type}
+                          onChange={(e) => handleEventChange("event_type", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                          {EVENT_TYPES.map((t) => (<option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">{t.label}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Participant Type</label>
+                        <select value={eventForm.participant_type}
+                          onChange={(e) => handleEventChange("participant_type", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                          {PARTICIPANT_TYPES.map((t) => (<option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">{t.label}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Gender</label>
+                        <select value={eventForm.gender_filter}
+                          onChange={(e) => handleEventChange("gender_filter", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                          {GENDER_OPTIONS.map((g) => (<option key={g.value} value={g.value} className="bg-white dark:bg-[#0B1220]">{g.label}</option>))}
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                          Total rounds
+                          Max per {groupLabel.toLowerCase()}
                         </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={eventForm.rounds ?? ""}
-                          onChange={(e) => handleEventChange("rounds", e.target.value)}
+                        <input type="number" min={0}
+                          value={eventForm.max_per_group === 0 ? 0 : eventForm.max_per_group ?? ""}
+                          onChange={(e) => handleEventChange("max_per_group", e.target.value)}
                           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          style={{
-                            backgroundColor: 'var(--surface)',
-                            borderColor: fieldErrors.rounds ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
-                            color: 'var(--card-fg)'
-                          }}
-                        />
-                        {fieldErrors.rounds && (
-                          <p className="mt-1 text-xs text-red-600">{fieldErrors.rounds}</p>
-                        )}
+                          style={{ backgroundColor: 'var(--surface)', borderColor: fieldErrors.max_per_group ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                        {fieldErrors.max_per_group && <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_group}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Min Participants</label>
+                        <input type="number" min={0}
+                          disabled={eventForm.event_type === "individual"}
+                          value={eventForm.event_type === "individual" ? 1 : eventForm.min_team_size ?? ""}
+                          onChange={(e) => handleEventChange("min_team_size", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: fieldErrors.min_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)', color: 'var(--card-fg)', opacity: eventForm.event_type === "individual" ? 0.5 : 1 }} />
+                        {fieldErrors.min_team_size && <p className="mt-1 text-xs text-red-600">{fieldErrors.min_team_size}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Max Participants</label>
+                        <input type="number" min={0}
+                          disabled={eventForm.event_type === "individual"}
+                          value={eventForm.event_type === "individual" ? 1 : eventForm.max_team_size ?? ""}
+                          onChange={(e) => handleEventChange("max_team_size", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: fieldErrors.max_team_size ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)', color: 'var(--card-fg)', opacity: eventForm.event_type === "individual" ? 0.5 : 1 }} />
+                        {fieldErrors.max_team_size && <p className="mt-1 text-xs text-red-600">{fieldErrors.max_team_size}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Age Group (Min)</label>
+                        <input type="number" min={0}
+                          value={eventForm.age_group?.min ?? ""}
+                          onChange={(e) => setEventForm((prev) => ({ ...prev, age_group: { ...prev.age_group, min: e.target.value } }))}
+                          placeholder="Min age"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Age Group (Max)</label>
+                        <input type="number" min={0}
+                          value={eventForm.age_group?.max ?? ""}
+                          onChange={(e) => setEventForm((prev) => ({ ...prev, age_group: { ...prev.age_group, max: e.target.value } }))}
+                          placeholder="Max age"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                       </div>
                     </div>
+                  </div>
+                )}
+              </section>
 
+              {/* ───── SECTION 3: Event Details (collapsible) ───── */}
+              <section className="border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
+                <button type="button" onClick={() => setShowEventDetails((s) => !s)}
+                  className="w-full flex items-center justify-between p-4 text-left"
+                  style={{ color: 'var(--card-fg)' }}>
+                  <h2 className="text-lg font-bold">Rules & Requirements</h2>
+                  {showEventDetails ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+                {showEventDetails && (
+                  <div className="px-4 pb-4 space-y-4 border-t pt-4" style={{ borderTopColor: 'var(--border-divider)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Duration</label>
+                        <input type="text" value={eventForm.duration}
+                          onChange={(e) => handleEventChange("duration", e.target.value)}
+                          placeholder="e.g. 5 minutes"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Rules</label>
+                      <textarea rows={3} value={eventForm.rules}
+                        onChange={(e) => handleEventChange("rules", e.target.value)}
+                        placeholder="No vulgar content, no props, etc."
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Eligibility</label>
+                      <textarea rows={2} value={eventForm.eligibility}
+                        onChange={(e) => handleEventChange("eligibility", e.target.value)}
+                        placeholder="Who can participate (e.g. Open to all classes 9-12)"
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Instructions</label>
+                      <textarea rows={2} value={eventForm.instructions}
+                        onChange={(e) => handleEventChange("instructions", e.target.value)}
+                        placeholder="Pre-event and during-event instructions"
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Requirements / Equipment</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {eventForm.requirements.map((req, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm border"
+                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                            {req}
+                            <button type="button" onClick={() => {
+                              const updated = eventForm.requirements.filter((_, i) => i !== idx);
+                              setEventForm((prev) => ({ ...prev, requirements: updated }));
+                            }} className="text-red-500 hover:text-red-700">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input type="text" value={newRequirement}
+                          onChange={(e) => setNewRequirement(e.target.value)}
+                          placeholder="Add requirement"
+                          className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (newRequirement.trim()) {
+                                setEventForm((prev) => ({ ...prev, requirements: [...prev.requirements, newRequirement.trim()] }));
+                                setNewRequirement("");
+                              }
+                            }
+                          }} />
+                        <button type="button" onClick={() => {
+                          if (newRequirement.trim()) {
+                            setEventForm((prev) => ({ ...prev, requirements: [...prev.requirements, newRequirement.trim()] }));
+                            setNewRequirement("");
+                          }
+                        }} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="text-xs mt-1" style={{ color: 'var(--chart-axis)' }}>Press Enter or click + to add. Click × to remove.</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* ───── SECTION 4: Rounds & Schedule (collapsible) ───── */}
+              <section className="border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
+                <button type="button" onClick={() => setShowSchedule((s) => !s)}
+                  className="w-full flex items-center justify-between p-4 text-left"
+                  style={{ color: 'var(--card-fg)' }}>
+                  <h2 className="text-lg font-bold">Rounds & Schedule</h2>
+                  {showSchedule ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+                {showSchedule && (
+                  <div className="px-4 pb-4 space-y-4 border-t pt-4" style={{ borderTopColor: 'var(--border-divider)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Total rounds</label>
+                        <input type="number" min={1} value={eventForm.rounds ?? ""}
+                          onChange={(e) => handleEventChange("rounds", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: fieldErrors.rounds ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                        {fieldErrors.rounds && <p className="mt-1 text-xs text-red-600">{fieldErrors.rounds}</p>}
+                      </div>
+                    </div>
                     <div className="space-y-4">
                       {roundsForm.map((r, idx) => (
                         <div key={idx} className="border rounded-lg p-3" style={{ borderColor: 'var(--border-divider)' }}>
                           <div className="flex items-center justify-between mb-3">
                             <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Round {r.round_no}</h3>
-                            <select
-                              value={r.status}
+                            <select value={r.status}
                               onChange={(e) => updateRoundField(idx, "status", e.target.value)}
                               className="px-3 py-2 border rounded-lg text-sm"
-                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                            >
-                              {STATUS_OPTIONS.map((s) => (
-                                <option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">
-                                  {s.label}
-                                </option>
-                              ))}
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                              {STATUS_OPTIONS.map((s) => (<option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">{s.label}</option>))}
                             </select>
                           </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Date & Time</label>
-                                <input
-                                  type="datetime-local"
-                                  value={r.date && r.time ? `${r.date}T${r.time}` : ""}
-                                  onChange={(e) => updateRoundDateTime(idx, e.target.value)}
-                                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                                />
-                              </div>
-
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Date & Time</label>
+                              <input type="datetime-local"
+                                value={r.date && r.time ? `${r.date}T${r.time}` : ""}
+                                onChange={(e) => updateRoundDateTime(idx, e.target.value)}
+                                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                            </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Venue</label>
-                              <input
-                                type="text"
-                                value={r.venue || ""}
+                              <input type="text" value={r.venue || ""}
                                 onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
                                 placeholder="Enter venue"
                                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                              />
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </>
+                  </div>
                 )}
               </section>
 
-              {/* Points Config (toggle) */}
-              <section>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-xl" style={{ color: 'var(--card-fg)' }}>Points configuration</h2>
-                  <button
-                    type="button"
-                    onClick={() => setShowPoints((s) => !s)}
-                    className="text-sm text-orange-600 hover:text-orange-700"
-                  >
-                    {showPoints ? "Hide" : "Show"}
-                  </button>
-                </div>
+              {/* ───── SECTION 5: Points Config (collapsible) ───── */}
+              <section className="border rounded-lg" style={{ borderColor: 'var(--border-divider)' }}>
+                <button type="button" onClick={() => setShowPoints((s) => !s)}
+                  className="w-full flex items-center justify-between p-4 text-left"
+                  style={{ color: 'var(--card-fg)' }}>
+                  <h2 className="text-lg font-bold">Points Configuration</h2>
+                  {showPoints ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
                 {showPoints && (
-                  <>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Define placements and points; leave empty to use global settings
-                    </p>
+                  <div className="px-4 pb-4 space-y-4 border-t pt-4" style={{ borderTopColor: 'var(--border-divider)' }}>
+                    <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>Define placements and points; leave empty to use global settings</p>
                     <div className="space-y-2">
                       {pointsForm.map((row, idx) => (
                         <div key={idx} className="grid grid-cols-12 gap-2">
                           <div className="col-span-5 md:col-span-3">
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                              Position
-                            </label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={row.position}
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Position</label>
+                            <input type="number" min={1} value={row.position}
                               onChange={(e) => updatePointRow(idx, "position", e.target.value)}
                               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                            />
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                           </div>
                           <div className="col-span-5 md:col-span-3">
-                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
-                              Points
-                            </label>
-                            <input
-                              type="number"
-                              min={0}
-                              value={row.points}
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Points</label>
+                            <input type="number" min={0} value={row.points}
                               onChange={(e) => updatePointRow(idx, "points", e.target.value)}
                               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                            />
+                              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                           </div>
                           <div className="col-span-2 md:col-span-2 flex items-end">
-                            <button
-                              type="button"
-                              onClick={() => removePointRow(idx)}
-                              className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium"
-                            >
-                              Remove
-                            </button>
+                            <button type="button" onClick={() => removePointRow(idx)}
+                              className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium">Remove</button>
                           </div>
                         </div>
                       ))}
                       <div>
-                        <button
-                          type="button"
-                          onClick={addPointRow}
-                          className="px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium"
-                        >
-                          Add row
-                        </button>
+                        <button type="button" onClick={addPointRow}
+                          className="px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 text-sm font-medium">Add row</button>
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </section>
 
               {/* Footer actions */}
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForms();
+                <button type="button" onClick={() => { resetForms();
                     setActiveTab("manage");
                   }}
                   className="flex-1 md:flex-none md:min-w-[140px] px-4 py-3 border font-medium rounded-lg"
