@@ -26,6 +26,7 @@ import EditHouse from "../actions/EditHouse";
 import AdminScoreboard from "../actions/AdminScoreboard";
 import ActivityLogs from "../actions/ActivityLogs";
 import CaptainMyDetails from "../actions/CaptainMyDetails";
+import DashboardStatusWidget from "../actions/DashboardStatusWidget";
 import ManageCompetition from "../actions/ManageCompetition";
 import UserSettings from "../actions/UserSettings";
 import ExportReport from "../actions/ExportReport";
@@ -241,6 +242,9 @@ export default function Dashboard({
               path=""
               element={
                 <div className="flex flex-col gap-6">
+                  {hasAnyRole("super_admin", "organizer", "event_coordinator") && (
+                    <DashboardStatusWidget />
+                  )}
                   <DashboardVisuals />
 
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">

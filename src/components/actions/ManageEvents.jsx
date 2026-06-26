@@ -4,8 +4,11 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
-import { Share2, Copy, Download, X, QrCode, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Share2, Copy, Download, X, QrCode, ChevronDown, ChevronRight, Plus, Trash2, Clock } from "lucide-react";
 import { useRealtime } from "../../context/RealtimeContext";
+import EventStatusBadge from "../EventStatusBadge";
+import EventStatusSelector from "../EventStatusSelector";
+import EventTimeline from "../EventTimeline";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -33,11 +36,8 @@ const PARTICIPANT_TYPES = [
   { value: "group", label: "Group" },
 ];
 
-const STATUS_OPTIONS = [
-  { value: "upcoming", label: "Upcoming" },
-  { value: "live", label: "Live" },
-  { value: "completed", label: "Completed" },
-];
+import { STATUS_OPTIONS as STATUS_OPTIONS_FULL } from "../../utils/eventStatus";
+const STATUS_OPTIONS = STATUS_OPTIONS_FULL;
 
 const GENDER_OPTIONS = [
   { value: "all", label: "Any" },
@@ -74,7 +74,8 @@ const DEFAULT_EVENT_FORM = {
   requirements: [],
   rules: "",
   eligibility: "",
-  status: "upcoming",
+  status: "draft",
+  registration_closes_at: "",
 };
 
 const DEFAULT_ROUND = {
@@ -252,7 +253,10 @@ const ManageEvents = () => {
         requirements: event.requirements || [],
         rules: event.rules || "",
         eligibility: event.eligibility || "",
-        status: event.status || "upcoming",
+        status: event.status || "draft",
+        registration_closes_at: event.registration_closes_at
+          ? new Date(event.registration_closes_at).toISOString().slice(0, 16)
+          : "",
       });
 
       const roundsData = (schedules || [])
@@ -542,6 +546,9 @@ const ManageEvents = () => {
         rules: eventForm.rules,
         eligibility: eventForm.eligibility,
         status: sanitizedEventForm.status,
+        registration_closes_at: eventForm.registration_closes_at
+          ? new Date(eventForm.registration_closes_at).toISOString()
+          : null,
         points_config: pointsConfig,
         coordinator_id: sanitizedEventForm.coordinator_id,
         venue_id: sanitizedEventForm.venue_id,
@@ -766,14 +773,7 @@ const ManageEvents = () => {
                             e.event_type,
                             "bg-purple-50 border-purple-200 text-purple-700"
                           )}
-                          {getChip(
-                            e.status || "upcoming",
-                            e.status === "completed"
-                              ? "bg-green-50 border-green-200 text-green-700"
-                              : e.status === "live"
-                              ? "bg-red-50 border-red-200 text-red-700"
-                              : "bg-blue-50 border-blue-200 text-blue-700"
-                          )}
+                          <EventStatusBadge status={e.status || "draft"} size="sm" />
                         </div>
                       </div>
 
@@ -888,14 +888,7 @@ const ManageEvents = () => {
                               {getChip(e.event_type, "bg-purple-50 border-purple-200 text-purple-700")}
                             </td>
                             <td className="p-4">
-                              {getChip(
-                                e.status || "upcoming",
-                                e.status === "completed"
-                                  ? "bg-green-50 border-green-200 text-green-700"
-                                  : e.status === "live"
-                                  ? "bg-red-50 border-red-200 text-red-700"
-                                  : "bg-blue-50 border-blue-200 text-blue-700"
-                              )}
+                              <EventStatusBadge status={e.status || "draft"} />
                             </td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.rounds}</td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>
@@ -961,12 +954,26 @@ const ManageEvents = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Status</label>
-                    <select value={eventForm.status}
-                      onChange={(e) => handleEventChange("status", e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
-                      {STATUS_OPTIONS.map((s) => (<option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">{s.label}</option>))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <EventStatusBadge status={eventForm.status || "draft"} size="lg" />
+                      {editingEventId && (
+                        <EventStatusSelector
+                          event={{ _id: editingEventId, status: eventForm.status }}
+                          onStatusChanged={() => {
+                            const fetchEvent = async () => {
+                              try {
+                                const { data: evt } = await apiCall(`/api/event/${editingEventId}`);
+                                setEventForm((prev) => ({ ...prev, status: evt.status }));
+                              } catch (e) { console.error("Failed to refresh event status", e); }
+                            };
+                            fetchEvent();
+                          }}
+                        />
+                      )}
+                    </div>
+                    {!editingEventId && (
+                      <p className="mt-1 text-xs theme-text-secondary">New events start as Draft. Change status after creation.</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Category *</label>
@@ -1051,6 +1058,16 @@ const ManageEvents = () => {
                           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                           {REGISTRATION_MODES.map((m) => (<option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">{m.label}</option>))}
                         </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
+                          Registration Closes
+                        </label>
+                        <input type="datetime-local"
+                          value={eventForm.registration_closes_at || ""}
+                          onChange={(e) => setEventForm((prev) => ({ ...prev, registration_closes_at: e.target.value }))}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>

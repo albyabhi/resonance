@@ -37,7 +37,8 @@ export const RealtimeProvider = ({ children }) => {
           data.type === 'SCOREBOARD_UPDATED' ||
           data.type === 'EVENT_UPDATED' ||
           data.type === 'EVENT_CREATED' ||
-          data.type === 'EVENT_DELETED'
+          data.type === 'EVENT_DELETED' ||
+          data.type === 'EVENT_STATUS_CHANGED'
         ) {
           setLatestEvent(data);
           setLastUpdate(Date.now());
