@@ -5,6 +5,7 @@ import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import { Share2, Copy, Download, X, QrCode } from "lucide-react";
+import { useRealtime } from "../../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -32,7 +33,8 @@ const DEFAULT_EVENT_FORM = {
   max_team_size: 1,
   mode: "onstage",
   event_type: "individual",
-  max_per_house: 1,
+  max_per_group: 1,
+  status: "upcoming",
 };
 
 const DEFAULT_ROUND = {
@@ -65,8 +67,9 @@ const getCurrentScheduleDefaults = () => {
 
 
 const ManageEvents = () => {
-  const { token, lastCompetition } = useAuth();
+  const { token, competition } = useAuth();
   const { groupLabel } = useCompetition();
+  const { lastUpdate } = useRealtime() || {};
   const [activeTab, setActiveTab] = useState("manage"); // manage | add | edit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,8 +116,11 @@ const ManageEvents = () => {
       setLoading(true);
       setError("");
 
+      const competitionId = competition?._id || competition?.id || competition?.competition_id;
+      const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+
       const [{ events }, housesResp] = await Promise.all([
-        apiCall("/api/event"),
+        apiCall(`/api/event${competitionQuery}`),
         apiCall("/api/house"),
       ]);
       setEvents(events || []);
@@ -122,7 +128,7 @@ const ManageEvents = () => {
 
       // Usage snapshot
       try {
-        const { usage } = await apiCall("/api/event/usage");
+        const { usage } = await apiCall(`/api/event/usage${competitionQuery}`);
         const map = {};
         (usage || []).forEach((u) => {
           const byHouse = {};
@@ -143,7 +149,7 @@ const ManageEvents = () => {
   useEffect(() => {
     if (token) fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, lastUpdate]);
 
   // Helpers
   const resetForms = () => {
@@ -189,7 +195,8 @@ const ManageEvents = () => {
           event.max_team_size ?? Math.max(1, event.min_team_size ?? 1),
         mode: event.mode || "onstage",
         event_type: event.event_type || "individual",
-        max_per_house: event.max_per_house ?? 1,
+        max_per_group: event.max_per_group ?? 1,
+        status: event.status || "upcoming",
       });
 
       const roundsData = (schedules || [])
@@ -246,7 +253,7 @@ const ManageEvents = () => {
         "min_team_size",
         "max_team_size",
         "rounds",
-        "max_per_house",
+        "max_per_group",
       ]);
 
       let next = { ...prev };
@@ -384,13 +391,13 @@ const ManageEvents = () => {
       }
     }
 
-    // max_per_house: allow "" or 0; if number and < 0, flag
+    // max_per_group: allow "" or 0; if number and < 0, flag
     if (
-      form.max_per_house !== "" &&
-      typeof form.max_per_house === "number" &&
-      form.max_per_house < 0
+      form.max_per_group !== "" &&
+      typeof form.max_per_group === "number" &&
+      form.max_per_group < 0
     ) {
-      errs.max_per_house = `Max per ${groupLabel.toLowerCase()} cannot be negative`;
+      errs.max_per_group = `Max per ${groupLabel.toLowerCase()} cannot be negative`;
     }
 
     setFieldErrors(errs);
@@ -405,8 +412,8 @@ const ManageEvents = () => {
       ...form,
       rounds:
         form.rounds === "" ? 1 : typeof form.rounds === "number" ? Math.max(1, form.rounds) : 1,
-      max_per_house:
-        form.max_per_house === "" ? null : typeof form.max_per_house === "number" ? form.max_per_house : null,
+      max_per_group:
+        form.max_per_group === "" ? null : typeof form.max_per_group === "number" ? form.max_per_group : null,
     };
 
     if (form.event_type === "individual") {
@@ -468,9 +475,10 @@ const ManageEvents = () => {
           )
         );
       } else {
+      const competitionId = competition?._id || competition?.id || competition?.competition_id;
         const payload = { 
           ...sanitizedEventForm, 
-          competition_id: lastCompetition?._id,
+          competition_id: competitionId,
           points_config: pointsConfig 
         };
         const { data: event } = await apiCall("/api/event", {
@@ -650,7 +658,7 @@ const ManageEvents = () => {
                             {e.description}
                           </p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end max-w-[150px]">
                           {getChip(
                             e.mode,
                             "bg-orange-50 border-orange-200 text-orange-700"
@@ -658,6 +666,14 @@ const ManageEvents = () => {
                           {getChip(
                             e.event_type,
                             "bg-purple-50 border-purple-200 text-purple-700"
+                          )}
+                          {getChip(
+                            e.status || "upcoming",
+                            e.status === "completed"
+                              ? "bg-green-50 border-green-200 text-green-700"
+                              : e.status === "live"
+                              ? "bg-red-50 border-red-200 text-red-700"
+                              : "bg-blue-50 border-blue-200 text-blue-700"
                           )}
                         </div>
                       </div>
@@ -669,7 +685,7 @@ const ManageEvents = () => {
                         </div>
                         <div>
                           <span style={{ color: 'var(--chart-axis)' }}>Max/{groupLabel}</span>
-                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_house}</p>
+                          <p className="font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_group}</p>
                         </div>
                         <div>
                           <span style={{ color: 'var(--chart-axis)' }}>Team size</span>
@@ -722,6 +738,7 @@ const ManageEvents = () => {
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Event</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Mode</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Type</th>
+                      <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Status</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Rounds</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Team Size</th>
                       <th className="text-left p-4 text-sm font-semibold" style={{ color: 'var(--chart-axis)' }}>Max/{groupLabel}</th>
@@ -754,11 +771,21 @@ const ManageEvents = () => {
                             <td className="p-4">
                               {getChip(e.event_type, "bg-purple-50 border-purple-200 text-purple-700")}
                             </td>
+                            <td className="p-4">
+                              {getChip(
+                                e.status || "upcoming",
+                                e.status === "completed"
+                                  ? "bg-green-50 border-green-200 text-green-700"
+                                  : e.status === "live"
+                                  ? "bg-red-50 border-red-200 text-red-700"
+                                  : "bg-blue-50 border-blue-200 text-blue-700"
+                              )}
+                            </td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.rounds}</td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>
                               {e.event_type === "individual" ? "1" : `${e.min_team_size}–${e.max_team_size}`}
                             </td>
-                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_house}</td>
+                            <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{e.max_per_group}</td>
                             <td className="p-4 font-semibold" style={{ color: 'var(--card-fg)' }}>{usage.totalTeams}</td>
                             <td className="p-4">
                               <div className="flex gap-2">
@@ -802,7 +829,7 @@ const ManageEvents = () => {
               {/* Event Basics */}
               <section>
                 <h2 className="text-lg font-semibold mb-3 text-xl" style={{ color: 'var(--card-fg)' }}>Event details</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Name</label>
                     <input
@@ -837,7 +864,22 @@ const ManageEvents = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="md:col-span-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Status</label>
+                    <select
+                      value={eventForm.status}
+                      onChange={(e) => handleEventChange("status", e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s.value} value={s.value} className="bg-white dark:bg-[#0B1220]">
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-3">
                     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>
                       Description / Rules
                     </label>
@@ -936,20 +978,20 @@ const ManageEvents = () => {
                       type="number"
                       min={0}
                       value={
-                        eventForm.max_per_house === 0
+                        eventForm.max_per_group === 0
                           ? 0
-                          : eventForm.max_per_house ?? ""
+                          : eventForm.max_per_group ?? ""
                       }
-                      onChange={(e) => handleEventChange("max_per_house", e.target.value)}
+                      onChange={(e) => handleEventChange("max_per_group", e.target.value)}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                       style={{
                         backgroundColor: 'var(--surface)',
-                        borderColor: fieldErrors.max_per_house ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
+                        borderColor: fieldErrors.max_per_group ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-divider)',
                         color: 'var(--card-fg)'
                       }}
                     />
-                    {fieldErrors.max_per_house && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_house}</p>
+                    {fieldErrors.max_per_group && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.max_per_group}</p>
                     )}
                   </div>
                 </div>

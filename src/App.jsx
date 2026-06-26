@@ -18,11 +18,10 @@ import ResetPasswordPage from './pages/entry/ResetPasswordPage';
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
-import WorkspacesPage from './pages/entry/WorkspacesPage';
 
 export default function App() {
-  const { role, isAuthenticated, lastCompetition, loading, isAuthReady, logout } = useAuth();
-  const { hasPermission } = usePermission();
+  const { role, isAuthenticated, competition, loading, isAuthReady, logout } = useAuth();
+  const { hasRole } = usePermission();
   const location = useLocation();
 
   useEffect(() => {
@@ -54,11 +53,6 @@ export default function App() {
           </PageTransition>
         } />
         <Route path="/setup" element={<PageTransition><SetupPage /></PageTransition>} />
-        <Route path="/workspaces" element={
-          <PageTransition>
-            {isAuthenticated ? <WorkspacesPage /> : <Navigate to="/login" replace />}
-          </PageTransition>
-        } />
         <Route path="/join" element={<PageTransition><JoinPage /></PageTransition>} />
         <Route path="/invite/:token" element={<PageTransition><InvitePage /></PageTransition>} />
         <Route path="/view/:slug" element={<PageTransition><PublicViewPage /></PageTransition>} />
@@ -73,7 +67,7 @@ export default function App() {
           element={
             <PageTransition>
               {isAuthenticated ? (
-                lastCompetition ? (
+                competition ? (
                   <AppShell role={role} onLogout={logout}>
                     {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
                       <Dashboard
@@ -100,7 +94,7 @@ export default function App() {
           path="/my-details"
           element={
             <PageTransition>
-              {isAuthenticated && hasPermission('manage_own_group_profile') ? (
+              {isAuthenticated && hasRole('house_captain') ? (
                 <AppShell role={role} onLogout={logout}>
                   <CaptainMyDetails />
                 </AppShell>

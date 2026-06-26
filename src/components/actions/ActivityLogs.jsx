@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { RefreshCw, Undo as UndoIcon, Repeat as RedoIcon, Search as SearchIcon, Loader2 } from 'lucide-react';
 import { apiJson } from "../../utils/apiClient";
+import { useRealtime } from "../../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -9,6 +10,7 @@ const roles = ["admin", "captain", "student_coordinator", "faculty", "guest"];
 
 export default function ActivityLogs() {
   const { token } = useAuth();
+  const { lastUpdate } = useRealtime() || {};
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
   const [perPage] = useState(20);
@@ -88,7 +90,7 @@ export default function ActivityLogs() {
   useEffect(() => {
     if (token) fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, page, roleFilter, resourceFilter, userSearch]);
+  }, [token, page, roleFilter, resourceFilter, userSearch, lastUpdate]);
 
   const resourceTypes = useMemo(() => {
     const set = new Set();

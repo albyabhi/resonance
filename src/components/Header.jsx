@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, ChevronDown, Trophy } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { apiFetch } from "../utils/apiClient";
 import Logo from "../assets/logo.png";
@@ -16,11 +16,64 @@ function Header({
   onToggleSidebar = () => {},
 }) {
   const auth = useAuth();
-  const { user, role, token, isAuthReady } = auth || { user: null, role: "guest", token: null, isAuthReady: false };
+  const { user, role, token, isAuthReady, competition, login } = auth || { user: null, role: "guest", token: null, isAuthReady: false, competition: null, login: () => {} };
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCompSwitcher, setShowCompSwitcher] = useState(false);
+  const [compList, setCompList] = useState([]);
+  const [loadingComps, setLoadingComps] = useState(false);
+  const compDropdownRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (compDropdownRef.current && !compDropdownRef.current.contains(e.target)) {
+        setShowCompSwitcher(false);
+      }
+    };
+    if (showCompSwitcher) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showCompSwitcher]);
+
+  // Fetch competition list when dropdown opens
+  useEffect(() => {
+    if (showCompSwitcher && token && role !== "guest") {
+      setLoadingComps(true);
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      apiFetch(`${backendUrl}/api/competition/my`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch');
+          return res.json();
+        })
+        .then((data) => {
+          const list = data?.adminCompetitions || data || [];
+          setCompList(Array.isArray(list) ? list : []);
+        })
+        .catch(() => setCompList([]))
+        .finally(() => setLoadingComps(false));
+    }
+  }, [showCompSwitcher, token, role]);
+
+  const handleSwitchCompetition = async (compId) => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    try {
+      const res = await apiFetch(`${backendUrl}/api/auth/competition/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ competition_id: compId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to switch');
+      login(data.user, data.access_token, data.refresh_token, data.competition);
+      setShowCompSwitcher(false);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   useEffect(() => {
     if (token && role !== "guest" && isAuthReady) {
@@ -74,12 +127,71 @@ function Header({
             <img
               src={Logo}
               alt="Resonance"
-              className="h-10 w-10 rounded-2xl  object-cover "
+              className="h-10 w-10 rounded-2xl object-cover"
             />
             <span className="hidden text-lg font-semibold tracking-tight sm:inline" style={{ color: 'var(--text)' }}>
-              Resonance
+              {competition?.name || 'Resonance'}
             </span>
           </button>
+
+          {role !== "guest" && competition && (
+            <div className="relative ml-2" ref={compDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setShowCompSwitcher(!showCompSwitcher)}
+                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                style={{ color: 'var(--chart-axis)' }}
+              >
+                <Trophy className="h-3.5 w-3.5" />
+                <ChevronDown className="h-3 w-3" />
+              </button>
+
+              {showCompSwitcher && (
+                <div
+                  className="absolute left-0 top-full mt-2 w-64 overflow-hidden rounded-xl border shadow-xl z-50"
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
+                >
+                  <div className="border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--chart-axis)', borderBottom: '1px solid var(--border-divider)' }}>
+                    Switch Competition
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {loadingComps ? (
+                      <div className="px-4 py-3 text-xs" style={{ color: 'var(--chart-axis)' }}>Loading...</div>
+                    ) : compList.length === 0 ? (
+                      <div className="px-4 py-3 text-xs" style={{ color: 'var(--chart-axis)' }}>No other competitions</div>
+                    ) : (
+                      compList.map((comp) => {
+                        const isActive = comp._id === (competition?._id || competition?.id);
+                        return (
+                          <button
+                            key={comp._id}
+                            type="button"
+                            disabled={isActive}
+                            onClick={() => handleSwitchCompetition(comp._id)}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed dark:hover:bg-white/10"
+                            style={{ color: isActive ? 'var(--accent)' : 'var(--card-fg)' }}
+                          >
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold dark:bg-blue-950/40 dark:text-blue-400">
+                              {comp.name?.charAt(0) || '?'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{comp.name}</div>
+                              <div className="text-xs truncate" style={{ color: 'var(--chart-axis)' }}>
+                                {comp.year || ''} · {comp.type?.replace(/_/g, ' ') || ''}
+                              </div>
+                            </div>
+                            {isActive && (
+                              <span className="text-xs font-semibold text-green-600 dark:text-green-400">Active</span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="hidden flex-1 justify-center px-4 md:flex">

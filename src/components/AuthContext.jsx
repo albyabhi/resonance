@@ -1,7 +1,5 @@
-// src/components/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // NEW
-import { normalizeRole } from './dashboard/roleConfig';
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { resetApiLogoutGuard } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
@@ -44,30 +42,41 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const [lastCompetition, setLastCompetition] = useState(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      return saved ? JSON.parse(saved).competition || null : null;
-    } catch {
-      return null;
-    }
-  });
-
   const [loading, setLoading] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(true);
   const navigate = useNavigate();
 
+  // Derived: competition comes from the user object
+  const competition = useMemo(() => user?.competition || null, [user]);
 
-  // Persist whenever state changes
-  useEffect(() => {
-    if (user && token) {
-      localStorage.setItem("auth", JSON.stringify({ user, role, token, refreshToken, competition: lastCompetition }));
+  const persist = (nextUser, nextRole, jwtToken, rToken) => {
+    if (nextUser && jwtToken) {
+      localStorage.setItem("auth", JSON.stringify({
+        user: nextUser,
+        role: nextRole,
+        token: jwtToken,
+        refreshToken: rToken,
+      }));
     } else {
       localStorage.removeItem("auth");
     }
-  }, [user, role, token, refreshToken, lastCompetition]);
+  };
 
-  // use shared normalizer from roleConfig so role keys are consistent across app
+  // Migrate old format (competition stored at top level) to new format (inside user)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("auth");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Old format: competition was at root, user didn't have it
+        if (parsed.competition && parsed.user && !parsed.user.competition) {
+          parsed.user.competition = parsed.competition;
+          delete parsed.competition;
+          localStorage.setItem("auth", JSON.stringify(parsed));
+        }
+      }
+    } catch {}
+  }, []);
 
   const guestLogin = () => {
     setUser({ name: "Guest User" });
@@ -75,85 +84,53 @@ export function AuthProvider({ children }) {
     setToken(null);
   };
 
-  // Login updates user, role, token, and persists
-  const login = (serverUser, jwtToken, refreshToken, competition) => {
+  const login = (serverUser, jwtToken, rToken, competitionData) => {
     resetApiLogoutGuard();
-    const nextRole = normalizeRole(serverUser?.role);
-    const nextUser = { ...serverUser, role: nextRole };
+    const nextRole = serverUser?.role || "viewer";
+    const nextUser = competitionData
+      ? { ...serverUser, role: nextRole, competition: competitionData }
+      : { ...serverUser, role: nextRole };
     setUser(nextUser);
-    setRole(nextRole || "guest");
+    setRole(nextRole);
     setToken(jwtToken || null);
-    setRefreshToken(refreshToken || null);
-    if (competition) {
-      setLastCompetition(competition);
-    }
-    
-    // Persist immediately with competition
-    localStorage.setItem("auth", JSON.stringify({ 
-      user: nextUser, 
-      role: nextRole || "guest", 
-      token: jwtToken,
-      refreshToken: refreshToken,
-      competition: competition || lastCompetition 
-    }));
+    setRefreshToken(rToken || null);
+    persist(nextUser, nextRole, jwtToken, rToken);
   };
 
-  // Logout then navigate to /login
   const logout = (options) => {
     setUser(null);
     setRole("guest");
     setToken(null);
     setRefreshToken(null);
-    setLastCompetition(null);
-    localStorage.removeItem("auth");
+    persist(null, "guest", null, null);
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     if (!options || options.redirect !== false) {
-      navigate("/", { replace: true }); // redirect to Welcome page
+      navigate("/", { replace: true });
     }
   };
 
-  // Update only user.house and persist
   const setUserHouse = (house) => {
     setUser((prev) => {
       if (!prev) return prev;
       const next = { ...prev, house };
-      if (token) {
-        try {
-          localStorage.setItem("auth", JSON.stringify({ user: next, role, token, competition: lastCompetition }));
-        } catch {
-          // ignore storage errors
-        }
-      }
+      if (token) persist(next, role, token, refreshToken);
       return next;
     });
   };
 
-  // General user updater, accepts a partial object or a function(prev)=>next
   const setUserData = (patch) => {
     setUser((prev) => {
       if (!prev) return prev;
       const next = typeof patch === "function" ? patch(prev) : { ...prev, ...patch };
-      if (token) {
-        try {
-          localStorage.setItem("auth", JSON.stringify({ user: next, role, token, competition: lastCompetition }));
-        } catch {
-          // ignore storage errors
-        }
-      }
+      if (token) persist(next, role, token, refreshToken);
       return next;
     });
   };
 
-  // Set up LOGOUT event listener
   useEffect(() => {
-    const handleGlobalLogout = () => {
-      logout({ redirect: true });
-    };
-
-    const handleTokenUpdate = (event) => {
-      setToken(event.detail.token);
-    };
+    const handleGlobalLogout = () => logout({ redirect: true });
+    const handleTokenUpdate = (event) => setToken(event.detail.token);
 
     window.addEventListener('LOGOUT', handleGlobalLogout);
     window.addEventListener('TOKEN_UPDATED', handleTokenUpdate);
@@ -162,8 +139,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener('LOGOUT', handleGlobalLogout);
       window.removeEventListener('TOKEN_UPDATED', handleTokenUpdate);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -172,13 +148,12 @@ export function AuthProvider({ children }) {
         role,
         token,
         refreshToken,
-        lastCompetition,
-        setLastCompetition,
+        competition,
         loading,
         isAuthReady,
         isAuthenticated: !!token,
         login,
-        logout,           // now redirects to /login
+        logout,
         guestLogin,
         setUserHouse,
         setUserData,

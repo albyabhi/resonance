@@ -3,6 +3,7 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
+import { useRealtime } from "../../context/RealtimeContext";
 import { 
   Trophy, 
   Users, 
@@ -26,8 +27,9 @@ import {
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function ParticipantRegister() {
-  const { token, user } = useAuth();
-  const { groupLabel, groupLabelPlural, competition } = useCompetition();
+  const { token, user, competition } = useAuth();
+  const { groupLabel, groupLabelPlural } = useCompetition();
+  const { lastUpdate } = useRealtime() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("available"); // "available" | "my-events"
@@ -71,8 +73,11 @@ export default function ParticipantRegister() {
       setLoading(true);
       setError("");
       
+      const competitionId = competition?._id || competition?.id || competition?.competition_id;
+      const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+
       const [eventsResp, regsResp] = await Promise.all([
-        apiCall("/api/event"),
+        apiCall(`/api/event${competitionQuery}`),
         apiCall("/api/team/my-registrations")
       ]);
 
@@ -98,7 +103,7 @@ export default function ParticipantRegister() {
 
   useEffect(() => {
     if (token) fetchData();
-  }, [token]);
+  }, [token, lastUpdate]);
 
   // Handle auto-focus / auto-participate if redirected with eventId
   useEffect(() => {

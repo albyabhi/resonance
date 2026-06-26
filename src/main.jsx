@@ -6,6 +6,7 @@ import "./index.css";
 import { AuthProvider } from "./components/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { CompetitionProvider } from "./context/CompetitionContext";
+import { RealtimeProvider } from "./context/RealtimeContext";
 import { Toaster } from "react-hot-toast";
 
 createRoot(document.getElementById("root")).render(
@@ -18,8 +19,10 @@ createRoot(document.getElementById("root")).render(
     >
       <AuthProvider>
         <CompetitionProvider>
-          <Toaster position="top-center" />
-          <App />
+          <RealtimeProvider>
+            <Toaster position="top-center" />
+            <App />
+          </RealtimeProvider>
         </CompetitionProvider>
       </AuthProvider>
     </ThemeProvider>

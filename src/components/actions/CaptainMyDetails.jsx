@@ -8,7 +8,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CaptainMyDetails() {
   const { token } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasRole } = usePermission();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -42,8 +42,8 @@ export default function CaptainMyDetails() {
       }
     };
 
-    if (token && hasPermission("manage_own_group_profile")) loadProfile();
-  }, [token, hasPermission]);
+    if (token && hasRole("house_captain")) loadProfile();
+  }, [token, hasRole]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
@@ -105,7 +105,7 @@ export default function CaptainMyDetails() {
     }
   };
 
-  if (!token || !hasPermission("manage_own_group_profile")) {
+  if (!token || !hasRole("house_captain")) {
     return (
       <div className="theme-card">
         <div className="text-center theme-text-secondary">Access denied. Only captains can view this page.</div>

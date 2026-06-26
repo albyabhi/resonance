@@ -82,11 +82,10 @@ export default function Sidebar({
 }) {
   const { user, role, isAuthenticated, logout } = useAuth();
   const { groupLabel, groupLabelPlural } = useCompetition();
-  const { hasPermission } = usePermission();
   const navigate = useNavigate();
 
   const roleKey = normalizeRole(role);
-  const cfg = roleConfig[roleKey] ?? roleConfig.guest;
+  const cfg = roleConfig[roleKey] ?? roleConfig.viewer;
   const displayName = user?.name || "Guest";
 
   const visibleSections = useMemo(
@@ -99,16 +98,13 @@ export default function Sidebar({
     [cfg.modules]
   );
 
-  // Filter actions through the permission system
   const visibleActions = useMemo(() => {
-    const actions = getUserActions(roleKey, hasPermission);
-    return actions
-      .filter(action => hasPermission(action.permissionKey))
-      .map(action => ({
-        ...action,
-        label: action.label.replace('House', groupLabel).replace('Houses', groupLabelPlural)
-      }));
-  }, [roleKey, groupLabel, groupLabelPlural, hasPermission]);
+    const actions = getUserActions(roleKey);
+    return actions.map(action => ({
+      ...action,
+      label: action.label.replace('House', groupLabel).replace('Houses', groupLabelPlural)
+    }));
+  }, [roleKey, groupLabel, groupLabelPlural]);
 
   useEffect(() => {
     if (!open) return;

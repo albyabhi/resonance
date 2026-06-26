@@ -6,8 +6,8 @@ import usePermission from "../../hooks/usePermission";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const SubmissionManager = () => {
-  const { token, role, user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { token, role, user, competition } = useAuth();
+  const { hasAnyRole } = usePermission();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -34,7 +34,9 @@ const SubmissionManager = () => {
       try {
         setLoading(true);
         setError("");
-        const { events } = await apiCall("/api/event");
+        const competitionId = competition?._id || competition?.id || competition?.competition_id;
+        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+        const { events } = await apiCall(`/api/event${competitionQuery}`);
         setEvents(events || []);
       } catch (err) {
         setError(err.message);
@@ -109,7 +111,7 @@ const SubmissionManager = () => {
 
   const isOwnPending = (row) =>
     row.status === "pending" &&
-    hasPermission("submit_score") &&
+    hasAnyRole("judge", "event_coordinator", "organizer", "super_admin") &&
     !!user?.id &&
     String(row.submittedById) === String(user.id);
 

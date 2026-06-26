@@ -1,33 +1,47 @@
 import { useMemo } from "react";
 import { useAuth } from "../components/AuthContext";
-import { normalizeRole } from "../components/dashboard/roleConfig";
+import { roleConfig } from "../components/dashboard/roleConfig";
 
 export default function usePermission() {
   const { user, role: contextRole } = useAuth();
-  const displayRole = normalizeRole(contextRole);
 
-  const resolvedPermissions = useMemo(() => {
-    const permissions = user?.permissions || {};
-    if (Array.isArray(permissions)) {
-      return permissions.reduce((acc, grant) => {
-        if (grant?.key) acc[grant.key] = !!grant.allowed;
-        return acc;
-      }, {});
-    }
-    return Object.fromEntries(Object.entries(permissions).map(([key, value]) => [key, !!value]));
-  }, [user?.permissions]);
+  const resolvedRole = useMemo(() => {
+    const raw = contextRole || user?.role || "viewer";
+    return String(raw).toLowerCase().trim();
+  }, [contextRole, user?.role]);
 
-  const hasPermission = useMemo(() => {
-    return (key) => {
-      if (!key) return true;
-      return !!resolvedPermissions[key];
+  const hasRole = useMemo(() => {
+    return (role) => {
+      if (!role) return true;
+      return resolvedRole === role;
     };
-  }, [resolvedPermissions]);
+  }, [resolvedRole]);
+
+  const hasAnyRole = useMemo(() => {
+    return (...roles) => {
+      return roles.some((r) => resolvedRole === r);
+    };
+  }, [resolvedRole]);
+
+  const isStaff = useMemo(() => {
+    return ["super_admin", "organizer", "event_coordinator", "judge"].includes(resolvedRole);
+  }, [resolvedRole]);
+
+  const canManage = useMemo(() => {
+    return ["super_admin", "organizer"].includes(resolvedRole);
+  }, [resolvedRole]);
+
+  const displayRole = useMemo(() => {
+    const cfg = roleConfig[resolvedRole];
+    return cfg?.title || resolvedRole;
+  }, [resolvedRole]);
 
   return {
-    hasPermission,
-    resolvedPermissions,
+    hasRole,
+    hasAnyRole,
+    isStaff,
+    canManage,
+    role: resolvedRole,
     displayRole,
-    permissionScopes: user?.permission_scopes || {},
   };
 }

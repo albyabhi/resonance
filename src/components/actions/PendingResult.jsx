@@ -3,13 +3,15 @@ import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
 import { useCompetition } from "../../context/CompetitionContext";
+import { useRealtime } from "../../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const PendingResult = () => {
-  const { token, role } = useAuth();
+  const { token, role, competition } = useAuth();
   const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
-  const { hasPermission } = usePermission();
+  const { hasAnyRole } = usePermission();
+  const { lastUpdate } = useRealtime() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -33,7 +35,9 @@ const PendingResult = () => {
   };
 
   const loadEvents = async () => {
-    const { events } = await apiCall("/api/event");
+    const competitionId = competition?._id || competition?.id || competition?.competition_id;
+    const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+    const { events } = await apiCall(`/api/event${competitionQuery}`);
     setEvents(events || []);
   };
 
@@ -129,7 +133,7 @@ const PendingResult = () => {
     setLoading(true);
     setError("");
     loadPending().catch((e) => setError(e.message)).finally(() => setLoading(false));
-  }, [eventId, roundNo]);
+  }, [eventId, roundNo, lastUpdate]);
 
   const teamLabel = (t) => `${t.chest_no ? `Chest #${t.chest_no}` : "No chest"} - ${t.houseName}${t.houseCode ? ` (${t.houseCode})` : ""}`;
 
@@ -247,7 +251,7 @@ const PendingResult = () => {
     }
   };
 
-  const canApprove = hasPermission('approve_score');
+  const canApprove = hasAnyRole('organizer', 'super_admin');
 
   return (
     <div className="theme-card p-4">

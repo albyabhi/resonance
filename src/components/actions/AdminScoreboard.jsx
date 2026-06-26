@@ -128,8 +128,8 @@ const MobileRowCard = ({
 const AdminScoreboard = () => {
   const { token, role } = useAuth();
   const { competition, groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
-  const { hasPermission } = usePermission();
-  const isAdmin = hasPermission('edit_approved_score');
+  const { hasAnyRole } = usePermission();
+  const isAdmin = hasAnyRole('organizer', 'super_admin');
   const [houses, setHouses] = useState([]);
   const [houseId, setHouseId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -165,11 +165,14 @@ const AdminScoreboard = () => {
       try {
         setLoading(true);
         setError("");
+        const competitionId = competition?._id || competition?.id || competition?.competition_id;
+        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+
         const [housesResp, eventsResp] = await Promise.all([
           competition?._id
             ? apiCall(`/api/competition/${competition._id}/groups`)
             : apiCall("/api/house"),
-          apiCall("/api/event"),
+          apiCall(`/api/event${competitionQuery}`),
         ]);
         const hs = Array.isArray(housesResp) ? housesResp : housesResp.houses || [];
         setHouses(hs);

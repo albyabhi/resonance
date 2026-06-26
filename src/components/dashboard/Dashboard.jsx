@@ -59,12 +59,12 @@ export default function Dashboard({
 }) {
   const { user, role: contextRole, token, isAuthReady } = useAuth();
   const { competition, groupLabel, groupLabelPlural } = useCompetition();
-  const { hasPermission } = usePermission();
+  const { hasAnyRole } = usePermission();
   const safeRoleKey = normalizeRole(contextRole);
-  const cfg = roleConfig[safeRoleKey] ?? roleConfig.guest;
+  const cfg = roleConfig[safeRoleKey] ?? roleConfig.viewer;
   const userActions = useMemo(() => {
-    return getUserActions(safeRoleKey, hasPermission);
-  }, [safeRoleKey, hasPermission]);
+    return getUserActions(safeRoleKey);
+  }, [safeRoleKey]);
 
   const standingsRef = useRef(null);
   const eventsRef = useRef(null);
@@ -203,16 +203,6 @@ export default function Dashboard({
                       return dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction;
                     });
                     
-                    // Permission guard: block if user lacks the permission for this action
-                    if (slugObj?.permissionKey && !hasPermission(slugObj.permissionKey)) {
-                      return (
-                        <div className="card-premium p-10 text-center">
-                          <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Access Denied</h3>
-                          <p className="text-gray-500 dark:text-gray-400">You do not have permission to access this section.</p>
-                        </div>
-                      );
-                    }
-
                     if (slugObj?.label === "Event Registration" && safeRoleKey === "participant") {
                       return <ParticipantRegister />;
                     }
@@ -267,7 +257,7 @@ export default function Dashboard({
           </div>
         </main>
 
-        {safeRoleKey === "admin" && dashData && (
+        {safeRoleKey === "super_admin" && dashData && (
           <OnboardingChecklist 
             systemStats={dashData.systemStats} 
             eventsCount={dashData.events?.length || 0} 

@@ -17,7 +17,7 @@ import { apiFetch } from '../utils/apiClient';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, login, logout, setLastCompetition, token, refreshToken } = useAuth();
+  const { user, isAuthenticated, login, logout, token, refreshToken } = useAuth();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const images = [img1, img2, img3, img4, img5];
@@ -75,7 +75,6 @@ export default function WelcomePage() {
       
       // Update local auth context
       login(data.user, data.access_token || token, data.refresh_token || refreshToken, data.competition);
-      setLastCompetition(data.competition);
       
       toast.success(`Entered: ${data.competition.name}`);
       navigate('/dashboard');

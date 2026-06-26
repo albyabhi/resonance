@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin = () => {} }) {
       if (redirectUrl) {
         navigate(redirectUrl, { replace: true });
       } else {
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     } catch (err) {
       toast.error(err.message);

@@ -8,8 +8,8 @@ import { useCompetition } from "../../context/CompetitionContext";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const ManageResult = () => {
-  const { hasPermission } = usePermission();
-  const { token, user } = useAuth(); // expects user.house?._id for scoped submissions
+  const { hasAnyRole } = usePermission();
+  const { token, user, competition } = useAuth(); // expects user.house?._id for scoped submissions
   const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -56,7 +56,9 @@ const ManageResult = () => {
       try {
         setLoading(true);
         setError("");
-        const { events } = await apiCall("/api/event");
+        const competitionId = competition?._id || competition?.id || competition?.competition_id;
+        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+        const { events } = await apiCall(`/api/event${competitionQuery}`);
         setEvents(events || []);
       } catch (err) {
         setError(err.message);
@@ -111,7 +113,7 @@ const ManageResult = () => {
           members: t.members || [],
         }));
         const scoped =
-          hasPermission("submit_score") && !hasPermission("edit_approved_score") && coordinatorHouseId
+          hasAnyRole("judge", "event_coordinator") && !hasAnyRole("organizer", "super_admin") && coordinatorHouseId
             ? baseTeams.filter((t) => String(t.houseId) === String(coordinatorHouseId))
             : baseTeams;
 
@@ -138,7 +140,7 @@ const ManageResult = () => {
     return () => {
       cancelled = true;
     };
-  }, [eventId, coordinatorHouseId, hasPermission]);
+  }, [eventId, coordinatorHouseId, hasAnyRole]);
 
   // Load server results snapshot for event+round and lock those positions
   const loadResultsForRound = async (evtId, rnd) => {
@@ -275,7 +277,7 @@ const ManageResult = () => {
         <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
           Select event and round, assign placements, and submit for approval
         </p>
-        {hasPermission("submit_score") && coordinatorHouseId && !hasPermission("edit_approved_score") && (
+        {hasAnyRole("judge", "event_coordinator") && coordinatorHouseId && !hasAnyRole("organizer", "super_admin") && (
           <p className="text-xs mt-1" style={{ color: 'var(--chart-axis)' }}>
             {groupLabel} restricted: only teams from assigned {groupLabel.toLowerCase()} are visible
           </p>

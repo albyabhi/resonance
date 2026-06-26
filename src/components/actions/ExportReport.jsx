@@ -6,7 +6,7 @@ import { Download, FileText, Printer, CheckCircle, AlertCircle, Loader } from "l
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function ExportReport() {
-  const { token } = useAuth();
+  const { token, competition } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState(null);
@@ -16,11 +16,7 @@ export default function ExportReport() {
       setLoading(true);
       setError("");
       
-      // Get competition ID from localStorage (or current active competition context)
-      const activeCompetition = localStorage.getItem("activeCompetition") 
-        ? JSON.parse(localStorage.getItem("activeCompetition")) 
-        : null;
-      const compId = activeCompetition?._id || activeCompetition?.id || "";
+      const compId = competition?._id || competition?.id || "";
 
       if (!compId) {
         throw new Error("No active competition selected. Please select a competition first.");
@@ -30,7 +26,6 @@ export default function ExportReport() {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "x-competition-id": compId,
         },
       });
 

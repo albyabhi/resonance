@@ -7,6 +7,7 @@ import { useCompetition } from "../../context/CompetitionContext";
 
 import StatCard from "../StatCard";
 import TopHouses from "../widgets/TopHouses";
+import ParticipantHighlights from "../widgets/ParticipantHighlights";
 import HousePerformanceChart from "../charts/HousePerformanceChart";
 import ResultStatusChart from "../charts/ResultStatusChart";
 import { FadeIn } from "../AnimateReveal";
@@ -209,7 +210,7 @@ function ResultProgress({ results = [] }) {
 export default function DashboardVisuals() {
   const { data, loading, error } = useDashboardData();
   const { role, user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasAnyRole, hasRole } = usePermission();
   const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const userHouseId = user?.house?._id || user?.house;
   const userGroupId = getId(userHouseId);
@@ -236,22 +237,20 @@ export default function DashboardVisuals() {
     );
   }
 
-  const { scoreboard, events, results, schedules, systemStats } = data;
+  const { scoreboard, events, results, schedules, participantStats, systemStats } = data;
   const normalizedScoreboard = normalizeScoreboard(scoreboard);
   const pendingResults = results.filter((r) => r.status === "pending");
   const liveEvents = events.filter((e) => e.status === "live");
   const completedEvents = events.filter((e) => e.status === "completed");
   const nextEvents = events.filter((e) => e.status !== "completed");
   const leader = normalizedScoreboard[0];
-  const dashboardKind = hasPermission("manage_permissions") || hasPermission("manage_groups") || hasPermission("edit_approved_score")
+  const dashboardKind = hasAnyRole("super_admin", "organizer")
     ? "admin"
-    : hasPermission("manage_own_group_profile")
+    : hasRole("house_captain")
       ? "captain"
-      : hasPermission("submit_score")
+      : hasAnyRole("judge", "event_coordinator")
         ? "coordinator"
-        : hasPermission("approve_score")
-          ? "faculty"
-          : "guest";
+        : "guest";
 
   const renderAdminWidgets = () => (
     <div className="space-y-6">
@@ -265,9 +264,12 @@ export default function DashboardVisuals() {
         <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-7">
           <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
         </SectionCard>
-        <SectionCard title="Result progress" description="Approval status across submitted results" className="lg:col-span-5">
-          <ResultProgress results={results} />
-        </SectionCard>
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <ParticipantHighlights participantStats={participantStats} />
+          <SectionCard title="Result progress" description="Approval status across submitted results" className="w-full">
+            <ResultProgress results={results} />
+          </SectionCard>
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Recent winners" description="Latest approved first-place results">
@@ -291,13 +293,16 @@ export default function DashboardVisuals() {
           <StatCard title="Group points" value={currentGroup ? getScoreboardPoints(currentGroup) : 0} icon={Trophy} variant="amber" delay={0.3} />
           <StatCard title="Current rank" value={currentGroup ? `#${currentGroup.rank}` : "-"} icon={TrendingUp} variant="emerald" delay={0.4} />
         </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SectionCard title="Standings" description="Where your group sits now">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <SectionCard title="Standings" description="Where your group sits now" className="lg:col-span-7">
             <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
           </SectionCard>
-          <SectionCard title="New events" description="Live and upcoming competition events">
-            <UpcomingEvents events={events} schedules={schedules} />
-          </SectionCard>
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <ParticipantHighlights participantStats={participantStats} userGroupId={userGroupId} />
+            <SectionCard title="New events" description="Live and upcoming competition events" className="w-full">
+              <UpcomingEvents events={events} schedules={schedules} />
+            </SectionCard>
+          </div>
         </div>
       </div>
     );
@@ -314,13 +319,16 @@ export default function DashboardVisuals() {
           <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.2} />
           <StatCard title="Live events" value={liveEvents.length} icon={Activity} variant="indigo" delay={0.3} />
         </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <SectionCard title="Recent winners" description="Approved first-place results">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <SectionCard title="Recent winners" description="Approved first-place results" className="lg:col-span-7">
             <RecentWinners results={results} />
           </SectionCard>
-          <SectionCard title="New events" description="Live and upcoming competition events">
-            <UpcomingEvents events={events} schedules={schedules} />
-          </SectionCard>
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <ParticipantHighlights participantStats={participantStats} />
+            <SectionCard title="New events" description="Live and upcoming competition events" className="w-full">
+              <UpcomingEvents events={events} schedules={schedules} />
+            </SectionCard>
+          </div>
         </div>
       </div>
     );
@@ -342,9 +350,12 @@ export default function DashboardVisuals() {
         <SectionCard title="Recent winners" description="Latest approved first-place results" className="lg:col-span-6">
           <RecentWinners results={results} />
         </SectionCard>
-        <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-6">
-          <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
-        </SectionCard>
+        <div className="lg:col-span-6 flex flex-col gap-6">
+          <ParticipantHighlights participantStats={participantStats} />
+          <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="w-full">
+            <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
+          </SectionCard>
+        </div>
       </div>
     );
   };
@@ -354,7 +365,8 @@ export default function DashboardVisuals() {
       <SectionCard title="Standings" description="Current competition ranking" className="lg:col-span-7">
         <StandingsTable scoreboard={normalizedScoreboard} />
       </SectionCard>
-      <div className="lg:col-span-4">
+      <div className="lg:col-span-5 flex flex-col gap-6">
+        <ParticipantHighlights participantStats={participantStats} />
         <TopHouses scoreboard={normalizedScoreboard} />
       </div>
       <SectionCard title="Recent winners" description="Latest approved first-place results" className="lg:col-span-6">
@@ -376,7 +388,7 @@ export default function DashboardVisuals() {
     );
   }
 
-  if (!hasPermission("view_analytics")) {
+  if (!hasAnyRole("super_admin", "organizer")) {
     return (
       <div className="flex w-full flex-col gap-6">
         <FadeIn delay={0.1}>

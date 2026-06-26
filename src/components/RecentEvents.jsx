@@ -22,7 +22,7 @@ const statusConfig = (status) => {
 };
 
 function RecentEvents() {
-  const { token, isAuthReady } = useAuth();
+  const { token, isAuthReady, competition } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -53,7 +53,11 @@ function RecentEvents() {
       try {
         setLoading(true);
         setError("");
-        const { events: evts } = await apiCall("/api/event");
+
+        const competitionId = competition?._id || competition?.id || competition?.competition_id;
+        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+
+        const { events: evts } = await apiCall(`/api/event${competitionQuery}`);
         const schedulesMap = {};
         const resultsMap = {};
         const eventIds = (evts || []).map((e) => e._id || e.event_id).join(",");
@@ -261,7 +265,7 @@ function RecentEvents() {
                       { label: "Rounds", value: eventDetail?.rounds, icon: Clock },
                       { label: "Min team", value: eventDetail?.min_team_size || 1, icon: Users },
                       { label: "Max team", value: eventDetail?.max_team_size || 1, icon: Users },
-                      { label: "House cap", value: eventDetail?.max_per_house, icon: Layout },
+                       { label: "House cap", value: eventDetail?.max_per_group, icon: Layout },
                     ].map((m, i) => (
                       <div key={i} className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
                         <m.icon className="mb-2 h-4 w-4 text-indigo-500" />

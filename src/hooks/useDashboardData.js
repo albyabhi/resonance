@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
 import { apiJson } from "../utils/apiClient";
 import usePermission from "./usePermission";
+import { useRealtime } from "../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -13,13 +14,15 @@ const listFrom = (payload, key) => {
 };
 
 export default function useDashboardData() {
-  const { token, lastCompetition, isAuthReady } = useAuth();
-  const { hasPermission } = usePermission();
+  const { token, competition, isAuthReady } = useAuth();
+  const { hasAnyRole } = usePermission();
+  const { lastUpdate } = useRealtime() || {};
   const [data, setData] = useState({
     scoreboard: [],
     events: [],
     results: [],
     schedules: [],
+    participantStats: { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} },
     systemStats: null,
   });
   const [loading, setLoading] = useState(true);
@@ -49,20 +52,24 @@ export default function useDashboardData() {
 
       setLoading(true);
       try {
-        const competitionId = lastCompetition?.id || lastCompetition?._id || lastCompetition?.competition_id;
+        const competitionId = competition?.id || competition?._id || competition?.competition_id;
         const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
         const scoreboardEndpoint = competitionId ? `/api/scoreboard/${competitionId}` : "/api/scoreboard";
         const endpoints = [
           apiCall(scoreboardEndpoint),
-          apiCall(`/api/event${competitionQuery}`)
+          apiCall(`/api/event${competitionQuery}`),
+          apiCall(`/api/results${competitionQuery}`),
+          apiCall("/api/schedule/batch")
         ];
         
-        // Admins, Coordinators, Faculty might optionally need more, but we can fetch them uniformly or selectively.
-        endpoints.push(apiCall(`/api/results${competitionQuery}`));
-        endpoints.push(apiCall("/api/schedule/batch")); // Use explicit batch path if we have it or base route
+        if (competitionId) {
+          endpoints.push(apiCall(`/api/scoreboard/${competitionId}/participants/top`));
+        } else {
+          endpoints.push(Promise.resolve(null));
+        }
         
         // Admin specfic usage overview
-        if (hasPermission("view_event_usage")) {
+        if (hasAnyRole("organizer", "super_admin")) {
           endpoints.push(apiCall(`/api/event/usage${competitionQuery}`));
         }
 
@@ -74,10 +81,11 @@ export default function useDashboardData() {
         const eventsRes = responses[1].status === "fulfilled" ? listFrom(responses[1].value, "events") : [];
         const resultsRes = responses[2]?.status === "fulfilled" ? listFrom(responses[2].value, "results") : [];
         const schedulesRes = responses[3]?.status === "fulfilled" ? listFrom(responses[3].value, "schedules") : [];
+        const participantStatsRes = responses[4]?.status === "fulfilled" && responses[4].value ? responses[4].value.data : { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} };
         
         let sysStats = null;
-        if (hasPermission("view_event_usage") && responses[4]?.status === "fulfilled" && responses[4].value) {
-          sysStats = responses[4].value;
+        if (hasAnyRole("organizer", "super_admin") && responses[5]?.status === "fulfilled" && responses[5].value) {
+          sysStats = responses[5].value;
         }
 
         setData({
@@ -85,6 +93,7 @@ export default function useDashboardData() {
           events: eventsRes || [],
           results: resultsRes || [],
           schedules: schedulesRes || [],
+          participantStats: participantStatsRes || { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} },
           systemStats: sysStats,
         });
 
@@ -100,7 +109,7 @@ export default function useDashboardData() {
     return () => {
       mounted = false;
     };
-  }, [token, lastCompetition, isAuthReady, hasPermission]);
+  }, [token, competition, isAuthReady, hasAnyRole, lastUpdate]);
 
   return { data, loading, error };
 }
