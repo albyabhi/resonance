@@ -7,13 +7,12 @@ import { apiJson } from "../../utils/apiClient";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const ROLE_OPTIONS = [
+const BASE_ROLE_OPTIONS = [
   { value: "super_admin", label: "Super Admin" },
   { value: "organizer", label: "Organizer" },
   { value: "event_coordinator", label: "Event Coordinator" },
   { value: "judge", label: "Judge" },
-  { value: "participant", label: "Participant" },
-  { value: "house_captain", label: "House Captain" },
+  { value: "house_captain", label: "Group Captain" },
 ];
 
 const ManageUser = () => {
@@ -33,6 +32,10 @@ const ManageUser = () => {
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const roleOptions = BASE_ROLE_OPTIONS.filter(
+    (opt) => opt.value !== "house_captain" || houses.length > 0
+  );
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -74,6 +77,12 @@ const ManageUser = () => {
     }
   }, [token, competition?._id]);
 
+  useEffect(() => {
+    if (houses.length === 0 && formData.role === "house_captain") {
+      setFormData((prev) => ({ ...prev, role: "participant", house: "" }));
+    }
+  }, [houses.length]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -103,6 +112,7 @@ const ManageUser = () => {
 
       setFormData({ name: "", username: "", password: "", role: "participant", house: "" });
       setEditingUserId(null);
+      setActiveTab("manage");
       await fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -138,7 +148,7 @@ const ManageUser = () => {
   );
 
   const roleLabel = (role) => {
-    const found = ROLE_OPTIONS.find((r) => r.value === role);
+    const found = BASE_ROLE_OPTIONS.find((r) => r.value === role);
     return found ? found.label : role;
   };
 
@@ -222,7 +232,7 @@ const ManageUser = () => {
                   className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
                   style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                 >
-                  {ROLE_OPTIONS.map((opt) => (
+                  {roleOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>

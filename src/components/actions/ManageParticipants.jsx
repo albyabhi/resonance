@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import usePermission from "../../hooks/usePermission";
+import ImportParticipants from "./ImportParticipants";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function ManageParticipants() {
   const { token } = useAuth();
+  const { hasRole } = usePermission();
+  const isSuperAdmin = hasRole("super_admin");
 
   // UI states
   const [activeTab, setActiveTab] = useState("all"); // all | add | update
@@ -26,11 +30,7 @@ function ManageParticipants() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Add single
-  const [addForm, setAddForm] = useState({ name: "", class: "", house_id: "" });
-
-  // Add bulk JSON
-  const [bulkJson, setBulkJson] = useState("");
-  const [bulkHouse, setBulkHouse] = useState("");
+  const [addForm, setAddForm] = useState({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
 
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
@@ -92,9 +92,7 @@ function ManageParticipants() {
     setActiveTab(tab);
     setError("");
     setEditingParticipant(null);
-    setAddForm({ name: "", class: "", house_id: "" });
-    setBulkJson("");
-    setBulkHouse("");
+      setAddForm({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
     if (tab === "all" && token) fetchParticipants();
   };
 
@@ -108,35 +106,9 @@ function ManageParticipants() {
         method: "POST",
         body: JSON.stringify(addForm),
       });
-      setAddForm({ name: "", class: "", house_id: "" });
+    setAddForm({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
       setParticipants((prev) => [participant, ...prev]);
       setActiveTab("all");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add bulk
-  const handleBulkJson = async (e) => {
-    e.preventDefault();
-    if (!bulkJson.trim() || !bulkHouse) {
-      setError("Paste JSON and select a house");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const { inserted } = await apiCall("/api/participants/bulkJson", {
-        method: "POST",
-        body: JSON.stringify({ house_id: bulkHouse, json_text: bulkJson }),
-      });
-      setBulkJson("");
-      setBulkHouse("");
-      setActiveTab("all");
-      fetchParticipants();
-      alert(`Bulk added ${inserted} participants`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -301,6 +273,23 @@ function ManageParticipants() {
           >
             Update
           </button>
+          {isSuperAdmin && (
+            <button
+              role="tab"
+              aria-selected={activeTab === "import"}
+              aria-controls="panel-import"
+              id="tab-import"
+              className={`flex-1 min-h-[44px] px-4 py-3 text-sm font-medium rounded-lg transition ${
+                activeTab === "import"
+                  ? "bg-orange-600 text-white shadow"
+                  : "hover:bg-indigo-500/5"
+              } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+              style={activeTab !== "import" ? { color: 'var(--card-fg)' } : {}}
+              onClick={() => switchTab("import")}
+            >
+              Import
+            </button>
+          )}
         </div>
 
         {/* ALL PARTICIPANTS */}
@@ -532,101 +521,76 @@ function ManageParticipants() {
             {/* Add single */}
             <form className="space-y-3" onSubmit={handleAddSingle}>
               <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Add Single Participant</h3>
-              <label className="sr-only" htmlFor="add-house">
-                Select house
-              </label>
+              <label className="sr-only" htmlFor="add-house">House</label>
               <select
-                id="add-house"
-                required
+                id="add-house" required
                 value={addForm.house_id}
                 onChange={(e) => setAddForm((f) => ({ ...f, house_id: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="" className="bg-white dark:bg-[#0B1220]">Select house</option>
+                <option value="" className="bg-white dark:bg-[#0B1220]">Select house *</option>
                 {houses.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
-                    {h.name}
-                  </option>
+                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">{h.name}</option>
                 ))}
               </select>
-              <label className="sr-only" htmlFor="add-name">
-                Name
-              </label>
-              <input
-                id="add-name"
-                required
-                type="text"
-                placeholder="Name"
-                value={addForm.name}
-                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-              />
-              <label className="sr-only" htmlFor="add-class">
-                Class
-              </label>
-              <input
-                id="add-class"
-                required
-                type="text"
-                placeholder="Class"
-                value={addForm.class}
-                onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
-                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-              />
-              <button
-                type="submit"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="sr-only" htmlFor="add-name">Name</label>
+                <input id="add-name" required type="text" placeholder="Name *" value={addForm.name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                <label className="sr-only" htmlFor="add-class">Class</label>
+                <input id="add-class" required type="text" placeholder="Class *" value={addForm.class}
+                  onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                <label className="sr-only" htmlFor="add-admission">Admission No</label>
+                <input id="add-admission" type="text" placeholder="Admission No" value={addForm.admission_no}
+                  onChange={(e) => setAddForm((f) => ({ ...f, admission_no: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                <label className="sr-only" htmlFor="add-phone">Phone</label>
+                <input id="add-phone" type="text" placeholder="Phone" value={addForm.phone}
+                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                <label className="sr-only" htmlFor="add-email">Email</label>
+                <input id="add-email" type="email" placeholder="Email" value={addForm.email}
+                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                <label className="sr-only" htmlFor="add-gender">Gender</label>
+                <select id="add-gender" value={addForm.gender}
+                  onChange={(e) => setAddForm((f) => ({ ...f, gender: e.target.value }))}
+                  className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                >
+                  <option value="" className="bg-white dark:bg-[#0B1220]">Gender</option>
+                  <option value="male" className="bg-white dark:bg-[#0B1220]">Male</option>
+                  <option value="female" className="bg-white dark:bg-[#0B1220]">Female</option>
+                  <option value="other" className="bg-white dark:bg-[#0B1220]">Other</option>
+                </select>
+              </div>
+              <button type="submit"
                 className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
-                disabled={loading}
-              >
+                disabled={loading}>
                 Add Participant
               </button>
             </form>
+          </section>
+        )}
 
-            {/* Add bulk */}
-            <form className="space-y-3" onSubmit={handleBulkJson}>
-              <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Bulk Add via JSON Paste</h3>
-              <label className="sr-only" htmlFor="bulk-house">
-                Select house for this bulk
-              </label>
-              <select
-                id="bulk-house"
-                required
-                value={bulkHouse}
-                onChange={(e) => setBulkHouse(e.target.value)}
-                className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-              >
-                <option value="" className="bg-white dark:bg-[#0B1220]">Select house for this bulk</option>
-                {houses.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-              <label className="sr-only" htmlFor="bulk-json">
-                Paste participants as JSON array
-              </label>
-              <textarea
-                id="bulk-json"
-                required
-                rows={7}
-                placeholder='Paste participants as JSON array, e.g. [{"NAME":"...","CLASS":"..."}]'
-                value={bulkJson}
-                onChange={(e) => setBulkJson(e.target.value)}
-                className="block w-full border rounded p-2 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
-                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-              />
-              <button
-                type="submit"
-                className="bg-orange-600 text-white px-3 py-2 min-h-[44px] rounded w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:opacity-60"
-                disabled={loading}
-              >
-                Bulk Add
-              </button>
-            </form>
+        {/* IMPORT PARTICIPANTS */}
+        {activeTab === "import" && isSuperAdmin && (
+          <section
+            id="panel-import"
+            role="tabpanel"
+            aria-labelledby="tab-import"
+            className="p-4 sm:p-6 rounded-lg shadow-sm border"
+            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
+          >
+            <ImportParticipants houses={houses} onDone={() => { switchTab("all"); fetchParticipants(); }} />
           </section>
         )}
 

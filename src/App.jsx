@@ -67,7 +67,7 @@ export default function App() {
           element={
             <PageTransition>
               {isAuthenticated ? (
-                competition ? (
+                (competition || hasRole("super_admin")) ? (
                   <AppShell role={role} onLogout={logout}>
                     {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
                       <Dashboard

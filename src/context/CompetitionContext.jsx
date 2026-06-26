@@ -6,10 +6,15 @@ const CompetitionContext = createContext();
 export const useCompetition = () => useContext(CompetitionContext);
 
 export const CompetitionProvider = ({ children }) => {
-  const { competition } = useAuth();
+  const { competition, setUserData } = useAuth();
+
+  const setCompetition = (newComp) => {
+    setUserData((prev) => ({ ...prev, competition: newComp }));
+  };
 
   const value = {
     competition,
+    setCompetition,
     groupLabel: competition?.group_label || 'Group',
     groupLabelPlural: competition?.group_label_plural || 'Groups',
   };

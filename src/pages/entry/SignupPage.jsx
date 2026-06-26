@@ -27,7 +27,7 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(data.message || 'Signup failed');
       
       login(data.user, data.access_token, data.refresh_token, data.competition);
-      navigate('/setup');
+      navigate('/dashboard/manage-users');
     } catch (err) {
       toast.error(err.message);
     } finally {

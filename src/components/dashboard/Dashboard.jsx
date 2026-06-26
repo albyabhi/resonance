@@ -43,6 +43,7 @@ const actionComponents = {
   "Manage Competition": ManageCompetition,
   "Scoreboard Contributions": AdminScoreboard,
   "Activity Logs": ActivityLogs,
+  "Manage Participants": ManageParticipants,
   "My Teams": ManageParticipants,
   "My Events": ParticipantRegister,
   "Event Registration": ParticipantRegister,

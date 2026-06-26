@@ -135,6 +135,13 @@ export default function LoginPage({ onLogin = () => {} }) {
         
         {/* Decoupled Participant Portal Link */}
         <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/40 text-center flex flex-col gap-3 items-center justify-center">
+          <Link 
+            to="/signup" 
+            className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+          >
+            Don't have an account? Sign Up
+          </Link>
+
           <button 
             type="button" 
             onClick={() => navigate('/participant-login')} 
