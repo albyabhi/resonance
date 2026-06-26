@@ -25,6 +25,7 @@ export default function ManageCompetition() {
     slug: "",
     year: "",
     is_public: false,
+    participant_source: "import",
     type: "school_houses",
     group_label: "",
     logo: null,
@@ -42,6 +43,7 @@ export default function ManageCompetition() {
         slug: competition.slug || "",
         year: competition.year || "",
         is_public: competition.is_public || false,
+        participant_source: competition.participant_source || "import",
         type: competition.type || "school_houses",
         group_label: competition.group_label || ""
       });
@@ -62,6 +64,7 @@ export default function ManageCompetition() {
       fd.append('slug', formData.slug);
       fd.append('year', formData.year);
       fd.append('is_public', formData.is_public);
+      fd.append('participant_source', formData.participant_source);
       fd.append('type', formData.type);
       if (formData.type === "custom") {
         fd.append('group_label', formData.group_label);
@@ -292,6 +295,33 @@ export default function ManageCompetition() {
                   <Lock className="w-4 h-4" />
                   <span className="text-xs uppercase tracking-wider">Private Access</span>
                 </button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Participant Source</label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-1">Controls how participants are created and managed.</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { value: "import", label: "Admin Only", desc: "Admin imports participants" },
+                  { value: "captain", label: "Captain", desc: "Captains create participants" },
+                  { value: "self", label: "Self Reg", desc: "Participants self-register" },
+                  { value: "hybrid", label: "Hybrid", desc: "Admin + Claim + Captains" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, participant_source: opt.value })}
+                    className={`flex flex-col items-center justify-center gap-1 py-3 px-3 rounded-2xl border transition-all text-center ${
+                      formData.participant_source === opt.value
+                        ? "bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-md font-bold"
+                        : "border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#111827] text-slate-400 font-medium hover:bg-slate-50 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="text-xs uppercase tracking-wider font-bold">{opt.label}</span>
+                    <span className="text-[9px] opacity-70 leading-tight">{opt.desc}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

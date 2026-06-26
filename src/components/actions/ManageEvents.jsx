@@ -45,6 +45,12 @@ const GENDER_OPTIONS = [
   { value: "female", label: "Female" },
 ];
 
+const REGISTRATION_MODES = [
+  { value: "hybrid", label: "Hybrid" },
+  { value: "captain", label: "Captain Only" },
+  { value: "participant", label: "Participant Only" },
+];
+
 const DEFAULT_EVENT_FORM = {
   title: "",
   description: "",
@@ -55,6 +61,8 @@ const DEFAULT_EVENT_FORM = {
   max_team_size: 1,
   min_participants: 1,
   max_participants: 1,
+  registration_mode: "hybrid",
+  max_self_registrations: null,
   mode: "onstage",
   event_type: "individual",
   participant_type: "individual",
@@ -231,6 +239,8 @@ const ManageEvents = () => {
         max_team_size: event.max_team_size ?? Math.max(1, event.min_team_size ?? 1),
         min_participants: event.min_participants ?? event.min_team_size ?? 1,
         max_participants: event.max_participants ?? event.max_team_size ?? 1,
+        registration_mode: event.registration_mode || "hybrid",
+        max_self_registrations: event.max_self_registrations ?? null,
         mode: event.mode || "onstage",
         event_type: event.event_type || "individual",
         participant_type: event.participant_type || "individual",
@@ -515,6 +525,8 @@ const ManageEvents = () => {
         description: eventForm.description,
         category: eventForm.category,
         subcategory: eventForm.subcategory,
+        registration_mode: eventForm.registration_mode,
+        max_self_registrations: eventForm.max_self_registrations ? Number(eventForm.max_self_registrations) : null,
         mode: eventForm.mode,
         event_type: eventForm.event_type,
         participant_type: eventForm.participant_type,
@@ -1029,6 +1041,15 @@ const ManageEvents = () => {
                           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                           {GENDER_OPTIONS.map((g) => (<option key={g.value} value={g.value} className="bg-white dark:bg-[#0B1220]">{g.label}</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Registration Mode</label>
+                        <select value={eventForm.registration_mode}
+                          onChange={(e) => handleEventChange("registration_mode", e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                          {REGISTRATION_MODES.map((m) => (<option key={m.value} value={m.value} className="bg-white dark:bg-[#0B1220]">{m.label}</option>))}
                         </select>
                       </div>
                       <div>

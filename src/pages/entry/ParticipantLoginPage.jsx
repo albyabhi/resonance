@@ -14,7 +14,9 @@ import {
   Trophy, 
   ArrowRight,
   Layers,
-  Calendar
+  Calendar,
+  Fingerprint,
+  Shield
 } from "lucide-react";
 
 export default function ParticipantLoginPage() {
@@ -29,7 +31,7 @@ export default function ParticipantLoginPage() {
   const initialSlug = queryParams.get("slug") || "";
 
   // Page UI state
-  const [participantMode, setParticipantMode] = useState("login"); // "login" | "signup"
+  const [participantMode, setParticipantMode] = useState("login"); // "login" | "signup" | "claim"
   const [loading, setLoading] = useState(false);
   const [selectionToken, setSelectionToken] = useState("");
   const [competitionOptions, setCompetitionOptions] = useState([]);
@@ -41,6 +43,15 @@ export default function ParticipantLoginPage() {
   const [pName, setPName] = useState("");
   const [pClass, setPClass] = useState("");
   const [pGroupId, setPGroupId] = useState("");
+
+  // Claim account fields
+  const [claimAdmissionNo, setClaimAdmissionNo] = useState("");
+  const [claimOtp, setClaimOtp] = useState("");
+  const [claimEmail, setClaimEmail] = useState("");
+  const [claimPassword, setClaimPassword] = useState("");
+  const [claimParticipantId, setClaimParticipantId] = useState("");
+  const [claimStep, setClaimStep] = useState("admission"); // "admission" | "otp" | "password"
+  const [claimMaskedPhone, setClaimMaskedPhone] = useState("");
 
   // Contextual loaded data
   const [groups, setGroups] = useState([]);
@@ -362,7 +373,7 @@ export default function ParticipantLoginPage() {
 
         {!loadingEvent && (
           <>
-            {/* Login / Signup Selector Tabs */}
+            {/* Login / Signup / Claim Selector Tabs */}
             <div className="flex rounded-2xl bg-slate-100 dark:bg-slate-900 p-0.5 mb-6">
               <button
                 type="button"
@@ -397,6 +408,28 @@ export default function ParticipantLoginPage() {
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Sign Up
+              </button>
+              <button
+                type="button"
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  participantMode === "claim"
+                    ? "bg-white dark:bg-slate-800 shadow-sm text-slate-900 dark:text-white"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-250"
+                }`}
+                style={participantMode === "claim" ? { color: primaryColor } : {}}
+                onClick={() => {
+                  setParticipantMode("claim");
+                  setClaimStep("admission");
+                  setClaimAdmissionNo("");
+                  setClaimOtp("");
+                  setClaimEmail("");
+                  setClaimPassword("");
+                  setClaimParticipantId("");
+                  setClaimMaskedPhone("");
+                }}
+              >
+                <Fingerprint className="h-3.5 w-3.5" />
+                Claim
               </button>
             </div>
 
@@ -536,6 +569,148 @@ export default function ParticipantLoginPage() {
                   </button>
                 </form>
                 )
+              ) : participantMode === "claim" ? (
+                /* Claim Account Form */
+                <div className="space-y-4">
+                  {claimStep === "admission" && (
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!competitionSlug.trim() || !claimAdmissionNo.trim()) {
+                        toast.error("Please enter competition slug and admission number");
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        const res = await fetch(`${backendUrl}/api/auth/participant-claim-otp`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            admission_no: claimAdmissionNo.trim(),
+                            competition_slug: competitionSlug.trim()
+                          }),
+                        });
+                        const data = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(data?.message || "Claim lookup failed");
+                        setClaimParticipantId(data.participant_id);
+                        setClaimMaskedPhone(data.masked_phone || "");
+                        setClaimStep("otp");
+                        toast.success("OTP sent to your registered phone number");
+                      } catch (err) {
+                        toast.error(err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }} className="space-y-3.5">
+                      <div>
+                        <label className={labelClass}>Competition URL Slug</label>
+                        <div className="relative">
+                          <span className={iconSpan}><Globe className="h-4.5 w-4.5" /></span>
+                          <input type="text" required placeholder="e.g. annual-sports-2026"
+                            className={inputClass} value={competitionSlug}
+                            onChange={(e) => setCompetitionSlug(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Admission Number</label>
+                        <div className="relative">
+                          <span className={iconSpan}><Fingerprint className="h-4.5 w-4.5" /></span>
+                          <input type="text" required placeholder="e.g. 24MCA001"
+                            className={inputClass} value={claimAdmissionNo}
+                            onChange={(e) => setClaimAdmissionNo(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <button type="submit" disabled={loading}
+                        className="w-full py-3 text-white font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-6"
+                        style={{ backgroundColor: primaryColor }}>
+                        {loading ? 'Sending OTP...' : <><Shield className="h-4 w-4" /><span>Send OTP</span></>}
+                      </button>
+                    </form>
+                  )}
+
+                  {claimStep === "otp" && (
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!claimOtp.trim()) {
+                        toast.error("Please enter the OTP");
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        const res = await fetch(`${backendUrl}/api/auth/participant-claim`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            participant_id: claimParticipantId,
+                            otp: claimOtp.trim(),
+                            email: claimEmail.trim(),
+                            password: claimPassword.trim(),
+                          }),
+                        });
+                        const data = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(data?.message || "Claim failed");
+                        toast.success("Account claimed successfully! You can now log in.");
+                        setParticipantMode("login");
+                        setClaimStep("admission");
+                      } catch (err) {
+                        toast.error(err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }} className="space-y-3.5">
+                      {claimMaskedPhone && (
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">OTP sent to</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{claimMaskedPhone}</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className={labelClass}>Enter OTP</label>
+                        <div className="relative">
+                          <span className={iconSpan}><Shield className="h-4.5 w-4.5" /></span>
+                          <input type="text" required placeholder="6-digit OTP"
+                            className={inputClass} value={claimOtp}
+                            onChange={(e) => setClaimOtp(e.target.value)}
+                            maxLength={6}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Email Address</label>
+                        <div className="relative">
+                          <span className={iconSpan}><Mail className="h-4.5 w-4.5" /></span>
+                          <input type="email" required placeholder="your@email.com"
+                            className={inputClass} value={claimEmail}
+                            onChange={(e) => setClaimEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Create Password</label>
+                        <div className="relative">
+                          <span className={iconSpan}><KeyRound className="h-4.5 w-4.5" /></span>
+                          <input type="password" required minLength={6} placeholder="Min 6 characters"
+                            className={inputClass} value={claimPassword}
+                            onChange={(e) => setClaimPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 mt-2">
+                        <button type="button" onClick={() => setClaimStep("admission")}
+                          className="flex-1 py-3 border border-slate-200 dark:border-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer"
+                          style={{ color: 'var(--card-fg)' }}>
+                          Back
+                        </button>
+                        <button type="submit" disabled={loading}
+                          className="flex-1 py-3 text-white font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                          style={{ backgroundColor: primaryColor }}>
+                          {loading ? 'Claiming...' : <><span>Claim Account</span><ArrowRight className="h-4 w-4" /></>}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               ) : (
                 /* Signup Form */
                 <form onSubmit={handleSignup} className="space-y-3.5">
@@ -634,11 +809,20 @@ export default function ParticipantLoginPage() {
             {/* Form footer text toggler */}
             <p className="text-xs text-center text-neutral-400 dark:text-neutral-500 mt-5">
               {participantMode === "login" 
-                ? <>Don't have an account? <button type="button" onClick={() => {
+                ? <><button type="button" onClick={() => {
                   setParticipantMode("signup");
                   setSelectionToken("");
                   setCompetitionOptions([]);
-                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Sign up</button></>
+                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Sign up</button> or <button type="button" onClick={() => {
+                  setParticipantMode("claim");
+                  setClaimStep("admission");
+                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Claim account</button></>
+                : participantMode === "claim"
+                ? <><button type="button" onClick={() => {
+                  setParticipantMode("login");
+                  setSelectionToken("");
+                  setCompetitionOptions([]);
+                }} className="text-indigo-500 hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Log in</button> instead</>
                 : <>Already registered? <button type="button" onClick={() => {
                   setParticipantMode("login");
                   setSelectionToken("");

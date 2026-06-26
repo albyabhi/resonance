@@ -376,12 +376,25 @@ export default function ParticipantRegister() {
                       {e.category || "General"}
                     </span>
                     
-                    {registered && (
-                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-black bg-emerald-100/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-2.5 py-1 rounded-xl">
-                        <CheckCircle className="h-4 w-4" />
-                        Registered
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {e.registration_mode && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          e.registration_mode === "captain"
+                            ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30"
+                            : e.registration_mode === "participant"
+                            ? "bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-900/30"
+                            : "bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/30"
+                        }`}>
+                          {e.registration_mode === "captain" ? "Captain" : e.registration_mode === "participant" ? "Self" : "Open"}
+                        </span>
+                      )}
+                      {registered && (
+                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-black bg-emerald-100/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-2.5 py-1 rounded-xl">
+                          <CheckCircle className="h-4 w-4" />
+                          Registered
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="font-extrabold text-xl text-neutral-900 dark:text-white mt-4 leading-snug group-hover:text-blue-500 transition-colors">
