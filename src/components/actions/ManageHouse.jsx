@@ -15,7 +15,11 @@ import {
   Camera, 
   User, 
   Phone, 
-  Loader2 
+  Loader2,
+  Star,
+  Mail,
+  GraduationCap,
+  X
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
@@ -31,8 +35,15 @@ const ManageHouse = () => {
   const [formData, setFormData] = useState({ 
     name: "", 
     captain_name: "", 
-    captain_contact: "" 
+    captain_contact: "",
+    captain_participant_id: ""
   });
+  
+  const [participants, setParticipants] = useState([]);
+  const [captainParticipant, setCaptainParticipant] = useState(null);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState("");
+  const [showParticipantPicker, setShowParticipantPicker] = useState(false);
   
   const [logoUrl, setLogoUrl] = useState("");
   const [logoPublicId, setLogoPublicId] = useState("");
@@ -75,6 +86,47 @@ const ManageHouse = () => {
       fetchGroups(); 
     }
   }, [token, competition?._id]);
+
+  useEffect(() => {
+    if (editingGroupId) {
+      fetchGroupParticipants(editingGroupId);
+    } else {
+      setParticipants([]);
+      setCaptainParticipant(null);
+      setParticipantSearch("");
+      setShowParticipantPicker(false);
+    }
+  }, [editingGroupId]);
+
+  const fetchGroupParticipants = async (groupId) => {
+    if (!competition?._id) return;
+    try {
+      setParticipantsLoading(true);
+      const data = await apiCall(`/api/competition/${competition._id}/groups/${groupId}/participants`);
+      const list = Array.isArray(data) ? data : [];
+      setParticipants(list);
+
+      // Match current captain (User) to a participant by email
+      const currentGroup = groups.find(g => g._id === groupId);
+      const captainUser = currentGroup?.captain;
+      if (captainUser?.email) {
+        const match = list.find(p => p.email?.toLowerCase() === captainUser.email.toLowerCase());
+        if (match) {
+          setCaptainParticipant(match);
+          setFormData(prev => ({
+            ...prev,
+            captain_name: match.name,
+            captain_contact: match.phone || "",
+            captain_participant_id: match._id
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch participants:", err);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
 
   // Handle Logo Uploading via separate endpoint
   const uploadLogoFile = async (file) => {
@@ -164,11 +216,26 @@ const ManageHouse = () => {
       };
 
       if (editingGroupId) {
-        const updated = await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}`, { 
+        await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}`, { 
           method: "PUT", 
           body: JSON.stringify(payload) 
         });
-        setGroups(groups.map(g => g._id === editingGroupId ? updated : g));
+
+        // Assign captain from participants if selected
+        if (formData.captain_participant_id) {
+          await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}/captain`, {
+            method: "PUT",
+            body: JSON.stringify({ participant_id: formData.captain_participant_id })
+          });
+        } else if (formData.captain_participant_id === "" && captainParticipant === null) {
+          // Explicitly remove captain
+          await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}/captain`, {
+            method: "PUT",
+            body: JSON.stringify({ participant_id: null })
+          });
+        }
+
+        await fetchGroups();
       } else {
         const created = await apiCall(`/api/competition/${competition._id}/groups`, { 
           method: "POST", 
@@ -200,15 +267,20 @@ const ManageHouse = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", captain_name: "", captain_contact: "" });
+    setFormData({ name: "", captain_name: "", captain_contact: "", captain_participant_id: "" });
     setLogoUrl(""); 
     setLogoPublicId("");
     setEditingGroupId(null);
+    setCaptainParticipant(null);
+    setParticipants([]);
+    setParticipantSearch("");
+    setShowParticipantPicker(false);
     setError("");
   };
 
   const filteredGroups = groups.filter(g => 
     g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (g.captain?.name && g.captain.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (g.captain_name && g.captain_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -290,20 +362,26 @@ const ManageHouse = () => {
                     <div className="space-y-2">
                       <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{group.name}</h3>
                       
-                      <div className="space-y-1 p-3 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
-                        <div className="flex items-center gap-2">
-                          <User className="w-3.5 h-3.5 text-indigo-500" />
-                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                            {group.captain_name || "No Command Assigned"}
-                          </p>
-                        </div>
-                        {group.captain_contact && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
-                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{group.captain_contact}</p>
-                          </div>
-                        )}
-                      </div>
+                       <div className="space-y-1 p-3 rounded-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                         <div className="flex items-center gap-2">
+                           {group.captain?.profile_image ? (
+                             <img src={group.captain.profile_image} alt="" className="w-5 h-5 rounded-full object-cover" />
+                           ) : (
+                             <User className="w-3.5 h-3.5 text-indigo-500" />
+                           )}
+                           <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                             {group.captain?.name || group.captain_name || "No Command Assigned"}
+                           </p>
+                         </div>
+                         {(group.captain?.phone || group.captain_contact) && (
+                           <div className="flex items-center gap-2">
+                             <Phone className="w-3.5 h-3.5 text-slate-400" />
+                             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                               {group.captain?.phone || group.captain_contact}
+                             </p>
+                           </div>
+                         )}
+                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-white/5">
@@ -315,9 +393,11 @@ const ManageHouse = () => {
                           onClick={() => { 
                             setFormData({ 
                               name: group.name, 
-                              captain_name: group.captain_name || "", 
-                              captain_contact: group.captain_contact || "" 
+                              captain_name: group.captain?.name || group.captain_name || "", 
+                              captain_contact: group.captain?.phone || group.captain_contact || "",
+                              captain_participant_id: ""
                             }); 
+                            setCaptainParticipant(null);
                             setEditingGroupId(group._id); 
                             setLogoUrl(group.logoUrl || ""); 
                             setLogoPublicId(group.logoPublicId || "");
@@ -423,31 +503,153 @@ const ManageHouse = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <User className="w-3 h-3 text-indigo-500" /> Captain Name (Optional)
-                    </label>
-                    <input 
-                      value={formData.captain_name} 
-                      onChange={e => setFormData({...formData, captain_name: e.target.value})}
-                      placeholder="e.g. Alan Turing"
-                      className="w-full border rounded-2xl px-6 py-4 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <Phone className="w-3 h-3 text-indigo-500" /> Captain Contact (Optional)
-                    </label>
-                    <input 
-                      value={formData.captain_contact} 
-                      onChange={e => setFormData({...formData, captain_contact: e.target.value})}
-                      placeholder="e.g. +91 9876543210"
-                      className="w-full border rounded-2xl px-6 py-4 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
-                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <Star className="w-3 h-3 text-amber-500" /> Captain Assignment
+                  </label>
+
+                  {editingGroupId ? (
+                    <div className="space-y-3">
+                      {/* Current captain display */}
+                      {captainParticipant ? (
+                        <div className="flex items-center justify-between p-4 rounded-2xl border bg-amber-50/50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-500/20">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center shrink-0">
+                              <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-amber-800 dark:text-amber-200 truncate">{captainParticipant.name}</p>
+                              <div className="flex items-center gap-2 text-[11px] font-medium text-amber-600/70 dark:text-amber-400/70">
+                                <span>{captainParticipant.class}</span>
+                                {captainParticipant.email && <><span>·</span><span className="truncate">{captainParticipant.email}</span></>}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCaptainParticipant(null);
+                              setFormData(prev => ({ ...prev, captain_name: "", captain_contact: "", captain_participant_id: "" }));
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-amber-200/50 dark:hover:bg-amber-500/10 transition-colors shrink-0"
+                          >
+                            <X className="w-4 h-4 text-amber-500" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl border border-dashed text-center" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                          <p className="text-xs font-semibold text-slate-400">No captain assigned</p>
+                        </div>
+                      )}
+
+                      {/* Participant picker toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowParticipantPicker(!showParticipantPicker)}
+                        className="w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all cursor-pointer"
+                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--accent)' }}
+                      >
+                        {showParticipantPicker ? "Cancel Selection" : captainParticipant ? "Change Captain" : "Assign Captain from Participants"}
+                      </button>
+
+                      {/* Participant picker dropdown */}
+                      {showParticipantPicker && (
+                        <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
+                          <div className="p-3 border-b" style={{ borderColor: 'var(--border-divider)' }}>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                              <input
+                                value={participantSearch}
+                                onChange={e => setParticipantSearch(e.target.value)}
+                                placeholder="Search participants..."
+                                className="w-full border rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-60 overflow-y-auto">
+                            {participantsLoading ? (
+                              <div className="p-6 text-center">
+                                <Loader2 className="w-5 h-5 animate-spin mx-auto text-slate-400" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Loading...</p>
+                              </div>
+                            ) : participants.length === 0 ? (
+                              <div className="p-6 text-center">
+                                <Users className="w-6 h-6 text-slate-200 dark:text-white/5 mx-auto mb-2" />
+                                <p className="text-xs font-semibold text-slate-400">No participants in this {groupLabel.toLowerCase()}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Add participants first via Manage Participants</p>
+                              </div>
+                            ) : (
+                              participants
+                                .filter(p => 
+                                  !participantSearch || 
+                                  p.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
+                                  p.class.toLowerCase().includes(participantSearch.toLowerCase()) ||
+                                  (p.email && p.email.toLowerCase().includes(participantSearch.toLowerCase()))
+                                )
+                                .map(p => (
+                                  <button
+                                    key={p._id}
+                                    type="button"
+                                    onClick={() => {
+                                      setCaptainParticipant(p);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        captain_name: p.name,
+                                        captain_contact: p.phone || "",
+                                        captain_participant_id: p._id
+                                      }));
+                                      setShowParticipantPicker(false);
+                                      setParticipantSearch("");
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-indigo-500/5 border-b last:border-0 cursor-pointer ${
+                                      captainParticipant?._id === p._id ? 'bg-indigo-500/10' : ''
+                                    }`}
+                                    style={{ borderColor: 'var(--border-divider)' }}
+                                  >
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center shrink-0">
+                                      <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--card-fg)' }}>{p.name}</p>
+                                      <div className="flex items-center gap-2 text-[11px] font-medium text-slate-400">
+                                        <GraduationCap className="w-3 h-3" />
+                                        <span>{p.class}</span>
+                                        {p.email && <><span>·</span><Mail className="w-3 h-3" /><span className="truncate">{p.email}</span></>}
+                                      </div>
+                                    </div>
+                                    {captainParticipant?._id === p._id && (
+                                      <Star className="w-4 h-4 text-amber-500 shrink-0" />
+                                    )}
+                                  </button>
+                                ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <input 
+                          value={formData.captain_name} 
+                          onChange={e => setFormData({...formData, captain_name: e.target.value})}
+                          placeholder="Captain name"
+                          className="w-full border rounded-2xl px-6 py-4 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                        />
+                      </div>
+                      <div>
+                        <input 
+                          value={formData.captain_contact} 
+                          onChange={e => setFormData({...formData, captain_contact: e.target.value})}
+                          placeholder="Captain contact"
+                          className="w-full border rounded-2xl px-6 py-4 text-sm font-bold transition-all focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm"
+                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 space-y-3">

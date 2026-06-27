@@ -10,7 +10,6 @@ import { FadeIn } from "../AnimateReveal";
 import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import useDashboardData from "../../hooks/useDashboardData";
-import { apiFetch } from "../../utils/apiClient";
 import OnboardingChecklist from "./OnboardingChecklist";
 import usePermission from "../../hooks/usePermission";
 
@@ -65,7 +64,7 @@ export default function Dashboard({
   onCloseSidebar = () => {},
   sidebarOpen = true,
 }) {
-  const { user, role: contextRole, token, isAuthReady } = useAuth();
+  const { user, role: contextRole } = useAuth();
   const { competition, groupLabel, groupLabelPlural } = useCompetition();
   const { hasAnyRole } = usePermission();
   const safeRoleKey = normalizeRole(contextRole);
@@ -82,30 +81,19 @@ export default function Dashboard({
   const { data: dashData } = useDashboardData();
 
   const [houseName, setHouseName] = useState(user?.house?.name || "");
-  const [houseCode, setHouseCode] = useState(user?.house?.code || "");
+  const [houseCode, setHouseCode] = useState(user?.house?.name?.substring(0, 3).toUpperCase() || "");
 
   useEffect(() => {
     if (safeRoleKey === "captain" && user?.house) {
       setHouseName(user.house.name || "");
-      setHouseCode(user.house.code || "");
+      setHouseCode(user.house.name?.substring(0, 3).toUpperCase() || "");
     }
-  }, [safeRoleKey, user?.house?.name, user?.house?.code]);
+  }, [safeRoleKey, user?.house?.name]);
 
   useEffect(() => {
-    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-    const needFetch = safeRoleKey === "captain" && !user?.house?.name && token && isAuthReady;
-    if (!needFetch) return;
-    (async () => {
-      try {
-        const res = await apiFetch(`${API_BASE_URL}/api/house/me`);
-        const payload = await res.json();
-        if (res.ok && payload?.house?.name) {
-          setHouseName(payload.house.name);
-          setHouseCode(payload.house.code || "");
-        }
-      } catch {}
-    })();
-  }, [safeRoleKey, user?.house?.name, token, isAuthReady]);
+    // Captain group data is now populated from auth context (user.house = captainGroup)
+    // No separate API call needed — data comes from login/competition select response
+  }, []);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -140,9 +128,9 @@ export default function Dashboard({
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleHouseUpdated = (house) => {
-    setHouseName(house?.name || "");
-    setHouseCode(house?.code || "");
+  const handleHouseUpdated = (group) => {
+    setHouseName(group?.name || "");
+    setHouseCode(group?.name?.substring(0, 3).toUpperCase() || "");
   };
 
   const handleCloseSidebar = () => {

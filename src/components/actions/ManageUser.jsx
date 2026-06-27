@@ -12,12 +12,11 @@ const BASE_ROLE_OPTIONS = [
   { value: "organizer", label: "Organizer" },
   { value: "event_coordinator", label: "Event Coordinator" },
   { value: "judge", label: "Judge" },
-  { value: "house_captain", label: "Group Captain" },
 ];
 
 const ManageUser = () => {
   const { token } = useAuth();
-  const { competition, groupLabel, groupLabelPlural } = useCompetition();
+  const { competition, groupLabel } = useCompetition();
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
   const [houses, setHouses] = useState([]);
@@ -33,9 +32,7 @@ const ManageUser = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const roleOptions = BASE_ROLE_OPTIONS.filter(
-    (opt) => opt.value !== "house_captain" || houses.length > 0
-  );
+  const roleOptions = BASE_ROLE_OPTIONS;
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -78,8 +75,8 @@ const ManageUser = () => {
   }, [token, competition?._id]);
 
   useEffect(() => {
-    if (houses.length === 0 && formData.role === "house_captain") {
-      setFormData((prev) => ({ ...prev, role: "participant", house: "" }));
+    if (houses.length === 0) {
+      setFormData((prev) => ({ ...prev, house: "" }));
     }
   }, [houses.length]);
 
@@ -238,25 +235,23 @@ const ManageUser = () => {
                 </select>
               </div>
 
-              {formData.role === "house_captain" && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">
-                    {groupLabel || "House"}
-                  </label>
-                  <select
-                    name="house"
-                    value={formData.house}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                    style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                  >
-                    <option value="">Select {groupLabel || "House"}</option>
-                    {houses.map((h) => (
-                      <option key={h._id} value={h._id}>{h.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">
+                  {groupLabel || "Group"}
+                </label>
+                <select
+                  name="house"
+                  value={formData.house}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
+                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                >
+                  <option value="">Select {groupLabel || "Group"}</option>
+                  {houses.map((h) => (
+                    <option key={h._id} value={h._id}>{h.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">

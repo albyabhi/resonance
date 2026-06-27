@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CaptainsDirectory() {
   const { token, isAuthReady } = useAuth();
-  const { groupLabel } = useCompetition();
+  const { competition, groupLabel } = useCompetition();
   const [captains, setCaptains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -18,41 +18,27 @@ export default function CaptainsDirectory() {
 
   useEffect(() => {
     const fetchCaptains = async () => {
-      if (!token || !isAuthReady) return;
+      if (!token || !isAuthReady || !competition?._id) return;
       try {
         setLoading(true);
         setError("");
-        const housesRes = await apiFetch(`${API_BASE_URL}/api/house`, {
+        const resp = await apiFetch(`${API_BASE_URL}/api/competition/${competition._id}/groups`, {
           headers: { "Content-Type": "application/json" },
         });
 
-        if (!housesRes.ok) throw new Error(`Failed to load houses (${housesRes.status})`);
-        const housesData = await housesRes.json();
-        const houses = Array.isArray(housesData) ? housesData : housesData.houses || [];
+        if (!resp.ok) throw new Error(`Failed to load groups (${resp.status})`);
+        const groupsData = await resp.json();
+        const groups = Array.isArray(groupsData) ? groupsData : [];
 
-        const captainDetails = [];
-        for (const house of houses) {
-          try {
-            const captainRes = await apiFetch(`${API_BASE_URL}/api/house/captain/${house._id}`, {
-              headers: { "Content-Type": "application/json" },
-            });
-            const captainData = captainRes.ok ? await captainRes.json() : { captain: null };
-            captainDetails.push({ 
-              houseId: house._id, 
-              houseName: house.name, 
-              houseCode: house.code, 
-              captain: captainData.captain || null 
-            });
-          } catch (err) {
-            console.error(`Error fetching captain for house ${house.name}:`, err);
-            captainDetails.push({ 
-              houseId: house._id, 
-              houseName: house.name, 
-              houseCode: house.code, 
-              captain: null 
-            });
-          }
-        }
+        const captainDetails = groups.map(g => {
+          const cap = g.captain || null;
+          return {
+            groupId: g._id,
+            groupName: g.name,
+            groupCode: g.name.substring(0, 3).toUpperCase(),
+            captain: cap ? { name: cap.name, profile_image: cap.profile_image, phone: cap.phone, email: cap.email } : null,
+          };
+        });
         setCaptains(captainDetails);
       } catch (err) { 
         setError(err.message || "Failed to load directory"); 
@@ -61,7 +47,7 @@ export default function CaptainsDirectory() {
       }
     };
     fetchCaptains();
-  }, [token, isAuthReady]);
+  }, [token, isAuthReady, competition?._id]);
 
   if (loading) {
     return (
@@ -72,8 +58,8 @@ export default function CaptainsDirectory() {
   }
 
   const filteredCaptains = captains.filter(item => 
-    item.houseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.houseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.groupCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.captain?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -112,11 +98,11 @@ export default function CaptainsDirectory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredCaptains.map((item, idx) => {
-          const { captain, houseName, houseCode } = item;
+          const { captain, groupName, groupCode } = item;
           const hasCaptain = !!captain?.name;
 
           return (
-            <FadeIn key={item.houseId} delay={idx * 0.1}>
+            <FadeIn key={item.groupId} delay={idx * 0.1}>
               <div className="card-premium group overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 hover:-translate-y-1" style={{ backgroundColor: 'var(--card)' }}>
                 {/* Hero Section */}
                 <div className="relative h-56 overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
@@ -136,7 +122,7 @@ export default function CaptainsDirectory() {
                   {/* Glass Header */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
                       <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg backdrop-blur-md shadow-sm border text-slate-600 dark:text-slate-300" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
-                        {houseCode}
+                        {groupCode}
                       </span>
                       {hasCaptain && (
                         <div className="h-8 w-8 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50 border-2 animate-pulse" style={{ borderColor: 'var(--card)' }} />
@@ -148,7 +134,7 @@ export default function CaptainsDirectory() {
                   
                   {/* Name Overlay */}
                   <div className="absolute bottom-6 left-6 right-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                    <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-1">{houseName}</p>
+                    <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-1">{groupName}</p>
                     <h3 className="text-xl font-bold text-white tracking-tight">{hasCaptain ? captain.name : "Unassigned"}</h3>
                   </div>
                 </div>
@@ -178,7 +164,7 @@ export default function CaptainsDirectory() {
                               </div>
                               <div>
                                 <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Email</p>
-                                <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{houseCode.toLowerCase()}@resonance.edu</p>
+                                 <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{captain.email || `${groupCode.toLowerCase()}@resonance.edu`}</p>
                               </div>
                            </div>
                            <ExternalLink className="w-3 h-3 text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all" />

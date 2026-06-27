@@ -159,7 +159,7 @@ const AdminScoreboard = () => {
     });
   };
 
-  // Load houses and events
+  // Load groups and events
   useEffect(() => {
     (async () => {
       try {
@@ -168,14 +168,14 @@ const AdminScoreboard = () => {
         const competitionId = competition?._id || competition?.id || competition?.competition_id;
         const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
 
-        const [housesResp, eventsResp] = await Promise.all([
-          competition?._id
-            ? apiCall(`/api/competition/${competition._id}/groups`)
-            : apiCall("/api/house"),
+        const [groupsResp, eventsResp] = await Promise.all([
+          competitionId
+            ? apiCall(`/api/competition/${competitionId}/groups`)
+            : apiCall("/api/competition/groups"),
           apiCall(`/api/event${competitionQuery}`),
         ]);
-        const hs = Array.isArray(housesResp) ? housesResp : housesResp.houses || [];
-        setHouses(hs);
+        const gs = Array.isArray(groupsResp) ? groupsResp : groupsResp.groups || groupsResp.houses || [];
+        setHouses(gs);
         setEvents(eventsResp.events || []);
       } catch (e) {
         setError(e.message);

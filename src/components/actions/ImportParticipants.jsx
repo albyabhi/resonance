@@ -9,13 +9,14 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const TARGET_FIELDS = [
   { key: "name", label: "Name *", required: true },
   { key: "class", label: "Class *", required: true },
+  { key: "email", label: "Email *", required: true },
   { key: "admission_no", label: "Admission No", required: false },
   { key: "phone", label: "Phone", required: false },
 ];
 
 const STEPS = ["Upload", "Map Columns", "Validate", "Preview", "Import", "Summary"];
 
-export default function ImportParticipants({ houses, onDone }) {
+export default function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
   const { token } = useAuth();
 
   const [step, setStep] = useState(0);
@@ -25,7 +26,7 @@ export default function ImportParticipants({ houses, onDone }) {
   const [rawHeaders, setRawHeaders] = useState([]);
   const [rawRows, setRawRows] = useState([]);
   const [filename, setFilename] = useState("");
-  const [selectedHouse, setSelectedHouse] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
 
   const [columnMap, setColumnMap] = useState({});
 
@@ -76,6 +77,7 @@ export default function ImportParticipants({ houses, onDone }) {
           const match = TARGET_FIELDS.find((t) =>
             t.key === hl || hl.includes(t.key) || t.key.includes(hl) ||
             (t.key === "admission_no" && (hl === "admission" || hl === "admissionno" || hl === "admission number" || hl === "admission_number")) ||
+            (t.key === "email" && (hl === "e-mail" || hl === "email address" || hl === "emailaddress")) ||
             (t.key === "phone" && (hl === "phone number" || hl === "phonenumber" || hl === "contact" || hl === "mobile"))
           );
           if (match && !Object.values(autoMap).includes(match.key)) {
@@ -94,6 +96,10 @@ export default function ImportParticipants({ houses, onDone }) {
   };
 
   const handleColumnMap = () => {
+    if (!selectedGroup) {
+      setError(`Please select a ${groupLabel.toLowerCase()} for this import`);
+      return;
+    }
     const missing = TARGET_FIELDS.filter((f) => f.required && !Object.values(columnMap).includes(f.key));
     if (missing.length) {
       setError(`Please map required fields: ${missing.map((f) => f.label).join(", ")}`);
@@ -103,8 +109,8 @@ export default function ImportParticipants({ houses, onDone }) {
   };
 
   const handleValidate = async () => {
-    if (!selectedHouse) {
-      setError("Please select a house/group for this import");
+    if (!selectedGroup) {
+      setError(`Please select a ${groupLabel.toLowerCase()} for this import`);
       return;
     }
 
@@ -122,7 +128,7 @@ export default function ImportParticipants({ houses, onDone }) {
     try {
       const result = await apiCall("/api/participants/import/validate", {
         method: "POST",
-        body: JSON.stringify({ rows: mappedRows, group_id: selectedHouse, filename }),
+        body: JSON.stringify({ rows: mappedRows, group_id: selectedGroup, filename }),
       });
       setJobId(result.job_id);
       setValidationSummary(result.summary);
@@ -146,6 +152,7 @@ export default function ImportParticipants({ houses, onDone }) {
   };
 
   const handleImport = async () => {
+    setStep(4);
     setLoading(true);
     setError("");
 
@@ -156,6 +163,7 @@ export default function ImportParticipants({ houses, onDone }) {
         action: rowDecisions[r.index] || "import",
         name: r.name,
         class: r.class,
+        email: r.email,
         admission_no: r.admission_no,
         phone: r.phone,
       }));
@@ -181,7 +189,7 @@ export default function ImportParticipants({ houses, onDone }) {
     setRawHeaders([]);
     setRawRows([]);
     setFilename("");
-    setSelectedHouse("");
+    setSelectedGroup("");
     setColumnMap({});
     setJobId(null);
     setValidationSummary(null);
@@ -191,7 +199,7 @@ export default function ImportParticipants({ houses, onDone }) {
   };
 
   const getMappedRowsCount = () => {
-    return Object.values(columnMap).filter((v) => v).length >= 2 ? rawRows.length : 0;
+    return Object.values(columnMap).filter((v) => v).length >= 3 ? rawRows.length : 0;
   };
 
   const previewCounts = () => {
@@ -253,60 +261,61 @@ export default function ImportParticipants({ houses, onDone }) {
           </button>
 
           {showFormat && (
-            <div className="mt-3 mx-auto max-w-xl text-left rounded-lg border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
-              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Your file should look like this:</p>
-              <div className="overflow-x-auto rounded border" style={{ borderColor: 'var(--border-divider)' }}>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
-                      <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Name</th>
-                      <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Class</th>
-                      <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Admission No</th>
-                      <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Phone</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>John Doe</td>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>10A</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024001</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543210</td>
-                    </tr>
-                    <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>Jane Smith</td>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>10B</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024002</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543211</td>
-                    </tr>
-                    <tr>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>Bob Wilson</td>
-                      <td className="p-2" style={{ color: 'var(--card-fg)' }}>11C</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>—</td>
-                      <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543212</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--chart-axis)' }}>
-                Column headers are matched automatically — order does not matter. Only <strong>Name</strong> and <strong>Class</strong> are required.
-              </p>
-            </div>
+              <div className="mt-3 mx-auto max-w-xl text-left rounded-lg border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Your file should look like this:</p>
+                  <div className="overflow-x-auto rounded border" style={{ borderColor: 'var(--border-divider)' }}>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
+                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Name</th>
+                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Class</th>
+                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Email</th>
+                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Admission No</th>
+                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Phone</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>John Doe</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>10A</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>john@school.edu</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024001</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543210</td>
+                        </tr>
+                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>Jane Smith</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>10B</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>jane@school.edu</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024002</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543211</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>Bob Wilson</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>11C</td>
+                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>bob@school.edu</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>—</td>
+                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543212</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: 'var(--chart-axis)' }}>
+                    Column headers are matched automatically — order does not matter. <strong>Name</strong>, <strong>Class</strong>, and <strong>Email</strong> are required.
+                  </p>
+                </div>
           )}
 
-          <div className="mt-4">
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Target House / Group</p>
-            <select
-              value={selectedHouse}
-              onChange={(e) => setSelectedHouse(e.target.value)}
-              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full max-w-xs"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-            >
-              <option value="">Select house/group</option>
-              {houses.map((h) => (
-                <option key={h._id} value={h._id}>{h.name}</option>
-              ))}
-            </select>
-          </div>
+          {selectedGroup ? (
+            <div className="mt-4">
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Target {groupLabel}</p>
+              <p className="text-sm font-semibold text-green-600">{groups.find((g) => g._id === selectedGroup)?.name}</p>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>{groupLabel}</p>
+              <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} in the next step</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -318,6 +327,21 @@ export default function ImportParticipants({ houses, onDone }) {
         >
           <h3 className="text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Map Columns</h3>
           <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>Map CSV/Excel columns to participant fields</p>
+
+          <div>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Target {groupLabel} *</p>
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full max-w-xs"
+              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+            >
+              <option value="">Select {groupLabel}</option>
+              {groups.map((g) => (
+                <option key={g._id} value={g._id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -353,7 +377,7 @@ export default function ImportParticipants({ houses, onDone }) {
           </div>
 
           <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>
-            {getMappedRowsCount() > 0 ? `${getMappedRowsCount()} rows ready` : "Map required fields (Name *, Class *) to proceed"}
+            {getMappedRowsCount() > 0 ? `${getMappedRowsCount()} rows ready` : "Map required fields (Name *, Class *, Email *) to proceed"}
           </p>
 
           <div className="flex gap-2">
@@ -383,7 +407,7 @@ export default function ImportParticipants({ houses, onDone }) {
         >
           <h3 className="text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Validate</h3>
           <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
-            {filename} → {getMappedRowsCount()} mapped rows → {houses.find((h) => h._id === selectedHouse)?.name || "Selected House"}
+            {filename} → {getMappedRowsCount()} mapped rows → {groups.find((g) => g._id === selectedGroup)?.name || `Selected ${groupLabel}`}
           </p>
           <button
             onClick={handleValidate}
@@ -415,6 +439,7 @@ export default function ImportParticipants({ houses, onDone }) {
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>#</th>
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Name</th>
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Class</th>
+                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Email</th>
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Admission No</th>
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Phone</th>
                   <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Status</th>
@@ -430,6 +455,7 @@ export default function ImportParticipants({ houses, onDone }) {
                       <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.index + 1}</td>
                       <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.name}</td>
                       <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.class}</td>
+                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.email || "—"}</td>
                       <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.admission_no || "—"}</td>
                       <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.phone || "—"}</td>
                       <td className="p-2">
@@ -505,6 +531,9 @@ export default function ImportParticipants({ houses, onDone }) {
           style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
         >
           <h3 className="text-lg font-semibold text-green-600">Import Complete</h3>
+          <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
+            Imported into <strong>{groups.find((g) => g._id === selectedGroup)?.name || groupLabel}</strong>
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-green-50 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-green-600">{result.imported}</p>
@@ -523,6 +552,42 @@ export default function ImportParticipants({ houses, onDone }) {
               <p className={`text-xs ${result.errors > 0 ? "text-red-700" : "text-gray-700"}`}>Errors</p>
             </div>
           </div>
+
+          {result.credentials?.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Generated Credentials</h4>
+              <div className="overflow-x-auto rounded-lg border mb-4" style={{ borderColor: 'var(--border-card)' }}>
+                <table className="min-w-full text-xs">
+                  <thead style={{ backgroundColor: 'var(--surface)' }}>
+                    <tr>
+                      <th className="p-2 text-left">Name</th>
+                      <th className="p-2 text-left">Email</th>
+                      <th className="p-2 text-left">Password</th>
+                      <th className="p-2 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.credentials.map((c, i) => (
+                      <tr key={i} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
+                        <td className="p-2">{c.name}</td>
+                        <td className="p-2">{c.email}</td>
+                        <td className="p-2 font-mono text-orange-600">{c.password}</td>
+                        <td className="p-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.action === "imported" ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50"}`}>
+                            {c.action === "imported" ? "New" : "Updated"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs mb-4" style={{ color: 'var(--chart-axis)' }}>
+                Passwords are auto-generated. If <strong>Admission No</strong> was provided, password = {`<admission_no> + <class>`} (e.g. "202501MCAB").
+                Otherwise a random password was generated. Share these credentials with participants.
+              </p>
+            </div>
+          )}
 
           {result.error_details?.length > 0 && (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--border-card)' }}>

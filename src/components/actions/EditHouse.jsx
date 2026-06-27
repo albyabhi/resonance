@@ -5,14 +5,14 @@ import { apiJson } from "../../utils/apiClient";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const EditHouse = () => {
-  const { token, role, setUserHouse } = useAuth();
+  const { token, role, user, setUserHouse } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [groupId, setGroupId] = useState("");
   const [previewOk, setPreviewOk] = useState(true);
 
   const apiCall = async (endpoint, options = {}) => {
@@ -33,12 +33,18 @@ const EditHouse = () => {
         setLoading(true);
         setError("");
         setSuccess("");
-        if (String(role || "").toLowerCase() !== "captain") throw new Error("Only captains can edit house details");
-        const { house } = await apiCall("/api/house/me");
-        setName(house.name || "");
-        setCode(house.code || "");
-        setUserHouse(house);
-        setLogoUrl(house.logoUrl || "");
+        if (String(role || "").toLowerCase() !== "captain") throw new Error("Only captains can edit group details");
+
+        // Use group data from auth context (user.house = captainGroup from login response)
+        const groupData = user?.house;
+        if (groupData?._id) {
+          setGroupId(groupData._id);
+          setName(groupData.name || "");
+          setLogoUrl(groupData.logoUrl || "");
+          setUserHouse(groupData);
+        } else {
+          throw new Error("No group assigned to this captain");
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -46,7 +52,7 @@ const EditHouse = () => {
       }
     };
     if (token) load();
-  }, [token, role]);
+  }, [token, role, user?.house?._id]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -54,27 +60,26 @@ const EditHouse = () => {
       setSaving(true);
       setError("");
       setSuccess("");
-      if (!name.trim()) throw new Error("House name is required");
-      if (!code.trim()) throw new Error("House code is required");
+      if (!name.trim()) throw new Error("Group name is required");
+      if (!groupId) throw new Error("Group ID not found");
 
       const payload = {
         name: name.trim(),
-        code: code.trim().toUpperCase(),
         logoUrl: typeof logoUrl === "string" ? logoUrl.trim() : "",
       };
 
-      const { house } = await apiCall("/api/house/me", {
+      const updatedGroup = await apiCall(`/api/competition/groups/${groupId}`, {
         method: "PUT",
         body: JSON.stringify(payload),
       });
 
-      setName(house.name || "");
-      setCode(house.code || "");
-      setLogoUrl(house.logoUrl || "");
-      setSuccess("House updated successfully.");
+      setName(updatedGroup.name || "");
+      setLogoUrl(updatedGroup.logoUrl || "");
+      setUserHouse(updatedGroup);
+      setSuccess("Group updated successfully.");
     } catch (err) {
-      if (String(err.message || "").toLowerCase().includes("code already exists")) {
-        setError("House code already exists. Choose a different code.");
+      if (String(err.message || "").toLowerCase().includes("already exists")) {
+        setError("Group name already exists. Choose a different name.");
       } else {
         setError(err.message);
       }
@@ -86,8 +91,8 @@ const EditHouse = () => {
   return (
     <div className="theme-card p-4">
       <div className="mb-3">
-        <h2 className="text-lg font-semibold theme-text-primary">Manage House Logo</h2>
-        <p className="text-sm theme-text-secondary">Update your house logo URL.</p>
+        <h2 className="text-lg font-semibold theme-text-primary">Manage Group Logo</h2>
+        <p className="text-sm theme-text-secondary">Update your group logo URL.</p>
       </div>
 
       {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
@@ -99,12 +104,12 @@ const EditHouse = () => {
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="theme-panel mb-4 grid grid-cols-2 gap-4 rounded-lg p-3">
             <div>
-              <p className="text-xs font-semibold uppercase theme-text-muted">House Name</p>
+              <p className="text-xs font-semibold uppercase theme-text-muted">Group Name</p>
               <p className="font-medium theme-text-primary">{name || "-"}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase theme-text-muted">House Code</p>
-              <p className="font-medium theme-text-primary">{code || "-"}</p>
+              <p className="text-xs font-semibold uppercase theme-text-muted">Group Code</p>
+              <p className="font-medium theme-text-primary">{name ? name.substring(0, 3).toUpperCase() : "-"}</p>
             </div>
           </div>
 
@@ -125,7 +130,7 @@ const EditHouse = () => {
                 <div className={`theme-panel flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border ${previewOk ? "" : "border-rose-300 dark:border-rose-500/30"}`}>
                   <img
                     src={logoUrl}
-                    alt="House logo preview"
+                    alt="Group logo preview"
                     className="h-full w-full object-contain"
                     onError={() => setPreviewOk(false)}
                     onLoad={() => setPreviewOk(true)}

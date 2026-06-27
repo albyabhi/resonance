@@ -24,12 +24,12 @@ function HouseStandings({ eventId = null, showCaptain = false }) {
     return res.json();
   };
 
-  const fetchCaptainProfile = async (houseId) => {
+  const fetchCaptainProfile = async (groupId) => {
     try {
-      if (captainData[houseId]) return captainData[houseId];
-      const data = await apiCall(`/api/house/captain/${houseId}`);
+      if (captainData[groupId]) return captainData[groupId];
+      const data = await apiCall(`/api/competition/groups/${groupId}/captain`);
       const captain = data.captain || {};
-      setCaptainData((prev) => ({ ...prev, [houseId]: captain }));
+      setCaptainData((prev) => ({ ...prev, [groupId]: captain }));
       return captain;
     } catch {
       return {};

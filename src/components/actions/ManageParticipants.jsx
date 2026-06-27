@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
+import { useCompetition } from "../../context/CompetitionContext";
 import ImportParticipants from "./ImportParticipants";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -9,6 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 function ManageParticipants() {
   const { token } = useAuth();
   const { hasRole } = usePermission();
+  const { competition, groupLabel } = useCompetition();
   const isSuperAdmin = hasRole("super_admin");
 
   // UI states
@@ -17,12 +19,12 @@ function ManageParticipants() {
   const [error, setError] = useState("");
 
   // Cached data
-  const [houses, setHouses] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [editingParticipant, setEditingParticipant] = useState(null);
 
   // Filters
-  const [filterHouse, setFilterHouse] = useState("");
+  const [filterGroup, setFilterGroup] = useState("");
   const [filterClass, setFilterClass] = useState("");
   const [search, setSearch] = useState("");
 
@@ -30,7 +32,7 @@ function ManageParticipants() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Add single
-  const [addForm, setAddForm] = useState({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
+  const [addForm, setAddForm] = useState({ name: "", class: "", group_id: "", admission_no: "", phone: "", email: "", gender: "" });
 
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
@@ -45,15 +47,15 @@ function ManageParticipants() {
     });
   };
 
-  // Initial: load houses
+  // Initial: load groups for current competition
   useEffect(() => {
     const load = async () => {
-      if (!token) return;
+      if (!token || !competition?._id) return;
       setLoading(true);
       setError("");
       try {
-        const housesResp = await apiCall("/api/house");
-        setHouses(Array.isArray(housesResp) ? housesResp : housesResp.houses || []);
+        const groupsResp = await apiCall(`/api/competition/${competition._id}/groups`);
+        setGroups(Array.isArray(groupsResp) ? groupsResp : groupsResp.groups || []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -61,7 +63,8 @@ function ManageParticipants() {
       }
     };
     load();
-  }, [token]);
+    // eslint-disable-next-line
+  }, [token, competition?._id]);
 
   // Load participants when filters/search change
   const fetchParticipants = async () => {
@@ -69,7 +72,8 @@ function ManageParticipants() {
     setError("");
     try {
       let url = "/api/participants?";
-      if (filterHouse) url += `house_id=${filterHouse}&`;
+      if (competition?._id) url += `competition_id=${competition._id}&`;
+      if (filterGroup) url += `group_id=${filterGroup}&`;
       if (filterClass) url += `class=${encodeURIComponent(filterClass)}&`;
       if (search) url += `search=${encodeURIComponent(search)}&`;
       const { participants } = await apiCall(url);
@@ -85,14 +89,14 @@ function ManageParticipants() {
   useEffect(() => {
     if (token && activeTab === "all") fetchParticipants();
     // eslint-disable-next-line
-  }, [token, activeTab, filterHouse, filterClass, search]);
+  }, [token, activeTab, filterGroup, filterClass, search]);
 
   // Tabs
   const switchTab = (tab) => {
     setActiveTab(tab);
     setError("");
     setEditingParticipant(null);
-      setAddForm({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
+      setAddForm({ name: "", class: "", group_id: "", admission_no: "", phone: "", email: "", gender: "" });
     if (tab === "all" && token) fetchParticipants();
   };
 
@@ -106,7 +110,7 @@ function ManageParticipants() {
         method: "POST",
         body: JSON.stringify(addForm),
       });
-    setAddForm({ name: "", class: "", house_id: "", admission_no: "", phone: "", email: "", gender: "" });
+    setAddForm({ name: "", class: "", group_id: "", admission_no: "", phone: "", email: "", gender: "" });
       setParticipants((prev) => [participant, ...prev]);
       setActiveTab("all");
     } catch (err) {
@@ -120,7 +124,7 @@ function ManageParticipants() {
   const handleEditStart = (stu) => {
     setEditingParticipant({
       ...stu,
-      house_id: stu.house_id?._id || stu.house_id,
+      group_id: stu.group_id?._id || stu.group_id,
     });
     setActiveTab("update");
   };
@@ -189,8 +193,8 @@ function ManageParticipants() {
   const handleDeselectAll = () => setSelectedIds([]);
 
   // Helpers
-  const getHouseName = (id) =>
-    (houses.find((h) => h._id === id) || {}).name || "";
+  const getGroupName = (id) =>
+    (groups.find((g) => g._id === id) || {}).name || "";
 
   // Render
   return (
@@ -302,20 +306,20 @@ function ManageParticipants() {
           >
             {/* Filters / actions */}
             <div className="flex flex-wrap gap-2 mb-3">
-              <label className="sr-only" htmlFor="filter-house">
-                Filter by house
+              <label className="sr-only" htmlFor="filter-group">
+                Filter by {groupLabel}
               </label>
               <select
-                id="filter-house"
-                value={filterHouse}
-                onChange={(e) => setFilterHouse(e.target.value)}
+                id="filter-group"
+                value={filterGroup}
+                onChange={(e) => setFilterGroup(e.target.value)}
                 className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="" className="bg-white dark:bg-[#0B1220]">Filter by house</option>
-                {houses.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
-                    {h.name}
+                <option value="" className="bg-white dark:bg-[#0B1220]">Filter by {groupLabel}</option>
+                {groups.map((g) => (
+                  <option key={g._id} value={g._id} className="bg-white dark:bg-[#0B1220]">
+                    {g.name}
                   </option>
                 ))}
               </select>
@@ -390,9 +394,9 @@ function ManageParticipants() {
                         <span className="font-medium" style={{ color: 'var(--card-fg)' }}>{stu.class}</span>
                       </p>
                       <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>
-                        House:{" "}
+                        {groupLabel}:{" "}
                         <span className="font-medium" style={{ color: 'var(--card-fg)' }}>
-                          {getHouseName(stu.house_id?._id || stu.house_id)}
+                          {getGroupName(stu.group_id?._id || stu.group_id)}
                         </span>
                       </p>
                       <p className="text-[11px] mt-1" style={{ color: 'var(--chart-axis)' }}>
@@ -448,7 +452,7 @@ function ManageParticipants() {
                       Class
                     </th>
                     <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
-                      House
+                      {groupLabel}
                     </th>
                     <th scope="col" className="text-left p-3 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>
                       Participant ID
@@ -473,7 +477,7 @@ function ManageParticipants() {
                       <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.name}</td>
                       <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.class}</td>
                       <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>
-                        {getHouseName(stu.house_id?._id || stu.house_id)}
+                        {getGroupName(stu.group_id?._id || stu.group_id)}
                       </td>
                       <td className="p-3 align-middle" style={{ color: 'var(--card-fg)' }}>{stu.unique_id}</td>
                       <td className="p-3 align-middle">
@@ -521,17 +525,17 @@ function ManageParticipants() {
             {/* Add single */}
             <form className="space-y-3" onSubmit={handleAddSingle}>
               <h3 className="font-semibold text-lg" style={{ color: 'var(--card-fg)' }}>Add Single Participant</h3>
-              <label className="sr-only" htmlFor="add-house">House</label>
+              <label className="sr-only" htmlFor="add-group">{groupLabel}</label>
               <select
-                id="add-house" required
-                value={addForm.house_id}
-                onChange={(e) => setAddForm((f) => ({ ...f, house_id: e.target.value }))}
+                id="add-group" required
+                value={addForm.group_id}
+                onChange={(e) => setAddForm((f) => ({ ...f, group_id: e.target.value }))}
                 className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               >
-                <option value="" className="bg-white dark:bg-[#0B1220]">Select house *</option>
-                {houses.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">{h.name}</option>
+                <option value="" className="bg-white dark:bg-[#0B1220]">Select {groupLabel} *</option>
+                {groups.map((g) => (
+                  <option key={g._id} value={g._id} className="bg-white dark:bg-[#0B1220]">{g.name}</option>
                 ))}
               </select>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -590,7 +594,7 @@ function ManageParticipants() {
             className="p-4 sm:p-6 rounded-lg shadow-sm border"
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
           >
-            <ImportParticipants houses={houses} onDone={() => { switchTab("all"); fetchParticipants(); }} />
+            <ImportParticipants groups={groups} groupLabel={groupLabel} onDone={() => { switchTab("all"); fetchParticipants(); }} />
           </section>
         )}
 
@@ -604,23 +608,23 @@ function ManageParticipants() {
             style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
           >
             <h3 className="font-semibold mb-2 text-lg" style={{ color: 'var(--card-fg)' }}>Edit Participant</h3>
-            <label className="sr-only" htmlFor="edit-house">
-              House
+            <label className="sr-only" htmlFor="edit-group">
+              {groupLabel}
             </label>
             <select
-              id="edit-house"
+              id="edit-group"
               required
-              value={editingParticipant.house_id}
+              value={editingParticipant.group_id}
               onChange={(e) =>
-                setEditingParticipant((participant) => ({ ...participant, house_id: e.target.value }))
+                setEditingParticipant((participant) => ({ ...participant, group_id: e.target.value }))
               }
               className="px-3 py-2 min-h-[44px] border rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             >
-              <option value="" className="bg-white dark:bg-[#0B1220]">House</option>
-              {houses.map((h) => (
-                <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
-                  {h.name}
+              <option value="" className="bg-white dark:bg-[#0B1220]">{groupLabel}</option>
+              {groups.map((g) => (
+                <option key={g._id} value={g._id} className="bg-white dark:bg-[#0B1220]">
+                  {g.name}
                 </option>
               ))}
             </select>
