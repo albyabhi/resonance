@@ -27,7 +27,11 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(data.message || 'Signup failed');
       
       login(data.user, data.access_token, data.refresh_token, data.competition);
-      navigate('/dashboard/manage-users');
+      const role = data.user?.role || "participant";
+      const target = ["super_admin", "organizer", "event_coordinator"].includes(role)
+        ? "/dashboard/manage-users"
+        : "/dashboard";
+      navigate(target);
     } catch (err) {
       toast.error(err.message);
     } finally {

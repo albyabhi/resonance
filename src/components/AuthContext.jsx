@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { resetApiLogoutGuard } from "../utils/apiClient";
+import { resetApiLogoutGuard, isTokenExpired, refreshAccessToken } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const navigate = useNavigate();
 
   // Derived: competition comes from the user object
@@ -76,6 +76,60 @@ export function AuthProvider({ children }) {
         }
       }
     } catch {}
+  }, []);
+
+  // Validate stored JWT on mount — don't show dashboard with expired token
+  useEffect(() => {
+    const validateAuth = async () => {
+      const stored = localStorage.getItem("auth");
+      if (!stored) {
+        setIsAuthReady(true);
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(stored);
+      } catch {
+        localStorage.removeItem("auth");
+        setIsAuthReady(true);
+        return;
+      }
+
+      const storedToken = parsed.token;
+      if (!storedToken) {
+        setIsAuthReady(true);
+        return;
+      }
+
+      if (isTokenExpired(storedToken)) {
+        const storedRefresh = parsed.refreshToken;
+        if (storedRefresh) {
+          try {
+            const newToken = await refreshAccessToken();
+            const auth = JSON.parse(localStorage.getItem("auth") || "{}");
+            auth.token = newToken;
+            localStorage.setItem("auth", JSON.stringify(auth));
+            setToken(newToken);
+          } catch {
+            localStorage.removeItem("auth");
+            setUser(null);
+            setRole("guest");
+            setToken(null);
+            setRefreshToken(null);
+          }
+        } else {
+          localStorage.removeItem("auth");
+          setUser(null);
+          setRole("guest");
+          setToken(null);
+          setRefreshToken(null);
+        }
+      }
+      setIsAuthReady(true);
+    };
+
+    validateAuth();
   }, []);
 
   const guestLogin = () => {

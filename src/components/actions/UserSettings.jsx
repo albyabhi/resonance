@@ -1,6 +1,7 @@
 // src/components/actions/UserSettings.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
+import { apiFetch } from "../../utils/apiClient";
 import { User, Mail, Lock, Camera, Shield, CheckCircle } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -55,11 +56,8 @@ export default function UserSettings() {
         formData.append("profile_image", profileImage);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/users/profile`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 

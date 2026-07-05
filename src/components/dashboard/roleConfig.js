@@ -11,6 +11,9 @@ import {
   Shield,
   UserCircle,
   Image,
+  MapPin,
+  PenTool,
+  Upload,
 } from "lucide-react";
 
 export const roleConfig = {
@@ -25,6 +28,9 @@ export const roleConfig = {
       { label: "Score Review", icon: CheckCircle },
       { label: "Scoreboard Contributions", icon: CheckCircle },
       { label: "Activity Logs", icon: Bell },
+      { label: "Manage Venues", icon: MapPin },
+      { label: "Submit Results", icon: PenTool },
+      { label: "My submissions", icon: Upload },
       { label: "Export Report", icon: FileDown },
     ],
     modules: { standings: true, events: true, stats: true },
@@ -41,6 +47,9 @@ export const roleConfig = {
       { label: "Pending Approvals", icon: ClipboardList },
       { label: "Export Report", icon: FileDown },
       { label: "Activity Logs", icon: Bell },
+      { label: "Manage Venues", icon: MapPin },
+      { label: "Submit Results", icon: PenTool },
+      { label: "My submissions", icon: Upload },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -50,6 +59,9 @@ export const roleConfig = {
     actions: [
       { label: "Manage Events", icon: Calendar },
       { label: "Event Participants", icon: Users },
+      { label: "Manage Venues", icon: MapPin },
+      { label: "Submit Results", icon: PenTool },
+      { label: "My submissions", icon: Upload },
     ],
     modules: { standings: true, events: true, stats: true },
   },

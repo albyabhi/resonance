@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
+import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
+import { useMobileMode } from "../utils/useMobileMode";
 import {
   Users, Search, Plus, X, AlertCircle, CheckCircle,
   Edit, Trash2, Save, UserPlus, Filter,
@@ -9,20 +11,10 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem("auth")
-    ? JSON.parse(localStorage.getItem("auth")).token
-    : null;
-  if (!token) throw new Error("No authorization token found");
-  return apiJson(`${API_BASE_URL}${endpoint}`, {
-    method: options.method || "GET",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    body: options.body,
-  });
-};
-
 export default function CaptainMyGroup() {
+  const { token } = useAuth();
   const { competition, groupLabel } = useCompetition();
+  const { isMobile } = useMobileMode();
   const participantSource = competition?.participant_source || "import";
   const canCreateParticipants =
     participantSource === "captain" || participantSource === "hybrid";
@@ -41,6 +33,15 @@ export default function CaptainMyGroup() {
 
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+
+  const apiCall = async (endpoint, options = {}) => {
+    if (!token) throw new Error("No auth token available");
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
+      method: options.method || "GET",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      body: options.body,
+    });
+  };
 
   const fetchParticipants = async () => {
     try {
@@ -327,84 +328,155 @@ export default function CaptainMyGroup() {
               : "Check back after organizers add participants."}
           </p>
         </div>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {filteredParticipants.map((p) => (
+            <div
+              key={p._id}
+              className="border rounded-2xl p-4"
+              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}
+            >
+              {editingId === p._id ? (
+                <div className="space-y-3">
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    placeholder="Name"
+                  />
+                  <input
+                    value={editForm.class}
+                    onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    placeholder="Class"
+                  />
+                  <input
+                    value={editForm.admission_no}
+                    onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    placeholder="Admission No"
+                  />
+                  <input
+                    value={editForm.email}
+                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    placeholder="Email"
+                  />
+                  <input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    placeholder="Phone"
+                  />
+                  <select
+                    value={editForm.gender}
+                    onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))}
+                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                  >
+                    <option value="">Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleEditSubmit(p._id)}
+                      disabled={submitting}
+                      className="flex-1 min-h-[48px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                    >
+                      <Save className="h-5 w-5" /> Save
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 min-h-[48px] border rounded-xl font-bold"
+                      style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-base truncate" style={{ color: "var(--card-fg)" }}>{p.name}</p>
+                      <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+                        {p.class}
+                        {p.unique_id && <span> &middot; {p.unique_id}</span>}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold ml-2 ${
+                        p.event_registrations > 0
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
+                      }`}
+                    >
+                      {p.event_registrations}
+                    </span>
+                  </div>
+                  {p.admission_no && (
+                    <p className="text-xs mb-2" style={{ color: "var(--chart-axis)" }}>Adm: {p.admission_no}</p>
+                  )}
+                  {p.email && (
+                    <p className="text-xs mb-3" style={{ color: "var(--chart-axis)" }}>{p.email}</p>
+                  )}
+                  {canCreateParticipants && (
+                    <div className="flex gap-3 pt-2 border-t" style={{ borderColor: "var(--border-divider)" }}>
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl border font-semibold text-sm"
+                        style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                      >
+                        <Edit className="h-4 w-4" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p._id, p.name)}
+                        className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-red-200 text-red-600 font-semibold text-sm"
+                        style={{ borderColor: "var(--border-divider)" }}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="overflow-hidden border rounded-2xl" style={{ borderColor: "var(--border-card)" }}>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr style={{ backgroundColor: "var(--surface)" }}>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-                    Name
-                  </th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-                    Class
-                  </th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--chart-axis)" }}>
-                    ID
-                  </th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--chart-axis)" }}>
-                    Email
-                  </th>
-                  <th className="text-center p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-                    Events
-                  </th>
-                  <th className="text-right p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-                    Actions
-                  </th>
+                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Name</th>
+                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Class</th>
+                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--chart-axis)" }}>ID</th>
+                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--chart-axis)" }}>Email</th>
+                  <th className="text-center p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Events</th>
+                  <th className="text-right p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredParticipants.map((p) => (
-                  <tr
-                    key={p._id}
-                    className="border-t"
-                    style={{ borderColor: "var(--border-divider)" }}
-                  >
+                  <tr key={p._id} className="border-t" style={{ borderColor: "var(--border-divider)" }}>
                     {editingId === p._id ? (
                       <>
                         <td className="p-2" colSpan={5}>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <input
-                              value={editForm.name}
-                              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              placeholder="Name"
-                            />
-                            <input
-                              value={editForm.class}
-                              onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              placeholder="Class"
-                            />
-                            <input
-                              value={editForm.admission_no}
-                              onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              placeholder="Admission No"
-                            />
-                            <input
-                              value={editForm.email}
-                              onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              placeholder="Email"
-                            />
-                            <input
-                              value={editForm.phone}
-                              onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              placeholder="Phone"
-                            />
-                            <select
-                              value={editForm.gender}
-                              onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))}
-                              className="px-2 py-1.5 border rounded-lg text-sm"
-                              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                            >
+                            <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Name" />
+                            <input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Class" />
+                            <input value={editForm.admission_no} onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Admission No" />
+                            <input value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Email" />
+                            <input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Phone" />
+                            <select value={editForm.gender} onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}>
                               <option value="">Gender</option>
                               <option value="male">Male</option>
                               <option value="female">Female</option>
@@ -414,22 +486,8 @@ export default function CaptainMyGroup() {
                         </td>
                         <td className="p-2 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => handleEditSubmit(p._id)}
-                              disabled={submitting}
-                              className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all"
-                              title="Save"
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="p-2 border rounded-lg transition-all"
-                              style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                              title="Cancel"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <button onClick={() => handleEditSubmit(p._id)} disabled={submitting} className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all" title="Save"><Save className="h-4 w-4" /></button>
+                            <button onClick={cancelEdit} className="p-2 border rounded-lg transition-all" style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }} title="Cancel"><X className="h-4 w-4" /></button>
                           </div>
                         </td>
                       </>
@@ -437,50 +495,22 @@ export default function CaptainMyGroup() {
                       <>
                         <td className="p-3" style={{ color: "var(--card-fg)" }}>
                           <div className="font-semibold text-sm">{p.name}</div>
-                          {p.admission_no && (
-                            <div className="text-xs" style={{ color: "var(--chart-axis)" }}>
-                              {p.admission_no}
-                            </div>
-                          )}
+                          {p.admission_no && <div className="text-xs" style={{ color: "var(--chart-axis)" }}>{p.admission_no}</div>}
                         </td>
-                        <td className="p-3 text-sm" style={{ color: "var(--card-fg)" }}>
-                          {p.class}
-                        </td>
+                        <td className="p-3 text-sm" style={{ color: "var(--card-fg)" }}>{p.class}</td>
                         <td className="p-3 text-sm hidden sm:table-cell" style={{ color: "var(--card-fg)" }}>
-                          <code className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "var(--surface)" }}>
-                            {p.unique_id || "-"}
-                          </code>
+                          <code className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "var(--surface)" }}>{p.unique_id || "-"}</code>
                         </td>
-                        <td className="p-3 text-sm hidden md:table-cell" style={{ color: "var(--card-fg)" }}>
-                          {p.email || "-"}
-                        </td>
+                        <td className="p-3 text-sm hidden md:table-cell" style={{ color: "var(--card-fg)" }}>{p.email || "-"}</td>
                         <td className="p-3 text-center">
-                          <span
-                            className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${
-                              p.event_registrations > 0
-                                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
-                            }`}
-                          >
+                          <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${p.event_registrations > 0 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"}`}>
                             {p.event_registrations}
                           </span>
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => startEdit(p)}
-                              className="p-2 hover:bg-indigo-500/10 rounded-lg transition-all"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4 text-indigo-500" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(p._id, p.name)}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-all"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </button>
+                            <button onClick={() => startEdit(p)} className="p-2 hover:bg-indigo-500/10 rounded-lg transition-all" title="Edit"><Edit className="h-4 w-4 text-indigo-500" /></button>
+                            <button onClick={() => handleDelete(p._id, p.name)} className="p-2 hover:bg-red-500/10 rounded-lg transition-all" title="Delete"><Trash2 className="h-4 w-4 text-red-500" /></button>
                           </div>
                         </td>
                       </>

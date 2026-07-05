@@ -17,14 +17,11 @@ export const RealtimeProvider = ({ children }) => {
     if (!slug) return;
 
     const apiUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-    console.log(`[RealtimeContext] Connecting to SSE stream for competition slug: ${slug}`);
-    
     const eventSource = new EventSource(`${apiUrl}/api/live/${slug}/stream`);
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('[RealtimeContext] SSE Live update received:', data);
         
         // Listen to relevant real-time update types
         if (
@@ -48,12 +45,9 @@ export const RealtimeProvider = ({ children }) => {
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('[RealtimeContext] SSE Stream Error:', error);
-    };
+    eventSource.onerror = () => {};
 
     return () => {
-      console.log(`[RealtimeContext] Closing SSE connection for competition: ${slug}`);
       eventSource.close();
     };
   }, [competition?.slug]);

@@ -10,7 +10,6 @@ export const useLiveScore = (identifier, onUpdate) => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('Live update received:', data);
         
         if (data.type === 'RESULT_APPROVED' || data.type === 'BULK_RESULTS_APPROVED' || data.type === 'SCOREBOARD_UPDATED' || data.type === 'EVENT_STATUS_CHANGED') {
           if (onUpdate) onUpdate(data);
@@ -20,9 +19,7 @@ export const useLiveScore = (identifier, onUpdate) => {
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE Error:', error);
-    };
+    eventSource.onerror = () => {};
 
     return () => {
       eventSource.close();

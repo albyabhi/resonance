@@ -6,7 +6,7 @@ import { useRealtime } from "../../context/RealtimeContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const roles = ["admin", "captain", "student_coordinator", "faculty", "guest"];
+const roles = ["super_admin", "organizer", "event_coordinator", "judge", "participant", "house_captain"];
 
 export default function ActivityLogs() {
   const { token } = useAuth();
@@ -25,7 +25,6 @@ export default function ActivityLogs() {
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    console.log("[ActivityLogs] API CALL", endpoint, options.method || "GET");
     const data = await apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: {
@@ -34,7 +33,6 @@ export default function ActivityLogs() {
       },
       body: options.body,
     });
-    console.log("[ActivityLogs] API RESPONSE", endpoint, data);
     return data;
   };
 
@@ -48,19 +46,11 @@ export default function ActivityLogs() {
       if (resourceFilter) params.set("resource_type", resourceFilter);
       if (userSearch) params.set("user", userSearch);
 
-      console.log("[ActivityLogs] fetchLogs params", params.toString());
       const payload = await apiCall(`/api/logs?${params.toString()}`);
-      // expecting { results: [...], totalPages: n } or array
       if (Array.isArray(payload)) {
-        console.log("[ActivityLogs] fetchLogs payload (array)", payload.slice ? payload.slice(0, 5) : payload);
         setLogs(payload);
         setTotalPages(1);
       } else {
-        console.log("[ActivityLogs] fetchLogs payload (obj)", {
-          resultsPreview: Array.isArray(payload.results) ? payload.results.slice(0, 5) : undefined,
-          itemsPreview: Array.isArray(payload.items) ? payload.items.slice(0,5) : undefined,
-          keys: Object.keys(payload || {}),
-        });
 
         // Support several common backend shapes: { results: [...] }, { logs: [...] }, { items: [...], total, page, limit }
         const resolvedItems = Array.isArray(payload.results)
@@ -105,8 +95,7 @@ export default function ActivityLogs() {
     setWorkingId(id);
     setLoading(true);
     try {
-      const resp = await apiCall(`/api/logs/undo/${id}`, { method: "POST" });
-      console.log("[ActivityLogs] undo response", id, resp);
+      await apiCall(`/api/logs/undo/${id}`, { method: "POST" });
       setToast({ type: "success", text: "Undo successful" });
       await fetchLogs();
     } catch (err) {
@@ -123,8 +112,7 @@ export default function ActivityLogs() {
     setWorkingId(id);
     setLoading(true);
     try {
-      const resp = await apiCall(`/api/logs/redo/${id}`, { method: "POST" });
-      console.log("[ActivityLogs] redo response", id, resp);
+      await apiCall(`/api/logs/redo/${id}`, { method: "POST" });
       setToast({ type: "success", text: "Redo successful" });
       await fetchLogs();
     } catch (err) {

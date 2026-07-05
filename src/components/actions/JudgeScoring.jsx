@@ -3,10 +3,12 @@ import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import { RefreshCw, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
+import { useMobileMode } from "../utils/useMobileMode";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const JudgeScoring = () => {
+  const { isMobile } = useMobileMode();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -180,13 +182,13 @@ const JudgeScoring = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-3 mb-4`}>
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Assigned Events</label>
           <select
             value={selectedEventId}
             onChange={handleEventChange}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className={`w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? 'min-h-[48px] text-base px-4' : 'px-3 py-2 text-sm'}`}
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <option value="">Select an event</option>
@@ -203,7 +205,7 @@ const JudgeScoring = () => {
             value={selectedRound}
             onChange={handleRoundChange}
             disabled={!selectedEventId}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className={`w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? 'min-h-[48px] text-base px-4' : 'px-3 py-2 text-sm'}`}
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <option value="">Select round</option>
@@ -212,11 +214,11 @@ const JudgeScoring = () => {
             ))}
           </select>
         </div>
-        <div className="flex items-end">
+        <div className={`flex ${isMobile ? '' : 'items-end'}`}>
           <button
             onClick={handleRefresh}
             disabled={!selectedEventId}
-            className="px-3 py-2 border rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 flex items-center gap-1"
+            className={`w-full border rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 flex items-center justify-center gap-1 ${isMobile ? 'min-h-[48px] text-base' : 'px-3 py-2 text-sm'}`}
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <RefreshCw className="h-4 w-4" /> Refresh
@@ -242,7 +244,74 @@ const JudgeScoring = () => {
             const hasDraft = sheet?.status === "draft";
             const currentScore = scores[tid] !== undefined ? scores[tid] : (sheet?.total_score || "");
 
-            return (
+            return isMobile ? (
+              <div
+                key={tid}
+                className="border rounded-lg p-4"
+                style={{ backgroundColor: 'var(--card)', borderColor: showRescoreBtn ? 'var(--border-divider)' : 'var(--border-card)' }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-base" style={{ color: 'var(--card-fg)' }}>
+                      Chest #{p.chest_no || `T${tid.slice(-4).toUpperCase()}`}
+                    </p>
+                    {!eventData?.enable_blind_judging && p.group_name && (
+                      <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>{p.group_name}</p>
+                    )}
+                  </div>
+                  {showRescoreBtn && (
+                    <span className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 px-2 py-1 rounded border border-amber-200 dark:border-amber-500/20 font-semibold">
+                      Rescore
+                    </span>
+                  )}
+                  {isSubmitted && (
+                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Submitted</span>
+                  )}
+                  {hasDraft && (
+                    <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">Draft</span>
+                  )}
+                </div>
+                {showRescoreBtn ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRescore(tid)}
+                    className="w-full min-h-[48px] text-base bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center justify-center gap-2 font-bold"
+                  >
+                    <RotateCcw className="h-5 w-5" /> Rescore This Entry
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={currentScore}
+                      onChange={(e) => handleScoreChange(tid, e.target.value)}
+                      className="w-full min-h-[48px] px-4 border rounded-lg text-lg text-center font-mono font-bold"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                      placeholder="Score (0-100)"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => saveScore(tid, false)}
+                        className="flex-1 min-h-[48px] text-base border-2 rounded-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-800"
+                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                      >
+                        Save Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveScore(tid, true)}
+                        className="flex-1 min-h-[48px] text-base bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-bold"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
               <div
                 key={tid}
                 className="border rounded-lg p-3 flex items-center justify-between"

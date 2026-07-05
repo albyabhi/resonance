@@ -60,8 +60,7 @@ export default function PublicViewPage() {
   }, [fetchAllData]);
 
   // Use SSE to trigger instant updates
-  useLiveScore(slug, (updateData) => {
-    console.log('Live update triggered refresh:', updateData);
+  useLiveScore(slug, () => {
     fetchAllData();
   });
 

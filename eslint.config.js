@@ -24,6 +24,21 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'CallExpression[callee.object.name="localStorage"][callee.property.name="getItem"]',
+          message: 'Use getAuthToken() from apiClient.js instead of direct localStorage.getItem("auth")',
+        },
+        {
+          selector: 'CallExpression[callee.name="fetch"]',
+          message: 'Use apiFetch() or apiJson() from apiClient.js instead of raw fetch()',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="toLowerCase"][callee.object.name="role"]',
+          message: 'Use usePermission().hasRole() instead of role.toLowerCase()',
+        },
+      ],
     },
   },
 ])

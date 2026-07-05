@@ -3,6 +3,7 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
+import { useMobileMode } from "../utils/useMobileMode";
 import {
   Trophy, Users, User, CheckCircle, Plus, Search, X,
   Info, AlertCircle, UserPlus, Loader2,
@@ -10,21 +11,19 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem("auth")
-    ? JSON.parse(localStorage.getItem("auth")).token
-    : null;
-  if (!token) throw new Error("No authorization token found");
-  return apiJson(`${API_BASE_URL}${endpoint}`, {
-    method: options.method || "GET",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    body: options.body,
-  });
-};
-
 export default function CaptainEventRegister() {
-  const { competition } = useAuth();
+  const { competition, token } = useAuth();
   const { groupLabel } = useCompetition();
+  const { isMobile } = useMobileMode();
+
+  const apiCall = async (endpoint, options = {}) => {
+    if (!token) throw new Error("No auth token available");
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
+      method: options.method || "GET",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      body: options.body,
+    });
+  };
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -206,7 +205,9 @@ export default function CaptainEventRegister() {
 
       <div className="flex border-b" style={{ borderColor: "var(--border-divider)" }}>
         <button
-          className={`pb-4 px-6 font-bold text-sm transition-all border-b-2 flex items-center gap-2 ${
+          className={`transition-all border-b-2 flex items-center gap-2 ${
+            isMobile ? "min-h-[48px] px-4 text-sm" : "pb-4 px-6"
+          } font-bold ${
             activeTab === "available"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
@@ -216,7 +217,9 @@ export default function CaptainEventRegister() {
           Available Events
         </button>
         <button
-          className={`pb-4 px-6 font-bold text-sm transition-all border-b-2 flex items-center gap-2 ${
+          className={`transition-all border-b-2 flex items-center gap-2 ${
+            isMobile ? "min-h-[48px] px-4 text-sm" : "pb-4 px-6"
+          } font-bold ${
             activeTab === "registered"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
@@ -421,9 +424,13 @@ export default function CaptainEventRegister() {
       )}
 
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in duration-200">
           <div
-            className="w-full max-w-2xl rounded-3xl overflow-hidden border shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+            className={`w-full overflow-hidden border shadow-2xl flex flex-col animate-in duration-200 ${
+              isMobile
+                ? "max-h-[85vh] rounded-t-3xl"
+                : "max-w-2xl max-h-[90vh] rounded-3xl zoom-in-95 mx-4"
+            }`}
             style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}
           >
             <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: "var(--border-divider)" }}>
@@ -460,7 +467,9 @@ export default function CaptainEventRegister() {
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="e.g. Team Alpha"
-                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold transition-all"
+                    className={`w-full border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-semibold transition-all ${
+                      isMobile ? "min-h-[48px] px-4 text-base" : "px-4 py-3 text-sm"
+                    }`}
                     style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
                   />
                   <p className="text-[10px] mt-1" style={{ color: "var(--chart-axis)" }}>
@@ -480,7 +489,9 @@ export default function CaptainEventRegister() {
                     value={participantSearch}
                     onChange={(e) => setParticipantSearch(e.target.value)}
                     placeholder={`Search participants in your ${groupLabel.toLowerCase()}...`}
-                    className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                    className={`w-full pl-10 pr-4 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all ${
+                      isMobile ? "min-h-[48px] text-base py-2" : "text-sm py-2.5"
+                    }`}
                     style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
                   />
                 </div>
@@ -504,7 +515,9 @@ export default function CaptainEventRegister() {
                         <div
                           key={p._id}
                           onClick={() => !alreadyReg && toggleParticipantSelection(p._id)}
-                          className={`flex items-center justify-between px-4 py-3 transition-colors ${
+                          className={`flex items-center justify-between transition-colors ${
+                            isMobile ? "px-4 py-4 min-h-[56px]" : "px-4 py-3"
+                          } ${
                             alreadyReg
                               ? "opacity-40 cursor-not-allowed"
                               : isSelected
@@ -590,18 +603,18 @@ export default function CaptainEventRegister() {
               )}
             </div>
 
-            <div className="p-6 border-t flex justify-between items-center gap-4" style={{ borderColor: "var(--border-divider)" }}>
-              <div className="text-xs" style={{ color: "var(--chart-axis)" }}>
+            <div className={`border-t ${isMobile ? "p-4" : "p-6"}`} style={{ borderColor: "var(--border-divider)" }}>
+              <div className="text-xs mb-3" style={{ color: "var(--chart-axis)" }}>
                 {selectedEvent.event_type === "team"
                   ? `${selectedParticipantIds.length} participant${selectedParticipantIds.length !== 1 ? "s" : ""} selected`
                   : selectedParticipantIds.length > 0
                     ? "1 participant selected"
                     : "No participant selected"}
               </div>
-              <div className="flex gap-3">
+              <div className={`flex ${isMobile ? "flex-col" : "flex-row justify-end"} gap-3`}>
                 <button
                   onClick={closeRegistrationModal}
-                  className="px-5 py-2.5 border font-bold uppercase tracking-wider text-xs rounded-xl transition-all"
+                  className={`${isMobile ? "min-h-[48px] w-full text-sm" : "px-5 py-2.5 text-xs"} border font-bold uppercase tracking-wider rounded-xl transition-all`}
                   style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
                 >
                   Cancel
@@ -609,7 +622,9 @@ export default function CaptainEventRegister() {
                 <button
                   onClick={handleSubmitRegistration}
                   disabled={submitting || !selectedParticipantIds.length}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-[0.1em] text-xs rounded-xl transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                  className={`${
+                    isMobile ? "min-h-[48px] w-full text-sm" : "px-6 py-2.5 text-xs"
+                  } bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-[0.1em] rounded-xl transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2`}
                 >
                   {submitting ? (
                     <>

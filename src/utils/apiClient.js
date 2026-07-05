@@ -1,3 +1,5 @@
+import toast from "react-hot-toast";
+
 let logoutDispatched = false;
 
 export const resetApiLogoutGuard = () => {
@@ -91,11 +93,10 @@ export const apiFetch = async (url, options = {}, retry = true) => {
   const { _token, ...fetchOptions } = options; // strip internal param
 
   if (token && isTokenExpired(token) && retry) {
-    console.log("apiFetch: Token expired pre-emptively, refreshing token...");
     try {
       token = await refreshAccessToken();
-    } catch (refreshError) {
-      console.error("apiFetch: Pre-emptive token refresh failed:", refreshError);
+    } catch {
+      // Token refresh failed, proceed with existing token
     }
   }
   
@@ -110,18 +111,16 @@ export const apiFetch = async (url, options = {}, retry = true) => {
   });
 
   if (response.status === 401 && token && retry) {
-    console.log("apiFetch: 401 received, attempting token refresh");
     try {
       const newToken = await refreshAccessToken();
       const newHeaders = new Headers(fetchOptions.headers || {});
       newHeaders.set('Authorization', `Bearer ${newToken}`);
-      console.log(`apiFetch: Retrying ${fetchOptions.method || 'GET'} ${url} with refreshed token`);
       return await fetch(url, {
         ...fetchOptions,
         headers: newHeaders,
       });
-    } catch (refreshError) {
-      console.log("apiFetch: Token refresh failed, dispatching logout");
+    } catch {
+      toast.error("Session expired. Please log in again.");
       logoutDispatched = true;
       window.dispatchEvent(new Event('LOGOUT'));
       return response;
