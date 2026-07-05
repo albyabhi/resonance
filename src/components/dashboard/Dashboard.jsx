@@ -25,6 +25,8 @@ import EditHouse from "../actions/EditHouse";
 import AdminScoreboard from "../actions/AdminScoreboard";
 import ActivityLogs from "../actions/ActivityLogs";
 import CaptainMyDetails from "../actions/CaptainMyDetails";
+import CaptainMyGroup from "../actions/CaptainMyGroup";
+import CaptainEventRegister from "../actions/CaptainEventRegister";
 import DashboardStatusWidget from "../actions/DashboardStatusWidget";
 import ManageCompetition from "../actions/ManageCompetition";
 import UserSettings from "../actions/UserSettings";
@@ -32,6 +34,8 @@ import ExportReport from "../actions/ExportReport";
 import JudgeScoring from "../actions/JudgeScoring";
 import MyScores from "../actions/MyScores";
 import ManageVenue from "../actions/ManageVenue";
+import CoordinatorParticipants from "../actions/CoordinatorParticipants";
+import ScoreReview from "../actions/ScoreReview";
 
 
 const actionComponents = {
@@ -40,22 +44,26 @@ const actionComponents = {
   "Manage Houses": ManageHouse,
   "Manage Events": ManageEvents,
   "Manage Competition": ManageCompetition,
+  "Score Review": ScoreReview,
   "Scoreboard Contributions": AdminScoreboard,
   "Activity Logs": ActivityLogs,
   "Manage Participants": ManageParticipants,
   "My Teams": ManageParticipants,
   "My Events": ParticipantRegister,
-  "Event Registration": ParticipantRegister,
+  "Event Registration": CaptainEventRegister,
+  "Events": CaptainEventRegister,
+  "My Group": CaptainMyGroup,
   "My Details": CaptainMyDetails,
   "Submit Results": ManageResult,
   "My submissions": SubmissionManager,
-  "Pending approvals": PendingResult,
+  "Pending Approvals": PendingResult,
   "Manage Group Logo": EditHouse,
   "Manage House Logo": EditHouse,
   "Export Report": ExportReport,
   "My Assignments": JudgeScoring,
   "My Scores": MyScores,
   "Manage Venues": ManageVenue,
+  "Event Participants": CoordinatorParticipants,
 };
 
 export default function Dashboard({

@@ -15,6 +15,7 @@ import InvitePage from './pages/entry/InvitePage';
 import PublicViewPage from './pages/entry/PublicViewPage';
 import ForgotPasswordPage from './pages/entry/ForgotPasswordPage';
 import ResetPasswordPage from './pages/entry/ResetPasswordPage';
+import SetupPasswordPage from './pages/entry/SetupPasswordPage';
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/view/:slug" element={<PageTransition><PublicViewPage /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
         <Route path="/reset-password/:token" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
+        <Route path="/setup-password/:token" element={<PageTransition><SetupPasswordPage /></PageTransition>} />
         <Route path="/participate/:eventId" element={<PageTransition><ParticipateRedirectPage /></PageTransition>} />
         <Route path="/participant-login" element={<PageTransition><ParticipantLoginPage /></PageTransition>} />
 

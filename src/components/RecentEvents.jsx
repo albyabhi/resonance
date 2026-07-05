@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../components/AuthContext";
 import { apiFetch } from "../utils/apiClient";
 import { FadeIn } from "./AnimateReveal";
-import { Calendar, Filter, ChevronRight, Layout, Users, Trophy, Clock, MapPin, X } from "lucide-react";
+import { Calendar, Filter, ChevronRight, Layout, Users, Trophy, Clock, MapPin, X, Phone, Mail } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -274,6 +274,39 @@ function RecentEvents() {
                       </div>
                     ))}
                   </div>
+
+                  {eventDetail?.coordinator_id && (
+                    <div className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                      <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Event Coordinator</p>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                          style={{ backgroundColor: '#ea580c' }}
+                        >
+                          {(eventDetail.coordinator_id.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {eventDetail.coordinator_id.name}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            {eventDetail.coordinator_id.email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {eventDetail.coordinator_id.email}
+                              </span>
+                            )}
+                            {eventDetail.coordinator_id.phone && eventDetail.coordinator_id.phone_visible && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {eventDetail.coordinator_id.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <section>
                     <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">

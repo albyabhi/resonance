@@ -9,6 +9,8 @@ import {
   FileDown,
   BarChart3,
   Shield,
+  UserCircle,
+  Image,
 } from "lucide-react";
 
 export const roleConfig = {
@@ -20,6 +22,7 @@ export const roleConfig = {
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
+      { label: "Score Review", icon: CheckCircle },
       { label: "Scoreboard Contributions", icon: CheckCircle },
       { label: "Activity Logs", icon: Bell },
       { label: "Export Report", icon: FileDown },
@@ -34,6 +37,7 @@ export const roleConfig = {
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
+      { label: "Score Review", icon: CheckCircle },
       { label: "Pending Approvals", icon: ClipboardList },
       { label: "Export Report", icon: FileDown },
       { label: "Activity Logs", icon: Bell },
@@ -45,9 +49,7 @@ export const roleConfig = {
     title: "Event Coordinator",
     actions: [
       { label: "Manage Events", icon: Calendar },
-      { label: "Manage Schedule", icon: Settings },
-      { label: "Submit Results", icon: ClipboardList },
-      { label: "My Submissions", icon: CheckCircle },
+      { label: "Event Participants", icon: Users },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -64,11 +66,10 @@ export const roleConfig = {
   house_captain: {
     title: "House Captain",
     actions: [
-      { label: "My Teams", icon: Users },
-      { label: "My Events", icon: Calendar },
-      { label: "Event Registration", icon: UserPlus },
-      { label: "Manage Group Logo", icon: UserPlus },
-      { label: "My Details", icon: Users },
+      { label: "Events", icon: Calendar },
+      { label: "My Group", icon: Users },
+      { label: "Manage Group Logo", icon: Image },
+      { label: "My Details", icon: UserCircle },
     ],
     modules: { standings: true, events: true, stats: true },
   },

@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import useDashboardData from "../../hooks/useDashboardData";
 import { useAuth } from "../AuthContext";
-import { Calendar, Trophy, AlertCircle, CheckCircle, Activity, TrendingUp, Medal, ClipboardCheck, Flag } from "lucide-react";
+import { Calendar, Trophy, AlertCircle, CheckCircle, Activity, TrendingUp, Medal, ClipboardCheck, Flag, ClipboardList } from "lucide-react";
 import usePermission from "../../hooks/usePermission";
 import { useCompetition } from "../../context/CompetitionContext";
+import { apiJson } from "../../utils/apiClient";
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 import StatCard from "../StatCard";
 import TopHouses from "../widgets/TopHouses";
@@ -209,11 +212,31 @@ function ResultProgress({ results = [] }) {
 
 export default function DashboardVisuals() {
   const { data, loading, error } = useDashboardData();
-  const { role, user } = useAuth();
+  const { role, user, token } = useAuth();
   const { hasAnyRole, hasRole } = usePermission();
   const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
   const userHouseId = user?.house?._id || user?.house;
   const userGroupId = getId(userHouseId);
+
+  const [judgeAssignments, setJudgeAssignments] = useState([]);
+  const [judgeSheets, setJudgeSheets] = useState([]);
+
+  useEffect(() => {
+    if (!token || role !== "judge") return;
+    const fetchJudgeData = async () => {
+      try {
+        const [assignRes, sheetsRes] = await Promise.all([
+          apiJson(`${API_BASE_URL}/api/judge/assignments`),
+          apiJson(`${API_BASE_URL}/api/judge/scores`),
+        ]);
+        setJudgeAssignments(assignRes.data || []);
+        setJudgeSheets(sheetsRes.data || []);
+      } catch {
+        // Judge data fetch failed — silently ignore, dashboard still renders
+      }
+    };
+    fetchJudgeData();
+  }, [token, role]);
 
   if (loading) {
     return (
@@ -248,9 +271,11 @@ export default function DashboardVisuals() {
     ? "admin"
     : hasRole("house_captain")
       ? "captain"
-      : hasAnyRole("judge", "event_coordinator")
-        ? "coordinator"
-        : "guest";
+      : hasRole("judge")
+        ? "judge"
+        : hasAnyRole("event_coordinator")
+          ? "coordinator"
+          : "guest";
 
   const renderAdminWidgets = () => (
     <div className="space-y-6">
@@ -310,14 +335,17 @@ export default function DashboardVisuals() {
 
   const renderStudentCoordinatorWidgets = () => {
     const pendingCount = results.filter((r) => r.status === "pending").length;
-    const mySubmissions = results.filter((r) => r.submitted_by === user?.id).length;
+    const assignedEvents = events.filter((e) => {
+      const cid = e.coordinator_id?._id || e.coordinator_id;
+      return cid && String(cid) === String(user?.id);
+    });
 
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-3 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-6 w-full">
-          <StatCard title="My submissions" value={mySubmissions} icon={CheckCircle} variant="emerald" delay={0.1} />
+          <StatCard title="Assigned events" value={assignedEvents.length} subtitle={`${events.length} total events`} icon={Calendar} variant="indigo" delay={0.1} />
           <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.2} />
-          <StatCard title="Live events" value={liveEvents.length} icon={Activity} variant="indigo" delay={0.3} />
+          <StatCard title="Live events" value={liveEvents.length} icon={Activity} variant="emerald" delay={0.3} />
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <SectionCard title="Recent winners" description="Approved first-place results" className="lg:col-span-7">
@@ -360,6 +388,76 @@ export default function DashboardVisuals() {
     );
   };
 
+  const renderJudgeWidgets = () => {
+    const assignedEvents = [];
+    const assignedEventIds = new Set();
+    for (const a of judgeAssignments) {
+      const eid = String(a.event_id?._id || a.event_id);
+      assignedEventIds.add(eid);
+      const evt = events.find((e) => String(e._id || e.event_id) === eid);
+      if (evt) assignedEvents.push(evt);
+    }
+
+    const draftSheets = judgeSheets.filter((s) => s.status === "draft").length;
+    const submittedSheets = judgeSheets.filter((s) => s.status === "submitted").length;
+    const activeAssignedEvents = assignedEvents.filter(
+      (e) => e.status === "judging" || e.status === "ongoing" || e.status === "registration_open"
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-3 sm:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 w-full">
+          <StatCard title="Assigned Events" value={assignedEvents.length} subtitle={`${activeAssignedEvents.length} active`} icon={ClipboardList} variant="indigo" delay={0.1} />
+          <StatCard title="Draft Scores" value={draftSheets} subtitle="Pending submission" icon={AlertCircle} variant="amber" delay={0.2} />
+          <StatCard title="Submitted Scores" value={submittedSheets} subtitle="Awaiting aggregation" icon={CheckCircle} variant="emerald" delay={0.3} />
+        </div>
+        {assignedEvents.length > 0 ? (
+          <SectionCard title="My Assigned Events" description="Events you need to score" className="w-full">
+            <div className="space-y-2">
+              {assignedEvents.map((evt) => {
+                const eid = String(evt._id || evt.event_id);
+                const eventSheets = judgeSheets.filter(
+                  (s) => String(s.event_id?._id || s.event_id) === eid
+                );
+                const submitted = eventSheets.filter((s) => s.status === "submitted").length;
+                const draft = eventSheets.filter((s) => s.status === "draft").length;
+                return (
+                  <div
+                    key={eid}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)" }}
+                  >
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--card-fg)" }}>
+                        {evt.name || evt.title}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--chart-axis)" }}>
+                        {evt.rounds} round(s) · {submitted} submitted · {draft} draft
+                      </p>
+                    </div>
+                    <span className={`text-xs rounded px-2 py-1 font-medium ${
+                      evt.status === "judging"
+                        ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+                        : evt.status === "ongoing"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                          : "bg-gray-50 text-gray-600 dark:bg-gray-500/10 dark:text-gray-400"
+                    }`}>
+                      {evt.status?.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+        ) : (
+          <SectionCard title="My Assigned Events" description="Events you need to score" className="w-full">
+            <EmptyPanel icon={ClipboardList} message="No events assigned yet. Contact an organizer." />
+          </SectionCard>
+        )}
+      </div>
+    );
+  };
+
   const renderGuestWidgets = () => (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <SectionCard title="Standings" description="Current competition ranking" className="lg:col-span-7">
@@ -388,7 +486,7 @@ export default function DashboardVisuals() {
     );
   }
 
-  if (!hasAnyRole("super_admin", "organizer")) {
+  if (!hasAnyRole("super_admin", "organizer", "event_coordinator", "judge")) {
     return (
       <div className="flex w-full flex-col gap-6">
         <FadeIn delay={0.1}>
@@ -406,19 +504,20 @@ export default function DashboardVisuals() {
         {dashboardKind === "admin" && renderAdminWidgets()}
         {dashboardKind === "captain" && renderCaptainWidgets()}
         {dashboardKind === "coordinator" && renderStudentCoordinatorWidgets()}
+        {dashboardKind === "judge" && renderJudgeWidgets()}
         {dashboardKind === "faculty" && renderFacultyWidgets()}
         {dashboardKind === "guest" && renderGuestWidgets()}
       </FadeIn>
 
       <FadeIn delay={0.3}>
-      <SectionCard title={`${groupLabel} performance`} description="Standings and points">
-          <div className="h-[320px] w-full sm:h-[380px]">
+        {dashboardKind !== "judge" && (
+          <SectionCard title={`${groupLabel} performance`} description="Standings and points">
             <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
-          </div>
-        </SectionCard>
+          </SectionCard>
+        )}
       </FadeIn>
 
-      {dashboardKind !== "guest" && dashboardKind !== "admin" && (
+      {dashboardKind !== "guest" && dashboardKind !== "admin" && dashboardKind !== "judge" && (
         <FadeIn delay={0.5} className="w-full max-w-sm">
           <TopHouses scoreboard={normalizedScoreboard} />
         </FadeIn>

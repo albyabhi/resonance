@@ -4,11 +4,12 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
-import { Share2, Copy, Download, X, QrCode, ChevronDown, ChevronRight, Plus, Trash2, Clock } from "lucide-react";
+import { Share2, Copy, Download, X, QrCode, ChevronDown, ChevronRight, Plus, Trash2, Clock, UserCheck } from "lucide-react";
 import { useRealtime } from "../../context/RealtimeContext";
 import EventStatusBadge from "../EventStatusBadge";
 import EventStatusSelector from "../EventStatusSelector";
 import EventTimeline from "../EventTimeline";
+import ManageJudges from "./ManageJudges";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -76,6 +77,7 @@ const DEFAULT_EVENT_FORM = {
   eligibility: "",
   status: "draft",
   registration_closes_at: "",
+  coordinator_id: "",
 };
 
 const DEFAULT_ROUND = {
@@ -108,7 +110,7 @@ const getCurrentScheduleDefaults = () => {
 
 
 const ManageEvents = () => {
-  const { token, competition } = useAuth();
+  const { token, competition, role } = useAuth();
   const { groupLabel } = useCompetition();
   const { lastUpdate } = useRealtime() || {};
   const [activeTab, setActiveTab] = useState("manage"); // manage | add | edit
@@ -139,6 +141,10 @@ const ManageEvents = () => {
   // Client-side validation state
   const [fieldErrors, setFieldErrors] = useState({});
   const [sharingEvent, setSharingEvent] = useState(null);
+  const [managingJudges, setManagingJudges] = useState(null);
+
+  // Coordinator selection
+  const [coordinators, setCoordinators] = useState([]);
 
   // Unified API call
   const apiCall = async (endpoint, options = {}) => {
@@ -191,6 +197,20 @@ const ManageEvents = () => {
     if (token) fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, lastUpdate]);
+
+  // Fetch coordinator list for assignment dropdown
+  useEffect(() => {
+    if (!token) return;
+    const fetchCoordinators = async () => {
+      try {
+        const { data } = await apiCall("/api/event/coordinators");
+        setCoordinators(data || []);
+      } catch {
+        setCoordinators([]);
+      }
+    };
+    fetchCoordinators();
+  }, [token]);
 
   // Helpers
   const resetForms = () => {
@@ -257,6 +277,7 @@ const ManageEvents = () => {
         registration_closes_at: event.registration_closes_at
           ? new Date(event.registration_closes_at).toISOString().slice(0, 16)
           : "",
+        coordinator_id: event.coordinator_id?._id || event.coordinator_id || "",
       });
 
       const roundsData = (schedules || [])
@@ -672,17 +693,19 @@ const ManageEvents = () => {
             >
               Manage Events
             </button>
-            <button
-              className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
-                activeTab === "add" || activeTab === "edit"
-                  ? "bg-orange-600 text-white shadow"
-                  : "hover:bg-indigo-500/5"
-              } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
-              style={(activeTab !== "add" && activeTab !== "edit") ? { color: 'var(--card-fg)' } : {}}
-              onClick={startAdd}
-            >
-              {editingEventId ? "Edit Event" : "Add Event"}
-            </button>
+            {(role !== "event_coordinator" || editingEventId) && (
+              <button
+                className={`flex-1 min-h-[44px] px-4 py-3 text-sm md:text-base font-medium rounded-lg transition ${
+                  activeTab === "add" || activeTab === "edit"
+                    ? "bg-orange-600 text-white shadow"
+                    : "hover:bg-indigo-500/5"
+                } focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+                style={(activeTab !== "add" && activeTab !== "edit") ? { color: 'var(--card-fg)' } : {}}
+                onClick={startAdd}
+              >
+                {editingEventId ? "Edit Event" : "Add Event"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -732,12 +755,14 @@ const ManageEvents = () => {
                     <option key={t.value} value={t.value} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
                   ))}
                 </select>
-                <button
-                  onClick={startAdd}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700"
-                >
-                  Add Event
-                </button>
+                {role !== "event_coordinator" && (
+                  <button
+                    onClick={startAdd}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700"
+                  >
+                    Add Event
+                  </button>
+                )}
               </div>
             </div>
 
@@ -820,8 +845,16 @@ const ManageEvents = () => {
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => setSharingEvent(e)}
+                                  <button
+                                    onClick={() => setManagingJudges(e)}
+                                    className="px-3 py-1 border rounded-lg text-sm font-bold flex items-center gap-1"
+                                    style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                                    title="Manage Judges"
+                                  >
+                                    <UserCheck className="h-3.5 w-3.5 text-orange-600" /> Judges
+                                  </button>
+                                  <button
+                                    onClick={() => setSharingEvent(e)}
                           className="flex-1 px-3 py-2 min-h-[44px] border rounded-lg text-sm font-bold flex items-center justify-center gap-1"
                           style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                         >
@@ -908,12 +941,20 @@ const ManageEvents = () => {
                                 >
                                   Edit
                                 </button>
-                                <button
-                                  onClick={() => setSharingEvent(e)}
-                                  className="px-3 py-1 border rounded-lg text-sm font-bold flex items-center gap-1"
-                                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                                >
-                                  <Share2 className="h-3.5 w-3.5 text-orange-600" /> Share
+                                  <button
+                                    onClick={() => setManagingJudges(e)}
+                                    className="px-3 py-1 border rounded-lg text-sm font-bold flex items-center gap-1"
+                                    style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                                    title="Manage Judges"
+                                  >
+                                    <UserCheck className="h-3.5 w-3.5 text-orange-600" /> Judges
+                                  </button>
+                                  <button
+                                    onClick={() => setSharingEvent(e)}
+                                    className="px-3 py-1 border rounded-lg text-sm font-bold flex items-center gap-1"
+                                    style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                                  >
+                                    <Share2 className="h-3.5 w-3.5 text-orange-600" /> Share
                                 </button>
                                 <button
                                   onClick={() => deleteEvent(id)}
@@ -1008,6 +1049,20 @@ const ManageEvents = () => {
                       placeholder="Brief description of the event"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                       style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--chart-axis)' }}>Event Coordinator</label>
+                    <select value={eventForm.coordinator_id}
+                      onChange={(e) => handleEventChange("coordinator_id", e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                      <option value="" className="bg-white dark:bg-[#0B1220]">None</option>
+                      {coordinators.map((c) => (
+                        <option key={c._id} value={c._id} className="bg-white dark:bg-[#0B1220]">
+                          {c.name}{c.email ? ` (${c.email})` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </section>
@@ -1422,6 +1477,15 @@ const ManageEvents = () => {
             </div>
           );
         })()}
+
+        {/* Manage Judges Modal */}
+        {managingJudges && (
+          <ManageJudges
+            event={managingJudges}
+            onClose={() => setManagingJudges(null)}
+            onUpdated={() => { fetchAll(); }}
+          />
+        )}
       </div>
     </div>
   );

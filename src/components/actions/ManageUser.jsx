@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { FadeIn } from "../AnimateReveal";
-import { UserPlus, Users, Edit3, Trash2, Shield, House, Search, Filter } from "lucide-react";
+import { UserPlus, Users, Edit3, Trash2, Search, Copy, ExternalLink, Link } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
+import toast from "react-hot-toast";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -31,6 +32,7 @@ const ManageUser = () => {
   const [editingUserId, setEditingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [credentials, setCredentials] = useState(null);
 
   const roleOptions = BASE_ROLE_OPTIONS;
 
@@ -99,17 +101,23 @@ const ManageUser = () => {
         role: formData.role,
       };
 
-      if (!editingUserId) body.password = formData.password;
+      if (!editingUserId && formData.password) body.password = formData.password;
       if (formData.house) body.house = formData.house;
 
-      await apiCall(endpoint, {
+      const resp = await apiCall(endpoint, {
         method,
         body: JSON.stringify(body),
       });
 
       setFormData({ name: "", username: "", password: "", role: "participant", house: "" });
       setEditingUserId(null);
-      setActiveTab("manage");
+
+      if (!editingUserId && resp.credentials) {
+        setCredentials(resp.credentials);
+      } else {
+        setActiveTab("manage");
+      }
+
       await fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -140,6 +148,25 @@ const ManageUser = () => {
     }
   };
 
+  const handleResendLink = async (userId) => {
+    try {
+      const resp = await apiCall(`/api/users/setup-link/${userId}`, { method: "POST" });
+      await navigator.clipboard.writeText(resp.setup_link);
+      toast.success(`Setup link copied to clipboard for ${resp.email}`);
+    } catch (err) {
+      toast.error(err.message || "Failed to generate setup link");
+    }
+  };
+
+  const copyToClipboard = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
   const filteredUsers = users.filter((u) =>
     !searchQuery || (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -155,7 +182,7 @@ const ManageUser = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold theme-text-primary">User Management</h2>
           <button
-            onClick={() => { setActiveTab(activeTab === "manage" ? "add" : "manage"); setEditingUserId(null); setFormData({ name: "", username: "", password: "", role: "participant", house: "" }); }}
+            onClick={() => { setActiveTab(activeTab === "manage" ? "add" : "manage"); setEditingUserId(null); setCredentials(null); setFormData({ name: "", username: "", password: "", role: "participant", house: "" }); }}
             className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
@@ -170,11 +197,90 @@ const ManageUser = () => {
           </div>
         )}
 
-        {activeTab === "add" && (
+        {credentials && (
+          <div className="rounded-2xl p-6 theme-card border-2 border-green-200 dark:border-green-900/40">
+            <h3 className="text-lg font-semibold text-green-600 dark:text-green-400 mb-4">
+              User Created — Share Credentials
+            </h3>
+            <div className="overflow-x-auto rounded-lg border mb-4" style={{ borderColor: 'var(--border-card)' }}>
+              <table className="w-full text-sm">
+                <thead style={{ backgroundColor: 'var(--surface)' }}>
+                  <tr>
+                    <th className="p-3 text-left font-semibold theme-text-secondary">Field</th>
+                    <th className="p-3 text-left font-semibold theme-text-secondary">Value</th>
+                    <th className="p-3 text-left font-semibold theme-text-secondary">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b" style={{ borderColor: 'var(--border-divider)' }}>
+                    <td className="p-3 font-medium theme-text-primary">Email</td>
+                    <td className="p-3 theme-text-secondary">{credentials.email}</td>
+                    <td className="p-3">
+                      <button onClick={() => copyToClipboard(credentials.email, "Email")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
+                        style={{ color: 'var(--accent)' }}>
+                        <Copy className="h-3 w-3" /> Copy
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor: 'var(--border-divider)' }}>
+                    <td className="p-3 font-medium theme-text-primary">Password</td>
+                    <td className="p-3 font-mono text-orange-600 dark:text-orange-400">{credentials.password}</td>
+                    <td className="p-3">
+                      <button onClick={() => copyToClipboard(credentials.password, "Password")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
+                        style={{ color: 'var(--accent)' }}>
+                        <Copy className="h-3 w-3" /> Copy
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-medium theme-text-primary">Setup Link</td>
+                    <td className="p-3">
+                      <span className="text-xs break-all theme-text-secondary">{credentials.setup_link}</span>
+                    </td>
+                    <td className="p-3">
+                      <button onClick={() => copyToClipboard(credentials.setup_link, "Setup link")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
+                        style={{ color: 'var(--accent)' }}>
+                        <Copy className="h-3 w-3" /> Copy Link
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs mb-4" style={{ color: 'var(--chart-axis)' }}>
+              Share the password or the setup link with the user. The link expires in 7 days.
+              The user can set their password at the link and then sign in.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setCredentials(null); setActiveTab("manage"); }}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
+                Done — View All Users
+              </button>
+              <button
+                onClick={() => { setCredentials(null); }}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
+                style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}
+              >
+                Add Another User
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "add" && !credentials && (
           <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl p-6 theme-card">
             <h3 className="text-lg font-semibold theme-text-primary">
               {editingUserId ? "Edit User" : "Add New User"}
             </h3>
+            <p className="text-xs theme-text-secondary -mt-3">
+              Password is optional — leave blank to auto-generate a secure password and setup link.
+            </p>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
@@ -206,14 +312,15 @@ const ManageUser = () => {
 
               {!editingUserId && (
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">Password</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">
+                    Password <span className="font-normal lowercase opacity-60">(optional)</span>
+                  </label>
                   <input
                     name="password"
                     type="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Min 6 characters"
-                    required
+                    placeholder="Leave blank to auto-generate"
                     className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
                     style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                   />
@@ -319,7 +426,14 @@ const ManageUser = () => {
                         </td>
                         <td className="px-4 py-3 theme-text-secondary">{user.house?.name || "-"}</td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleResendLink(user._id)}
+                              title="Generate setup link"
+                              className="rounded-lg p-2 transition-colors hover:bg-emerald-500/10"
+                            >
+                              <ExternalLink className="h-4 w-4 text-emerald-500" />
+                            </button>
                             <button onClick={() => handleEdit(user)}
                               className="rounded-lg p-2 transition-colors hover:bg-indigo-500/10">
                               <Edit3 className="h-4 w-4" style={{ color: 'var(--accent)' }} />
