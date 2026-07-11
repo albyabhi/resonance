@@ -1,12 +1,3 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../AuthContext";
-import { useCompetition } from "../../context/CompetitionContext";
-import { apiJson } from "../../utils/apiClient";
-import { useRealtime } from "../../context/RealtimeContext";
-import { EVENT_STATUSES } from "../../utils/eventStatus";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
 const DASHBOARD_STATUS_GROUPS = [
   { key: "registration_open", label: "Registrations Open", color: "bg-blue-500" },
   { key: "ongoing", label: "Ongoing", color: "bg-emerald-500" },
@@ -16,42 +7,7 @@ const DASHBOARD_STATUS_GROUPS = [
   { key: "draft", label: "Draft", color: "bg-gray-400" },
 ];
 
-export default function DashboardStatusWidget() {
-  const { token } = useAuth();
-  const { competition } = useCompetition();
-  const { lastUpdate } = useRealtime() || {};
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchSummary = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setError("");
-    try {
-      const competitionId = competition?._id || competition?.id;
-      const query = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
-      const resp = await apiJson(`${API_BASE_URL}/api/event/status-summary${query}`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSummary(resp.data || {});
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [token, competition?._id]);
-
-  useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary, lastUpdate]);
-
-  const renderCount = (key) => {
-    if (!summary) return 0;
-    return summary[key] || 0;
-  };
-
+export default function DashboardStatusWidget({ summary = null, loading = false }) {
   const total = summary
     ? Object.values(summary).reduce((a, b) => a + b, 0)
     : 0;
@@ -65,9 +21,7 @@ export default function DashboardStatusWidget() {
     );
   }
 
-  if (error) {
-    return null;
-  }
+  if (!summary) return null;
 
   return (
     <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
@@ -77,7 +31,7 @@ export default function DashboardStatusWidget() {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {DASHBOARD_STATUS_GROUPS.map((group) => {
-          const count = renderCount(group.key);
+          const count = summary[group.key] || 0;
           return (
             <div
               key={group.key}

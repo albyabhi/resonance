@@ -19,7 +19,7 @@ export function AnimateReveal({ children, delay = 0, className = "" }) {
   );
 }
 
-export function FadeIn({ children, delay = 0, className = "" }) {
+export function FadeIn({ children, delay = 0, className = "", style }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -31,6 +31,7 @@ export function FadeIn({ children, delay = 0, className = "" }) {
         ease: "easeOut" 
       }}
       className={className}
+      style={style}
     >
       {children}
     </motion.div>

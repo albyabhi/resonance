@@ -12,7 +12,6 @@ import StatCard from "../StatCard";
 import TopHouses from "../widgets/TopHouses";
 import ParticipantHighlights from "../widgets/ParticipantHighlights";
 import HousePerformanceChart from "../charts/HousePerformanceChart";
-import ResultStatusChart from "../charts/ResultStatusChart";
 import { FadeIn } from "../AnimateReveal";
 import DashboardEmptyState from "./DashboardEmptyState";
 
@@ -118,13 +117,26 @@ function StandingsTable({ scoreboard = [], userHouseId }) {
 }
 
 function RecentWinners({ results = [] }) {
-  const winners = results
-    .filter((result) => result.status === "approved" && Number(result.position) === 1)
-    .sort((a, b) => (getDateValue(b)?.getTime() || 0) - (getDateValue(a)?.getTime() || 0))
-    .slice(0, 5);
+  const RELEASED_STATUSES = new Set(["approved", "published", "locked"]);
+
+  const firstPlace = results
+    .filter((result) => RELEASED_STATUSES.has(result.status) && Number(result.position) === 1)
+    .sort((a, b) => (getDateValue(b)?.getTime() || 0) - (getDateValue(a)?.getTime() || 0));
+
+  const seen = new Set();
+  const groupedByEvent = [];
+  for (const result of firstPlace) {
+    const eventId = getId(result.event_id);
+    if (!seen.has(eventId)) {
+      seen.add(eventId);
+      groupedByEvent.push(result);
+    }
+  }
+
+  const winners = groupedByEvent.slice(0, 3);
 
   if (!winners.length) {
-    return <EmptyPanel icon={Medal} message="Recent winners will show once first-place results are approved." />;
+    return <EmptyPanel icon={Medal} message="Recent winners will show once event results are released." />;
   }
 
   return (
@@ -210,6 +222,15 @@ function ResultProgress({ results = [] }) {
   );
 }
 
+function StatCardsRow({ cards, count }) {
+  const gridCols = count === 3 ? "grid-cols-3 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-4 sm:grid-cols-2 xl:grid-cols-4";
+  return (
+    <div className={`grid ${gridCols} gap-2 sm:gap-6 w-full`}>
+      {cards.map((card, i) => <StatCard key={i} {...card} />)}
+    </div>
+  );
+}
+
 export default function DashboardVisuals() {
   const { data, loading, error } = useDashboardData();
   const { role, user, token } = useAuth();
@@ -262,7 +283,6 @@ export default function DashboardVisuals() {
 
   const { scoreboard, events, results, schedules, participantStats, systemStats } = data;
   const normalizedScoreboard = normalizeScoreboard(scoreboard);
-  const pendingResults = results.filter((r) => r.status === "pending");
   const liveEvents = events.filter((e) => e.status === "live");
   const completedEvents = events.filter((e) => e.status === "completed");
   const nextEvents = events.filter((e) => e.status !== "completed");
@@ -277,116 +297,35 @@ export default function DashboardVisuals() {
           ? "coordinator"
           : "guest";
 
-  const renderAdminWidgets = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6 w-full">
-        <StatCard title="Events running" value={liveEvents.length} subtitle={`${nextEvents.length} open or upcoming`} icon={Flag} variant="indigo" delay={0.1} />
-        <StatCard title="Completed events" value={completedEvents.length} subtitle={`${events.length} total events`} icon={CheckCircle} variant="emerald" delay={0.2} />
-        <StatCard title="Pending results" value={pendingResults.length} subtitle="Need review before points count" icon={ClipboardCheck} variant="amber" delay={0.3} />
-        <StatCard title="Current leader" value={leader ? getScoreboardName(leader) : "-"} subtitle={leader ? `${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet"} icon={Trophy} variant="violet" delay={0.4} />
-      </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="lg:col-span-7">
-          <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
-        </SectionCard>
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <ParticipantHighlights participantStats={participantStats} />
-          <SectionCard title="Result progress" description="Approval status across submitted results" className="w-full">
-            <ResultProgress results={results} />
-          </SectionCard>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Recent winners" description="Latest approved first-place results">
-          <RecentWinners results={results} />
-        </SectionCard>
-        <SectionCard title="New events" description="Live and upcoming competition events">
-          <UpcomingEvents events={events} schedules={schedules} />
-        </SectionCard>
-      </div>
-    </div>
-  );
+  const isEmpty = events.length === 0 && results.length === 0;
 
-  const renderCaptainWidgets = () => {
-    const houseTeamsCount = systemStats?.byHouse?.find((h) => getId(h.house_id) === userGroupId)?.count || 0;
-    const currentGroup = normalizedScoreboard.find((h) => getScoreboardId(h) === userGroupId);
+  if (!loading && !error && isEmpty) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-4 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6 w-full">
-          <StatCard title="Registered teams" value={houseTeamsCount} icon={Activity} variant="indigo" delay={0.1} />
-          <StatCard title="Available events" value={nextEvents.length} icon={Calendar} variant="violet" delay={0.2} />
-          <StatCard title="Group points" value={currentGroup ? getScoreboardPoints(currentGroup) : 0} icon={Trophy} variant="amber" delay={0.3} />
-          <StatCard title="Current rank" value={currentGroup ? `#${currentGroup.rank}` : "-"} icon={TrendingUp} variant="emerald" delay={0.4} />
-        </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <SectionCard title="Standings" description="Where your group sits now" className="lg:col-span-7">
-            <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
-          </SectionCard>
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <ParticipantHighlights participantStats={participantStats} userGroupId={userGroupId} />
-            <SectionCard title="New events" description="Live and upcoming competition events" className="w-full">
-              <UpcomingEvents events={events} schedules={schedules} />
-            </SectionCard>
-          </div>
-        </div>
+      <div className="flex w-full flex-col gap-6 mt-4">
+        <DashboardEmptyState role={role} />
       </div>
     );
-  };
+  }
 
-  const renderStudentCoordinatorWidgets = () => {
-    const pendingCount = results.filter((r) => r.status === "pending").length;
-    const assignedEvents = events.filter((e) => {
-      const cid = e.coordinator_id?._id || e.coordinator_id;
-      return cid && String(cid) === String(user?.id);
-    });
-
+  if (!hasAnyRole("super_admin", "organizer", "event_coordinator", "judge")) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-3 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-6 w-full">
-          <StatCard title="Assigned events" value={assignedEvents.length} subtitle={`${events.length} total events`} icon={Calendar} variant="indigo" delay={0.1} />
-          <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.2} />
-          <StatCard title="Live events" value={liveEvents.length} icon={Activity} variant="emerald" delay={0.3} />
-        </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <SectionCard title="Recent winners" description="Approved first-place results" className="lg:col-span-7">
-            <RecentWinners results={results} />
-          </SectionCard>
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <ParticipantHighlights participantStats={participantStats} />
-            <SectionCard title="New events" description="Live and upcoming competition events" className="w-full">
-              <UpcomingEvents events={events} schedules={schedules} />
-            </SectionCard>
+      <div className="flex w-full flex-col gap-6">
+        <FadeIn delay={0.1}>
+          <div className="w-full max-w-sm">
+            <TopHouses scoreboard={normalizedScoreboard} />
           </div>
-        </div>
+        </FadeIn>
       </div>
     );
-  };
+  }
 
-  const renderFacultyWidgets = () => {
-    const pendingCount = results.filter((r) => r.status === "pending").length;
-    return (
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="grid grid-cols-2 lg:flex lg:flex-col gap-2 lg:gap-6 lg:col-span-4 w-full">
-          <StatCard title="Pending review" value={pendingCount} icon={AlertCircle} variant="amber" delay={0.1} />
-          <StatCard title="Reviewed results" value={results.length - pendingCount} icon={CheckCircle} variant="emerald" delay={0.2} />
-        </div>
-        <SectionCard title="Review status" description="Result review progress" className="lg:col-span-8">
-          <div className="h-[300px] w-full">
-            <ResultStatusChart results={results} />
-          </div>
-        </SectionCard>
-        <SectionCard title="Recent winners" description="Latest approved first-place results" className="lg:col-span-6">
-          <RecentWinners results={results} />
-        </SectionCard>
-        <div className="lg:col-span-6 flex flex-col gap-6">
-          <ParticipantHighlights participantStats={participantStats} />
-          <SectionCard title="Standings" description={`${groupLabelPlural} ranked by approved points`} className="w-full">
-            <StandingsTable scoreboard={normalizedScoreboard} userHouseId={userGroupId} />
-          </SectionCard>
-        </div>
-      </div>
-    );
-  };
+  const houseTeamsCount = systemStats?.byHouse?.find((h) => getId(h.house_id) === userGroupId)?.count || 0;
+  const currentGroup = normalizedScoreboard.find((h) => getScoreboardId(h) === userGroupId);
+  const pendingCount = results.filter((r) => r.status === "pending").length;
+  const coordinatorEvents = events.filter((e) => {
+    const cid = e.coordinator_id?._id || e.coordinator_id;
+    return cid && String(cid) === String(user?.id);
+  });
 
   const renderJudgeWidgets = () => {
     const assignedEvents = [];
@@ -406,7 +345,7 @@ export default function DashboardVisuals() {
 
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-3 sm:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 w-full">
+        <div className="grid grid-cols-3 gap-2 sm:gap-6 w-full">
           <StatCard title="Assigned Events" value={assignedEvents.length} subtitle={`${activeAssignedEvents.length} active`} icon={ClipboardList} variant="indigo" delay={0.1} />
           <StatCard title="Draft Scores" value={draftSheets} subtitle="Pending submission" icon={AlertCircle} variant="amber" delay={0.2} />
           <StatCard title="Submitted Scores" value={submittedSheets} subtitle="Awaiting aggregation" icon={CheckCircle} variant="emerald" delay={0.3} />
@@ -458,61 +397,161 @@ export default function DashboardVisuals() {
     );
   };
 
-  const renderGuestWidgets = () => (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-      <SectionCard title="Standings" description="Current competition ranking" className="lg:col-span-7">
-        <StandingsTable scoreboard={normalizedScoreboard} />
-      </SectionCard>
-      <div className="lg:col-span-5 flex flex-col gap-6">
-        <ParticipantHighlights participantStats={participantStats} />
-        <TopHouses scoreboard={normalizedScoreboard} />
-      </div>
-      <SectionCard title="Recent winners" description="Latest approved first-place results" className="lg:col-span-6">
-        <RecentWinners results={results} />
-      </SectionCard>
-      <SectionCard title="New events" description="Live and upcoming competition events" className="lg:col-span-6">
-        <UpcomingEvents events={events} schedules={schedules} />
-      </SectionCard>
-    </div>
-  );
+  const STANDINGS = "standings";
+  const PARTICIPANT_HIGHLIGHTS = "participantHighlights";
+  const RESULT_PROGRESS = "resultProgress";
+  const RECENT_WINNERS = "recentWinners";
+  const UPCOMING_EVENTS = "upcomingEvents";
+  const TOP_HOUSES = "topHouses";
 
-  const isEmpty = events.length === 0 && results.length === 0;
+  const sectionWidget = (type, colSpan, extraProps = {}) => {
+    switch (type) {
+      case STANDINGS:
+        return (
+          <SectionCard title="Standings" description={extraProps.description} className={`lg:col-span-${colSpan}`}>
+            <StandingsTable scoreboard={normalizedScoreboard} userHouseId={extraProps.userHouseId !== false ? userGroupId : undefined} />
+          </SectionCard>
+        );
+      case PARTICIPANT_HIGHLIGHTS:
+        return (
+          <ParticipantHighlights participantStats={participantStats} userGroupId={extraProps.userGroupId ? userGroupId : undefined} />
+        );
+      case RESULT_PROGRESS:
+        return (
+          <SectionCard title="Result progress" description="Approval status across submitted results" className="w-full">
+            <ResultProgress results={results} />
+          </SectionCard>
+        );
+      case RECENT_WINNERS:
+        return (
+          <SectionCard title="Recent winners" description={extraProps.description || "Latest approved first-place results"} className={`lg:col-span-${colSpan}`}>
+            <RecentWinners results={results} />
+          </SectionCard>
+        );
+      case UPCOMING_EVENTS:
+        return (
+          <SectionCard title="New events" description={extraProps.description || "Live and upcoming competition events"} className="w-full">
+            <UpcomingEvents events={events} schedules={schedules} />
+          </SectionCard>
+        );
+      case TOP_HOUSES:
+        return <TopHouses scoreboard={normalizedScoreboard} />;
+      default:
+        return null;
+    }
+  };
 
-  if (!loading && !error && isEmpty) {
+  const sectionPanel = (leftSlot, rightSlots, leftCols) => {
+    const rightCols = 12 - leftCols;
+    const rightArray = Array.isArray(rightSlots) ? rightSlots : [rightSlots];
     return (
-      <div className="flex w-full flex-col gap-6 mt-4">
-        <DashboardEmptyState role={role} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {leftSlot}
+        <div className={`lg:col-span-${rightCols} flex flex-col gap-6`}>
+          {rightArray.map((item, i) => <React.Fragment key={i}>{item}</React.Fragment>)}
+        </div>
       </div>
     );
-  }
+  };
 
-  if (!hasAnyRole("super_admin", "organizer", "event_coordinator", "judge")) {
+  const ROLE_LAYOUTS = {
+    admin: {
+      stats: [
+        { title: "Events running", value: liveEvents.length, subtitle: `${nextEvents.length} open or upcoming`, icon: Flag, variant: "indigo", delay: 0.1 },
+        { title: "Completed events", value: completedEvents.length, subtitle: `${events.length} total events`, icon: CheckCircle, variant: "emerald", delay: 0.2 },
+        { title: "Pending results", value: pendingCount, subtitle: "Need review before points count", icon: ClipboardCheck, variant: "amber", delay: 0.3 },
+        { title: "Current leader", value: leader ? getScoreboardName(leader) : "-", subtitle: leader ? `${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet", icon: Trophy, variant: "violet", delay: 0.4 },
+      ],
+      sections: [
+        {
+          left: sectionWidget(STANDINGS, 7, { description: `${groupLabelPlural} ranked by approved points` }),
+          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(RESULT_PROGRESS, 5)],
+          leftCols: 7,
+        },
+        {
+          left: sectionWidget(RECENT_WINNERS, 6, { description: "Latest released event results" }),
+          right: sectionWidget(UPCOMING_EVENTS, 6, {}),
+          leftCols: 6,
+        },
+      ],
+    },
+    captain: {
+      stats: [
+        { title: "Registered teams", value: houseTeamsCount, icon: Activity, variant: "indigo", delay: 0.1 },
+        { title: "Available events", value: nextEvents.length, icon: Calendar, variant: "violet", delay: 0.2 },
+        { title: "Group points", value: currentGroup ? getScoreboardPoints(currentGroup) : 0, icon: Trophy, variant: "amber", delay: 0.3 },
+        { title: "Current rank", value: currentGroup ? `#${currentGroup.rank}` : "-", icon: TrendingUp, variant: "emerald", delay: 0.4 },
+      ],
+      sections: [
+        {
+          left: sectionWidget(STANDINGS, 7, { description: "Where your group sits now" }),
+          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5, { userGroupId: true }), sectionWidget(UPCOMING_EVENTS, 5, {})],
+          leftCols: 7,
+        },
+      ],
+    },
+    coordinator: {
+      stats: [
+        { title: "Assigned events", value: coordinatorEvents.length, subtitle: `${events.length} total events`, icon: Calendar, variant: "indigo", delay: 0.1 },
+        { title: "Pending review", value: pendingCount, icon: AlertCircle, variant: "amber", delay: 0.2 },
+        { title: "Live events", value: liveEvents.length, icon: Activity, variant: "emerald", delay: 0.3 },
+      ],
+      sections: [
+        {
+          left: sectionWidget(RECENT_WINNERS, 7, { description: "Released event results" }),
+          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(UPCOMING_EVENTS, 5, {})],
+          leftCols: 7,
+        },
+      ],
+    },
+    guest: {
+      stats: [],
+      sections: [
+        {
+          left: sectionWidget(STANDINGS, 7, { description: "Current competition ranking", userHouseId: false }),
+          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(TOP_HOUSES, 5)],
+          leftCols: 7,
+        },
+        {
+          left: sectionWidget(RECENT_WINNERS, 6, { description: "Latest released event results" }),
+          right: sectionWidget(UPCOMING_EVENTS, 6, {}),
+          leftCols: 6,
+        },
+      ],
+    },
+  };
+
+  const renderDashboardByRole = (kind) => {
+    if (kind === "judge") return renderJudgeWidgets();
+    if (kind === "guest") {
+      // Guest uses the standard layout, no stat cards
+      const layout = ROLE_LAYOUTS[kind];
+      return (
+        <div className="space-y-6">{layout.sections.map((s, i) => <React.Fragment key={i}>{sectionPanel(s.left, s.right, s.leftCols)}</React.Fragment>)}</div>
+      );
+    }
+    const layout = ROLE_LAYOUTS[kind];
+    if (!layout) return null;
     return (
-      <div className="flex w-full flex-col gap-6">
-        <FadeIn delay={0.1}>
-          <div className="w-full max-w-sm">
-            <TopHouses scoreboard={normalizedScoreboard} />
-          </div>
-        </FadeIn>
+      <div className="space-y-6">
+        <StatCardsRow cards={layout.stats} count={layout.stats.length} />
+        {layout.sections.map((s, i) => <React.Fragment key={i}>{sectionPanel(s.left, s.right, s.leftCols)}</React.Fragment>)}
       </div>
     );
-  }
+  };
 
   return (
     <div className="flex w-full flex-col gap-6">
       <FadeIn delay={0.1}>
-        {dashboardKind === "admin" && renderAdminWidgets()}
-        {dashboardKind === "captain" && renderCaptainWidgets()}
-        {dashboardKind === "coordinator" && renderStudentCoordinatorWidgets()}
-        {dashboardKind === "judge" && renderJudgeWidgets()}
-        {dashboardKind === "faculty" && renderFacultyWidgets()}
-        {dashboardKind === "guest" && renderGuestWidgets()}
+        {renderDashboardByRole(dashboardKind)}
       </FadeIn>
 
       <FadeIn delay={0.3}>
         {dashboardKind !== "judge" && (
           <SectionCard title={`${groupLabel} performance`} description="Standings and points">
-            <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
+            <div className="h-80 w-full">
+              <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
+            </div>
           </SectionCard>
         )}
       </FadeIn>

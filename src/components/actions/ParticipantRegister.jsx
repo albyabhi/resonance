@@ -568,10 +568,10 @@ export default function ParticipantRegister() {
                       )}
                     </div>
                     
-                    {reg.chest_number && (
+                    {(reg.chest_no || reg.chest_number) && (
                       <div className="px-4 py-2 rounded-2xl font-mono font-black text-center shadow-lg" style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}>
                         <div className="text-[8px] uppercase tracking-widest opacity-60">Chest No</div>
-                        <div className="text-base">{reg.chest_number}</div>
+                        <div className="text-base">{reg.chest_no || reg.chest_number}</div>
                       </div>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../components/AuthContext";
 import { apiJson } from "../utils/apiClient";
-import { EVENT_STATUSES } from "../utils/eventStatus";
+import { EVENT_STATUSES, getStatusMeta } from "../utils/eventStatus";
 import EventStatusBadge from "./EventStatusBadge";
 import toast from "react-hot-toast";
 import { X, ChevronDown } from "lucide-react";

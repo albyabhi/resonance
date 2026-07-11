@@ -69,10 +69,11 @@ function RecentEvents() {
               if (!schedulesMap[s.event_id]) schedulesMap[s.event_id] = [];
               schedulesMap[s.event_id].push(s);
             });
-            const { data: results } = await apiCall(`/api/results?event_ids=${eventIds}&status=approved`);
+            const { data: results } = await apiCall(`/api/results?event_ids=${eventIds}&status=${["approved", "published", "locked"].join(",")}`);
             (results || []).forEach((r) => {
-              if (!resultsMap[r.event_id]) resultsMap[r.event_id] = [];
-              resultsMap[r.event_id].push(r);
+              const eventKey = r.event_id?._id || r.event_id;
+              if (!resultsMap[eventKey]) resultsMap[eventKey] = [];
+              resultsMap[eventKey].push(r);
             });
           } catch (e) {
             console.error("Batch fetch failed", e);
@@ -113,8 +114,8 @@ function RecentEvents() {
       setOpenId(eventId);
       setDetailsLoading(true);
       setActiveTab("winners");
-      const { event } = await apiCall(`/api/event/${eventId}`);
-      setEventDetail(event || null);
+      const { data: eventData } = await apiCall(`/api/event/${eventId}`);
+      setEventDetail(eventData || null);
       const { schedules } = await apiCall(`/api/schedule?event_id=${eventId}`);
       setEventSchedules((schedules || []).sort((a, b) => (a.round_no || 0) - (b.round_no || 0)));
 
@@ -148,13 +149,15 @@ function RecentEvents() {
     setEventTeams([]);
   };
 
+  const WINNER_STATUSES = new Set(["approved", "published", "locked"]);
+
   const winnersView = useMemo(() => {
     if (!openId) return [];
-    const results = (resultsByEvent[openId] || []).filter((r) => r.status === "approved").sort((a, b) => (a.position || 0) - (b.position || 0));
+    const results = (resultsByEvent[openId] || []).filter((r) => WINNER_STATUSES.has(r.status)).sort((a, b) => (a.position || 0) - (b.position || 0));
     const teamMap = new Map(eventTeams.map((t) => [String(t._id), t]));
     return results.slice(0, 6).map((r) => {
       const teamObj = teamMap.get(String(r.team_id?._id || r.team_id)) || {};
-      return { resultId: r._id, position: r.position, houseText: teamObj.houseName || r.team_id?.house_id?.name || "", members: teamObj.members || [] };
+      return { resultId: r._id, position: r.position, houseText: teamObj.houseName || r.team_id?.group_id?.name || "", members: teamObj.members || [] };
     });
   }, [openId, resultsByEvent, eventTeams]);
 

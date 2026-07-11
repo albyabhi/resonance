@@ -14,6 +14,8 @@ import {
   MapPin,
   PenTool,
   Upload,
+  Hash,
+  Trophy,
 } from "lucide-react";
 
 export const roleConfig = {
@@ -25,12 +27,9 @@ export const roleConfig = {
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
-      { label: "Score Review", icon: CheckCircle },
-      { label: "Scoreboard Contributions", icon: CheckCircle },
+      { label: "Scoring", icon: Trophy },
       { label: "Activity Logs", icon: Bell },
       { label: "Manage Venues", icon: MapPin },
-      { label: "Submit Results", icon: PenTool },
-      { label: "My submissions", icon: Upload },
       { label: "Export Report", icon: FileDown },
     ],
     modules: { standings: true, events: true, stats: true },
@@ -43,13 +42,10 @@ export const roleConfig = {
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
-      { label: "Score Review", icon: CheckCircle },
-      { label: "Pending Approvals", icon: ClipboardList },
+      { label: "Scoring", icon: Trophy },
       { label: "Export Report", icon: FileDown },
       { label: "Activity Logs", icon: Bell },
       { label: "Manage Venues", icon: MapPin },
-      { label: "Submit Results", icon: PenTool },
-      { label: "My submissions", icon: Upload },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -59,9 +55,9 @@ export const roleConfig = {
     actions: [
       { label: "Manage Events", icon: Calendar },
       { label: "Event Participants", icon: Users },
+      { label: "Assign Chest Numbers", icon: Hash },
       { label: "Manage Venues", icon: MapPin },
-      { label: "Submit Results", icon: PenTool },
-      { label: "My submissions", icon: Upload },
+      { label: "Scoring", icon: Trophy },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -69,7 +65,7 @@ export const roleConfig = {
   judge: {
     title: "Judge",
     actions: [
-      { label: "My Assignments", icon: ClipboardList },
+      { label: "Judge Dashboard", icon: ClipboardList },
       { label: "My Scores", icon: CheckCircle },
     ],
     modules: { standings: false, events: false, stats: false },

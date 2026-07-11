@@ -22,6 +22,7 @@ export default function useDashboardData() {
     events: [],
     results: [],
     schedules: [],
+    statusSummary: null,
     participantStats: { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} },
     systemStats: null,
   });
@@ -55,20 +56,24 @@ export default function useDashboardData() {
         const competitionId = competition?.id || competition?._id || competition?.competition_id;
         const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
         const scoreboardEndpoint = competitionId ? `/api/scoreboard/${competitionId}` : "/api/scoreboard";
+
+        // Always-fetched endpoints (indices 0-4)
         const endpoints = [
           apiCall(scoreboardEndpoint),
           apiCall(`/api/event${competitionQuery}`),
           apiCall(`/api/results${competitionQuery}`),
-          apiCall("/api/schedule/batch")
+          apiCall("/api/schedule/batch"),
+          apiCall(`/api/event/status-summary${competitionQuery}`),
         ];
-        
+
+        // Index 5: participant stats (conditional on competitionId)
         if (competitionId) {
           endpoints.push(apiCall(`/api/scoreboard/${competitionId}/participants/top`));
         } else {
           endpoints.push(Promise.resolve(null));
         }
-        
-        // Admin specfic usage overview
+
+        // Index 6: system usage (admin only)
         if (hasAnyRole("organizer", "super_admin")) {
           endpoints.push(apiCall(`/api/event/usage${competitionQuery}`));
         }
@@ -81,11 +86,12 @@ export default function useDashboardData() {
         const eventsRes = responses[1].status === "fulfilled" ? listFrom(responses[1].value, "events") : [];
         const resultsRes = responses[2]?.status === "fulfilled" ? listFrom(responses[2].value, "results") : [];
         const schedulesRes = responses[3]?.status === "fulfilled" ? listFrom(responses[3].value, "schedules") : [];
-        const participantStatsRes = responses[4]?.status === "fulfilled" && responses[4].value ? responses[4].value.data : { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} };
-        
+        const statusSummaryRes = responses[4]?.status === "fulfilled" && responses[4].value ? responses[4].value?.data || {} : {};
+        const participantStatsRes = responses[5]?.status === "fulfilled" && responses[5].value ? responses[5].value : { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} };
+
         let sysStats = null;
-        if (hasAnyRole("organizer", "super_admin") && responses[5]?.status === "fulfilled" && responses[5].value) {
-          sysStats = responses[5].value;
+        if (hasAnyRole("organizer", "super_admin") && responses[6]?.status === "fulfilled" && responses[6].value) {
+          sysStats = responses[6].value;
         }
 
         setData({
@@ -93,6 +99,7 @@ export default function useDashboardData() {
           events: eventsRes || [],
           results: resultsRes || [],
           schedules: schedulesRes || [],
+          statusSummary: statusSummaryRes,
           participantStats: participantStatsRes || { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} },
           systemStats: sysStats,
         });

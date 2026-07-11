@@ -18,11 +18,7 @@ import ManageHouse from "../actions/ManageHouse";
 import ManageEvents from "../actions/ManageEvents";
 import ParticipantRegister from "../actions/ParticipantRegister";
 import ManageParticipants from "../actions/ManageParticipants";
-import ManageResult from "../actions/ManageResult";
-import SubmissionManager from "../actions/SubmissionManager";
-import PendingResult from "../actions/PendingResult";
 import EditHouse from "../actions/EditHouse";
-import AdminScoreboard from "../actions/AdminScoreboard";
 import ActivityLogs from "../actions/ActivityLogs";
 import CaptainMyDetails from "../actions/CaptainMyDetails";
 import CaptainMyGroup from "../actions/CaptainMyGroup";
@@ -31,11 +27,12 @@ import DashboardStatusWidget from "../actions/DashboardStatusWidget";
 import ManageCompetition from "../actions/ManageCompetition";
 import UserSettings from "../actions/UserSettings";
 import ExportReport from "../actions/ExportReport";
-import JudgeScoring from "../actions/JudgeScoring";
+import JudgeDashboard from "../actions/JudgeDashboard";
 import MyScores from "../actions/MyScores";
 import ManageVenue from "../actions/ManageVenue";
 import CoordinatorParticipants from "../actions/CoordinatorParticipants";
-import ScoreReview from "../actions/ScoreReview";
+import CoordinatorEventManagement from "../actions/CoordinatorEventManagement";
+import ScoringHub from "../actions/ScoringHub";
 
 
 const actionComponents = {
@@ -44,8 +41,7 @@ const actionComponents = {
   "Manage Houses": ManageHouse,
   "Manage Events": ManageEvents,
   "Manage Competition": ManageCompetition,
-  "Score Review": ScoreReview,
-  "Scoreboard Contributions": AdminScoreboard,
+  "Scoring": ScoringHub,
   "Activity Logs": ActivityLogs,
   "Manage Participants": ManageParticipants,
   "My Teams": ManageParticipants,
@@ -54,16 +50,15 @@ const actionComponents = {
   "Events": CaptainEventRegister,
   "My Group": CaptainMyGroup,
   "My Details": CaptainMyDetails,
-  "Submit Results": ManageResult,
-  "My submissions": SubmissionManager,
-  "Pending Approvals": PendingResult,
   "Manage Group Logo": EditHouse,
   "Manage House Logo": EditHouse,
   "Export Report": ExportReport,
-  "My Assignments": JudgeScoring,
+  "Judge Dashboard": JudgeDashboard,
+  "My Assignments": JudgeDashboard,
   "My Scores": MyScores,
   "Manage Venues": ManageVenue,
   "Event Participants": CoordinatorParticipants,
+  "Assign Chest Numbers": CoordinatorEventManagement,
 };
 
 export default function Dashboard({
@@ -86,7 +81,7 @@ export default function Dashboard({
   const contentRef = useRef(null);
   
   // Need dashboard data to check if checklist should be shown
-  const { data: dashData } = useDashboardData();
+  const { data: dashData, loading: dashLoading } = useDashboardData();
 
   const [houseName, setHouseName] = useState(user?.house?.name || "");
   const [houseCode, setHouseCode] = useState(user?.house?.name?.substring(0, 3).toUpperCase() || "");
@@ -240,7 +235,7 @@ export default function Dashboard({
               element={
                 <div className="flex flex-col gap-6">
                   {hasAnyRole("super_admin", "organizer", "event_coordinator") && (
-                    <DashboardStatusWidget />
+                    <DashboardStatusWidget summary={dashData?.statusSummary} loading={dashLoading} />
                   )}
                   <DashboardVisuals />
 
