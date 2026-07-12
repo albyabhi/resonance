@@ -76,12 +76,14 @@ export default function ParticipantHighlights({ participantStats = { overall: { 
 
   if (!topPerformers.length) {
     return (
-      <div className="card-secondary flex flex-col items-center justify-center p-6 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5">
-          <Sparkles className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+      <div>
+        <div className="card-secondary flex flex-col items-center justify-center p-6 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5">
+            <Sparkles className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+          </div>
+          <p className="text-sm font-medium" style={{ color: "var(--card-fg)" }}>Participant Highlights</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Contributions will appear once results are published.</p>
         </div>
-        <p className="text-sm font-medium" style={{ color: "var(--card-fg)" }}>Participant Highlights</p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Contributions will appear once results are approved.</p>
       </div>
     );
   }
@@ -97,9 +99,6 @@ export default function ParticipantHighlights({ participantStats = { overall: { 
                 {userGroupId ? `Your ${groupLabel}'s Stars` : "Top Participants"}
               </h3>
             </div>
-            <span className="rounded bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-400">
-              Genuine Positions
-            </span>
           </div>
           <p className="pl-6 text-xs" style={{ color: "var(--chart-axis)" }}>
             {userGroupId ? `Top contributors in your ${groupLabel.toLowerCase()}` : "Top contributors overall"}
@@ -239,6 +238,7 @@ export default function ParticipantHighlights({ participantStats = { overall: { 
           </div>
         </div>
       )}
+
     </>
   );
 }

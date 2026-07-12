@@ -12,13 +12,13 @@
     <!-- Media-aware theme-color: first matching tag wins.
          Chrome & Safari read the media attribute and pick the right one
          based on the OS preference. -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#020617" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F5F7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#111827" />
 
     <!-- Fallback theme-color (no media) – used by crawlers and browsers
          that don't support the media attribute. Phase 4's sync hook
          updates this tag dynamically when the user toggles. -->
-    <meta name="theme-color" content="#f8fafc" />
+    <meta name="theme-color" content="#F4F5F7" />
 
     <!-- ── Phase 6 – PWA manifest link ─────────────────────────── -->
     <link rel="manifest" href="/manifest.json" />
@@ -26,7 +26,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Syne:wght@400..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
 
     <title>Resonance 2025</title>
 
@@ -45,7 +45,7 @@
 
         // Update the fallback <meta name="theme-color"> tag to match
         var fallback = document.querySelector('meta[name="theme-color"]:not([media])');
-        if (fallback) fallback.setAttribute('content', dark ? '#020617' : '#f8fafc');
+        if (fallback) fallback.setAttribute('content', dark ? '#111827' : '#F4F5F7');
       })();
     </script>
   </head>

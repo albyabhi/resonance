@@ -5,9 +5,20 @@ import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import { useMobileMode } from "../utils/useMobileMode";
 import {
-  Users, Search, Plus, X, AlertCircle, CheckCircle,
-  Edit, Trash2, Save, UserPlus, Filter,
+  Users, Search, Plus, X, AlertCircle,
+  Edit, Trash2, Save, UserPlus, Loader2,
 } from "lucide-react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Label } from "../ui/label";
+import {
+  AlertDialog, AlertDialogTrigger, AlertDialogContent,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
+  AlertDialogAction, AlertDialogCancel,
+} from "../ui/alert-dialog";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -33,6 +44,8 @@ export default function CaptainMyGroup() {
 
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const apiCall = async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -132,17 +145,18 @@ export default function CaptainMyGroup() {
     }
   };
 
-  const handleDelete = async (participantId, name) => {
-    if (!window.confirm(`Delete participant "${name}"? This cannot be undone.`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
       setSubmitting(true);
-      await apiCall(`/api/participants/${participantId}`, { method: "DELETE" });
-      setParticipants((prev) => prev.filter((p) => p._id !== participantId));
-      toast.success(`${name} removed from group`);
+      await apiCall(`/api/participants/${deleteTarget._id}`, { method: "DELETE" });
+      setParticipants((prev) => prev.filter((p) => p._id !== deleteTarget._id));
+      toast.success(`${deleteTarget.name} removed from group`);
     } catch (err) {
       toast.error(err.message || "Failed to delete participant");
     } finally {
       setSubmitting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -150,23 +164,23 @@ export default function CaptainMyGroup() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold" style={{ color: "var(--card-fg)" }}>
+          <h2 className="text-2xl font-extrabold text-card-foreground">
             My {groupLabel}
           </h2>
           {groupInfo && (
-            <p className="text-sm mt-1" style={{ color: "var(--chart-axis)" }}>
+            <p className="text-sm mt-1 text-muted-foreground">
               {groupInfo.name} &middot; {participants.length} participant{participants.length !== 1 ? "s" : ""}
             </p>
           )}
         </div>
         {canCreateParticipants && (
-          <button
+          <Button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-md"
+            className="gap-2"
           >
             {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showAddForm ? "Cancel" : "Add Participant"}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -185,228 +199,209 @@ export default function CaptainMyGroup() {
       )}
 
       {showAddForm && canCreateParticipants && (
-        <form
-          onSubmit={handleAddSubmit}
-          className="p-6 border rounded-2xl space-y-4"
-          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)" }}
-        >
-          <h3 className="font-bold text-lg" style={{ color: "var(--card-fg)" }}>
-            Add New Participant
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Name <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text" required
-                value={addForm.name}
-                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                placeholder="Full name"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Class <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text" required
-                value={addForm.class}
-                onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                placeholder="e.g. 10A"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Admission No
-              </label>
-              <input
-                type="text"
-                value={addForm.admission_no}
-                onChange={(e) => setAddForm((f) => ({ ...f, admission_no: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Phone
-              </label>
-              <input
-                type="text"
-                value={addForm.phone}
-                onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={addForm.email}
-                onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--chart-axis)" }}>
-                Gender
-              </label>
-              <select
-                value={addForm.gender}
-                onChange={(e) => setAddForm((f) => ({ ...f, gender: e.target.value }))}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-              >
-                <option value="">Not specified</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2.5 border rounded-xl text-sm font-bold transition-all"
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50"
-            >
-              <UserPlus className="h-4 w-4" />
-              {submitting ? "Adding..." : "Add Participant"}
-            </button>
-          </div>
-        </form>
+        <Card>
+          <CardHeader>
+            <CardTitle>Add New Participant</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>
+                    Name <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    type="text" required
+                    value={addForm.name}
+                    onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    Class <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    type="text" required
+                    value={addForm.class}
+                    onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
+                    placeholder="e.g. 10A"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Admission No</Label>
+                  <Input
+                    type="text"
+                    value={addForm.admission_no}
+                    onChange={(e) => setAddForm((f) => ({ ...f, admission_no: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    type="text"
+                    value={addForm.phone}
+                    onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Gender</Label>
+                  <Select
+                    value={addForm.gender}
+                    onValueChange={(v) => setAddForm((f) => ({ ...f, gender: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Not specified" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="gap-2"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
+                  {submitting ? "Adding..." : "Add Participant"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "var(--chart-axis)" }} />
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={`Search participants by name, ID, or class...`}
-          className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+          className="pl-10"
         />
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold uppercase tracking-widest" style={{ color: "var(--chart-axis)" }}>
+          <Loader2 className="h-12 w-12 animate-spin text-accent-blue" />
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
             Loading participants...
           </p>
         </div>
       ) : filteredParticipants.length === 0 ? (
-        <div className="text-center py-20 border rounded-3xl" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-          <Users className="h-14 w-14 mx-auto mb-4" style={{ color: "var(--chart-axis)" }} />
-          <p className="font-semibold text-lg" style={{ color: "var(--chart-axis)" }}>
-            {search ? "No participants match your search" : `No participants in your ${groupLabel.toLowerCase()}`}
-          </p>
-          <p className="text-xs mt-1" style={{ color: "var(--chart-axis)" }}>
-            {canCreateParticipants && !search
-              ? "Click 'Add Participant' above to get started."
-              : "Check back after organizers add participants."}
-          </p>
-        </div>
+        <Card className="text-center py-20">
+          <CardContent>
+            <Users className="h-14 w-14 mx-auto mb-4 text-muted-foreground" />
+            <p className="font-semibold text-lg text-muted-foreground">
+              {search ? "No participants match your search" : `No participants in your ${groupLabel.toLowerCase()}`}
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground">
+              {canCreateParticipants && !search
+                ? "Click 'Add Participant' above to get started."
+                : "Check back after organizers add participants."}
+            </p>
+          </CardContent>
+        </Card>
       ) : isMobile ? (
         <div className="space-y-3">
           {filteredParticipants.map((p) => (
-            <div
-              key={p._id}
-              className="border rounded-2xl p-4"
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}
-            >
+            <Card key={p._id} className="p-4">
               {editingId === p._id ? (
                 <div className="space-y-3">
-                  <input
+                  <Input
                     value={editForm.name}
                     onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    className="min-h-[48px] text-base"
                     placeholder="Name"
                   />
-                  <input
+                  <Input
                     value={editForm.class}
                     onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    className="min-h-[48px] text-base"
                     placeholder="Class"
                   />
-                  <input
+                  <Input
                     value={editForm.admission_no}
                     onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    className="min-h-[48px] text-base"
                     placeholder="Admission No"
                   />
-                  <input
+                  <Input
                     value={editForm.email}
                     onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    className="min-h-[48px] text-base"
                     placeholder="Email"
                   />
-                  <input
+                  <Input
                     value={editForm.phone}
                     onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    className="min-h-[48px] text-base"
                     placeholder="Phone"
                   />
-                  <select
+                  <Select
                     value={editForm.gender}
-                    onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))}
-                    className="w-full min-h-[48px] px-3 border rounded-xl text-base"
-                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, gender: v }))}
                   >
-                    <option value="">Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                    <SelectTrigger className="min-h-[48px] text-base">
+                      <SelectValue placeholder="Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex gap-3">
-                    <button
+                    <Button
                       onClick={() => handleEditSubmit(p._id)}
                       disabled={submitting}
-                      className="flex-1 min-h-[48px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                      className="flex-1 min-h-[48px] gap-2 bg-accent-green hover:bg-accent-green/90"
                     >
                       <Save className="h-5 w-5" /> Save
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={cancelEdit}
-                      className="flex-1 min-h-[48px] border rounded-xl font-bold"
-                      style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                      variant="outline"
+                      className="flex-1 min-h-[48px]"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-base truncate" style={{ color: "var(--card-fg)" }}>{p.name}</p>
-                      <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+                      <p className="font-bold text-base truncate text-card-foreground">{p.name}</p>
+                      <p className="text-sm text-muted-foreground">
                         {p.class}
                         {p.unique_id && <span> &middot; {p.unique_id}</span>}
                       </p>
@@ -414,114 +409,142 @@ export default function CaptainMyGroup() {
                     <span
                       className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold ml-2 ${
                         p.event_registrations > 0
-                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
+                          ? "bg-accent-green/10 text-accent-green"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {p.event_registrations}
                     </span>
                   </div>
                   {p.admission_no && (
-                    <p className="text-xs mb-2" style={{ color: "var(--chart-axis)" }}>Adm: {p.admission_no}</p>
+                    <p className="text-xs mb-2 text-muted-foreground">Adm: {p.admission_no}</p>
                   )}
                   {p.email && (
-                    <p className="text-xs mb-3" style={{ color: "var(--chart-axis)" }}>{p.email}</p>
+                    <p className="text-xs mb-3 text-muted-foreground">{p.email}</p>
                   )}
                   {canCreateParticipants && (
-                    <div className="flex gap-3 pt-2 border-t" style={{ borderColor: "var(--border-divider)" }}>
-                      <button
+                    <div className="flex gap-3 pt-2 border-t border-border">
+                      <Button
+                        variant="outline"
                         onClick={() => startEdit(p)}
-                        className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl border font-semibold text-sm"
-                        style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+                        className="flex-1 min-h-[44px] gap-2"
                       >
                         <Edit className="h-4 w-4" /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(p._id, p.name)}
-                        className="flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-red-200 text-red-600 font-semibold text-sm"
-                        style={{ borderColor: "var(--border-divider)" }}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteTarget(p)}
+                        className="flex-1 min-h-[44px] gap-2 text-red-600"
                       >
                         <Trash2 className="h-4 w-4" /> Delete
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden border rounded-2xl" style={{ borderColor: "var(--border-card)" }}>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr style={{ backgroundColor: "var(--surface)" }}>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Name</th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Class</th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--chart-axis)" }}>ID</th>
-                  <th className="text-left p-3 text-xs font-bold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--chart-axis)" }}>Email</th>
-                  <th className="text-center p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Events</th>
-                  <th className="text-right p-3 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredParticipants.map((p) => (
-                  <tr key={p._id} className="border-t" style={{ borderColor: "var(--border-divider)" }}>
-                    {editingId === p._id ? (
-                      <>
-                        <td className="p-2" colSpan={5}>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Name" />
-                            <input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Class" />
-                            <input value={editForm.admission_no} onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Admission No" />
-                            <input value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Email" />
-                            <input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }} placeholder="Phone" />
-                            <select value={editForm.gender} onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))} className="px-2 py-1.5 border rounded-lg text-sm" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}>
-                              <option value="">Gender</option>
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
-                        </td>
-                        <td className="p-2 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleEditSubmit(p._id)} disabled={submitting} className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all" title="Save"><Save className="h-4 w-4" /></button>
-                            <button onClick={cancelEdit} className="p-2 border rounded-lg transition-all" style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }} title="Cancel"><X className="h-4 w-4" /></button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="p-3" style={{ color: "var(--card-fg)" }}>
-                          <div className="font-semibold text-sm">{p.name}</div>
-                          {p.admission_no && <div className="text-xs" style={{ color: "var(--chart-axis)" }}>{p.admission_no}</div>}
-                        </td>
-                        <td className="p-3 text-sm" style={{ color: "var(--card-fg)" }}>{p.class}</td>
-                        <td className="p-3 text-sm hidden sm:table-cell" style={{ color: "var(--card-fg)" }}>
-                          <code className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "var(--surface)" }}>{p.unique_id || "-"}</code>
-                        </td>
-                        <td className="p-3 text-sm hidden md:table-cell" style={{ color: "var(--card-fg)" }}>{p.email || "-"}</td>
-                        <td className="p-3 text-center">
-                          <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${p.event_registrations > 0 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"}`}>
-                            {p.event_registrations}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => startEdit(p)} className="p-2 hover:bg-indigo-500/10 rounded-lg transition-all" title="Edit"><Edit className="h-4 w-4 text-indigo-500" /></button>
-                            <button onClick={() => handleDelete(p._id, p.name)} className="p-2 hover:bg-red-500/10 rounded-lg transition-all" title="Delete"><Trash2 className="h-4 w-4 text-red-500" /></button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="border rounded-lg border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted">
+                <TableHead className="text-xs font-bold uppercase tracking-wider">Name</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider">Class</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider hidden sm:table-cell">ID</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider hidden md:table-cell">Email</TableHead>
+                <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Events</TableHead>
+                <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredParticipants.map((p) => (
+                <TableRow key={p._id}>
+                  {editingId === p._id ? (
+                    <>
+                      <TableCell colSpan={5}>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="h-8 text-sm" placeholder="Name" />
+                          <Input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} className="h-8 text-sm" placeholder="Class" />
+                          <Input value={editForm.admission_no} onChange={(e) => setEditForm((f) => ({ ...f, admission_no: e.target.value }))} className="h-8 text-sm" placeholder="Admission No" />
+                          <Input value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className="h-8 text-sm" placeholder="Email" />
+                          <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} className="h-8 text-sm" placeholder="Phone" />
+                          <Select
+                            value={editForm.gender}
+                            onValueChange={(v) => setEditForm((f) => ({ ...f, gender: v }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button onClick={() => handleEditSubmit(p._id)} disabled={submitting} className="h-8 w-8 p-0 bg-accent-green hover:bg-accent-green/90" title="Save">
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button onClick={cancelEdit} variant="outline" className="h-8 w-8 p-0" title="Cancel">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell>
+                        <div className="font-semibold text-sm text-card-foreground">{p.name}</div>
+                        {p.admission_no && <div className="text-xs text-muted-foreground">{p.admission_no}</div>}
+                      </TableCell>
+                      <TableCell className="text-sm text-card-foreground">{p.class}</TableCell>
+                      <TableCell className="text-sm hidden sm:table-cell">
+                        <code className="text-xs px-2 py-0.5 rounded bg-muted text-card-foreground">{p.unique_id || "-"}</code>
+                      </TableCell>
+                      <TableCell className="text-sm hidden md:table-cell text-card-foreground">{p.email || "-"}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${p.event_registrations > 0 ? "bg-accent-green/10 text-accent-green" : "bg-muted text-muted-foreground"}`}>
+                          {p.event_registrations}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" onClick={() => startEdit(p)} className="h-8 w-8 p-0" title="Edit">
+                            <Edit className="h-4 w-4 text-accent-blue" />
+                          </Button>
+                          <Button variant="ghost" onClick={() => setDeleteTarget(p)} className="h-8 w-8 p-0" title="Delete">
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Participant</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete participant "{deleteTarget?.name}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={submitting}>Delete</AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

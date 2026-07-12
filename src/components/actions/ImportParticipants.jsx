@@ -3,6 +3,14 @@ import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Badge } from "../ui/badge";
+import { Label } from "../ui/label";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -217,419 +225,396 @@ export default function ImportParticipants({ groups, groupLabel = "Group", onDon
           <React.Fragment key={s}>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${
-                i === step ? "bg-orange-600 text-white" : i < step ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"
+                i === step ? "bg-accent-amber text-white" : i < step ? "bg-accent-green text-white" : "bg-muted text-muted-foreground"
               }`}
             >
-              {i < step ? "✓" : i + 1}
+              {i < step ? <CheckCircle className="h-4 w-4" /> : i + 1}
             </div>
-            <span className={`text-xs ${i === step ? "font-semibold" : "text-gray-400"}`} style={{ color: i === step ? 'var(--card-fg)' : undefined }}>{s}</span>
-            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-gray-300" />}
+            <span className={`text-xs ${i === step ? "font-semibold text-card-foreground" : "text-muted-foreground"}`}>{s}</span>
+            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border" />}
           </React.Fragment>
         ))}
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg" role="alert">
-          {error}
-          <button onClick={() => setError("")} className="ml-2 text-red-500 focus:outline-none">×</button>
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" role="alert">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={() => setError("")}>x</Button>
         </div>
       )}
 
-      {/* STEP 0: Upload */}
       {step === 0 && (
-        <div
-          className="border-2 border-dashed rounded-xl p-8 text-center"
-          style={{ borderColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}
-        >
-          <p className="text-sm mb-2" style={{ color: 'var(--card-fg)' }}>Upload a CSV or Excel file</p>
-          <p className="text-xs mb-4" style={{ color: 'var(--chart-axis)' }}>Supports .csv, .xlsx, .xls (max 5000 rows)</p>
-          <label className="inline-block bg-orange-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-orange-700">
-            Choose File
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
-          </label>
-          {filename && (
-            <p className="mt-2 text-sm text-green-600">{filename} loaded</p>
-          )}
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-sm mb-2 text-card-foreground">Upload a CSV or Excel file</p>
+            <p className="text-xs mb-4 text-muted-foreground">Supports .csv, .xlsx, .xls (max 5000 rows)</p>
+            <label className="inline-flex items-center justify-center bg-accent-amber text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-accent-amber/90 text-sm font-medium">
+              Choose File
+              <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+            </label>
+            {filename && (
+              <p className="mt-2 text-sm text-accent-green">{filename} loaded</p>
+            )}
 
-          <button
-            type="button"
-            onClick={() => setShowFormat((prev) => !prev)}
-            className="mt-4 text-xs underline-offset-2 underline"
-            style={{ color: 'var(--chart-axis)' }}
-          >
-            {showFormat ? "Hide" : "Show"} supported format
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowFormat((prev) => !prev)}
+              className="mt-4 text-xs underline-offset-2 underline text-muted-foreground"
+            >
+              {showFormat ? "Hide" : "Show"} supported format
+            </button>
 
-          {showFormat && (
-              <div className="mt-3 mx-auto max-w-xl text-left rounded-lg border p-4" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
-                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Your file should look like this:</p>
-                  <div className="overflow-x-auto rounded border" style={{ borderColor: 'var(--border-divider)' }}>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
-                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Name</th>
-                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Class</th>
-                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Email</th>
-                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Admission No</th>
-                          <th className="p-2 text-left font-medium" style={{ color: 'var(--card-fg)' }}>Phone</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>John Doe</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>10A</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>john@school.edu</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024001</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543210</td>
-                        </tr>
-                        <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>Jane Smith</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>10B</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>jane@school.edu</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>ADM2024002</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543211</td>
-                        </tr>
-                        <tr>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>Bob Wilson</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>11C</td>
-                          <td className="p-2" style={{ color: 'var(--card-fg)' }}>bob@school.edu</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>—</td>
-                          <td className="p-2" style={{ color: 'var(--chart-axis)' }}>9876543212</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="text-xs mt-2" style={{ color: 'var(--chart-axis)' }}>
-                    Column headers are matched automatically — order does not matter. <strong>Name</strong>, <strong>Class</strong>, and <strong>Email</strong> are required.
-                  </p>
+            {showFormat && (
+              <div className="mt-3 mx-auto max-w-xl text-left rounded-lg border p-4 bg-card border-border">
+                <p className="text-xs font-semibold mb-2 text-card-foreground">Your file should look like this:</p>
+                <div className="overflow-x-auto rounded border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted">
+                        <TableHead className="text-xs font-medium text-card-foreground">Name</TableHead>
+                        <TableHead className="text-xs font-medium text-card-foreground">Class</TableHead>
+                        <TableHead className="text-xs font-medium text-card-foreground">Email</TableHead>
+                        <TableHead className="text-xs font-medium text-card-foreground">Admission No</TableHead>
+                        <TableHead className="text-xs font-medium text-card-foreground">Phone</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="text-xs text-card-foreground">John Doe</TableCell>
+                        <TableCell className="text-xs text-card-foreground">10A</TableCell>
+                        <TableCell className="text-xs text-card-foreground">john@school.edu</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">ADM2024001</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">9876543210</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="text-xs text-card-foreground">Jane Smith</TableCell>
+                        <TableCell className="text-xs text-card-foreground">10B</TableCell>
+                        <TableCell className="text-xs text-card-foreground">jane@school.edu</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">ADM2024002</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">9876543211</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="text-xs text-card-foreground">Bob Wilson</TableCell>
+                        <TableCell className="text-xs text-card-foreground">11C</TableCell>
+                        <TableCell className="text-xs text-card-foreground">bob@school.edu</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">&mdash;</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">9876543212</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
                 </div>
-          )}
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Column headers are matched automatically &mdash; order does not matter. <strong>Name</strong>, <strong>Class</strong>, and <strong>Email</strong> are required.
+                </p>
+              </div>
+            )}
 
-          {selectedGroup ? (
-            <div className="mt-4">
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Target {groupLabel}</p>
-              <p className="text-sm font-semibold text-green-600">{groups.find((g) => g._id === selectedGroup)?.name}</p>
-            </div>
-          ) : (
-            <div className="mt-4">
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>{groupLabel}</p>
-              <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} in the next step</p>
-            </div>
-          )}
-        </div>
+            {selectedGroup ? (
+              <div className="mt-4">
+                <p className="text-xs font-medium mb-1 text-muted-foreground">Target {groupLabel}</p>
+                <p className="text-sm font-semibold text-accent-green">{groups.find((g) => g._id === selectedGroup)?.name}</p>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <p className="text-xs font-medium mb-1 text-muted-foreground">{groupLabel}</p>
+                <p className="text-sm text-muted-foreground">Select a {groupLabel.toLowerCase()} in the next step</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {/* STEP 1: Map Columns */}
       {step === 1 && (
-        <div
-          className="rounded-xl border p-6 space-y-4"
-          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
-        >
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Map Columns</h3>
-          <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>Map CSV/Excel columns to participant fields</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Map Columns</CardTitle>
+            <p className="text-sm text-muted-foreground">Map CSV/Excel columns to participant fields</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Target {groupLabel} *</Label>
+              <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                <SelectTrigger className="w-full max-w-xs">
+                  <SelectValue placeholder={`Select ${groupLabel}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((g) => (
+                    <SelectItem key={g._id} value={g._id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--chart-axis)' }}>Target {groupLabel} *</p>
-            <select
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-              className="px-3 py-2 min-h-[44px] border rounded-lg text-sm w-full max-w-xs"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-            >
-              <option value="">Select {groupLabel}</option>
-              {groups.map((g) => (
-                <option key={g._id} value={g._id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border">
+                    <TableHead className="text-xs uppercase text-muted-foreground">CSV Column</TableHead>
+                    <TableHead className="text-xs uppercase text-muted-foreground">Maps To</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rawHeaders.map((h) => (
+                    <TableRow key={h} className="border-b border-border">
+                      <TableCell className="text-sm text-card-foreground">{h}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={columnMap[h] || ""}
+                          onValueChange={(v) => setColumnMap((prev) => ({ ...prev, [h]: v }))}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="&mdash; Skip &mdash;" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="skip">&mdash; Skip &mdash;</SelectItem>
+                            {TARGET_FIELDS.map((f) => (
+                              <SelectItem
+                                key={f.key}
+                                value={f.key}
+                                disabled={f.required && Object.values(columnMap).includes(f.key) && columnMap[h] !== f.key}
+                              >
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                  <th className="text-left p-2 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>CSV Column</th>
-                  <th className="text-left p-2 text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Maps To</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rawHeaders.map((h) => (
-                  <tr key={h} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                    <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{h}</td>
-                    <td className="p-2">
-                      <select
-                        value={columnMap[h] || ""}
-                        onChange={(e) => setColumnMap((prev) => ({ ...prev, [h]: e.target.value }))}
-                        className="px-2 py-1 border rounded text-sm"
-                        style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                      >
-                        <option value="">— Skip —</option>
-                        {TARGET_FIELDS.map((f) => (
-                          <option key={f.key} value={f.key} disabled={f.required && Object.values(columnMap).includes(f.key) && columnMap[h] !== f.key}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              {getMappedRowsCount() > 0 ? `${getMappedRowsCount()} rows ready` : "Map required fields (Name *, Class *, Email *) to proceed"}
+            </p>
 
-          <p className="text-xs" style={{ color: 'var(--chart-axis)' }}>
-            {getMappedRowsCount() > 0 ? `${getMappedRowsCount()} rows ready` : "Map required fields (Name *, Class *, Email *) to proceed"}
-          </p>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStep(0)}
-              className="px-4 py-2 border rounded-lg text-sm"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-            >
-              Back
-            </button>
-            <button
-              onClick={handleColumnMap}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm disabled:opacity-50"
-              disabled={getMappedRowsCount() === 0}
-            >
-              Continue
-            </button>
-          </div>
-        </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep(0)}>Back</Button>
+              <Button disabled={getMappedRowsCount() === 0} onClick={handleColumnMap}>Continue</Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* STEP 2: Validate */}
       {step === 2 && (
-        <div
-          className="rounded-xl border p-6 space-y-4"
-          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
-        >
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--card-fg)' }}>Validate</h3>
-          <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
-            {filename} → {getMappedRowsCount()} mapped rows → {groups.find((g) => g._id === selectedGroup)?.name || `Selected ${groupLabel}`}
-          </p>
-          <button
-            onClick={handleValidate}
-            disabled={loading}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg text-sm disabled:opacity-50"
-          >
-            {loading ? "Validating…" : "Run Validation"}
-          </button>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Validate</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {filename} &rarr; {getMappedRowsCount()} mapped rows &rarr; {groups.find((g) => g._id === selectedGroup)?.name || `Selected ${groupLabel}`}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleValidate} disabled={loading}>
+              {loading ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Validating...</>
+              ) : (
+                "Run Validation"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      {/* STEP 3: Preview */}
       {step === 3 && (
         <div className="space-y-4">
-          <div
-            className="rounded-xl border p-4 flex gap-4 text-sm"
-            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
-          >
-            <span style={{ color: 'var(--card-fg)' }}>Total: <strong>{validationSummary?.total}</strong></span>
-            <span className="text-green-600">Valid: <strong>{validationSummary?.valid}</strong></span>
-            <span className="text-yellow-600">Duplicates: <strong>{validationSummary?.duplicates}</strong></span>
-            <span className="text-red-600">Errors: <strong>{validationSummary?.errors}</strong></span>
-          </div>
+          <Card className="p-4">
+            <div className="flex gap-4 text-sm text-card-foreground">
+              <span>Total: <strong>{validationSummary?.total}</strong></span>
+              <span className="text-accent-green">Valid: <strong>{validationSummary?.valid}</strong></span>
+              <span className="text-yellow-600">Duplicates: <strong>{validationSummary?.duplicates}</strong></span>
+              <span className="text-red-600">Errors: <strong>{validationSummary?.errors}</strong></span>
+            </div>
+          </Card>
 
-          <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--border-card)' }}>
-            <table className="min-w-full">
-              <thead style={{ backgroundColor: 'var(--surface)' }}>
-                <tr>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>#</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Name</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Class</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Email</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Admission No</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Phone</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Status</th>
-                  <th className="p-2 text-left text-xs uppercase" style={{ color: 'var(--chart-axis)' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead className="text-xs uppercase text-muted-foreground">#</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Name</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Class</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Email</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Admission No</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Phone</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {validatedRows.map((row) => {
                   const isDuplicate = row.status === "duplicate";
                   const isError = row.status === "error";
                   return (
-                    <tr key={row.index} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.index + 1}</td>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.name}</td>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.class}</td>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.email || "—"}</td>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.admission_no || "—"}</td>
-                      <td className="p-2 text-sm" style={{ color: 'var(--card-fg)' }}>{row.phone || "—"}</td>
-                      <td className="p-2">
+                    <TableRow key={row.index} className="border-b border-border">
+                      <TableCell className="text-sm text-card-foreground">{row.index + 1}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{row.name}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{row.class}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{row.email || "—"}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{row.admission_no || "—"}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{row.phone || "—"}</TableCell>
+                      <TableCell>
                         {isDuplicate ? (
-                          <span className="text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded text-xs font-medium">Duplicate</span>
+                          <Badge variant="outline" className="text-yellow-600 bg-yellow-50 border-yellow-200">Duplicate</Badge>
                         ) : isError ? (
-                          <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs font-medium" title={row.errors?.join(", ")}>Error</span>
+                          <Badge variant="error" title={row.errors?.join(", ")}>Error</Badge>
                         ) : (
-                          <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs font-medium">Valid</span>
+                          <Badge variant="success">Valid</Badge>
                         )}
-                      </td>
-                      <td className="p-2">
+                      </TableCell>
+                      <TableCell>
                         {isDuplicate ? (
-                          <select
+                          <Select
                             value={rowDecisions[row.index] || "skip"}
-                            onChange={(e) => handleDecisionChange(row.index, e.target.value)}
-                            className="px-2 py-1 border rounded text-xs"
-                            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                            onValueChange={(v) => handleDecisionChange(row.index, v)}
                           >
-                            <option value="skip">Skip</option>
-                            <option value="update">Update</option>
-                          </select>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="skip">Skip</SelectItem>
+                              <SelectItem value="update">Update</SelectItem>
+                            </SelectContent>
+                          </Select>
                         ) : isError ? (
-                          <span className="text-xs text-gray-400">Auto-skipped</span>
+                          <span className="text-xs text-muted-foreground">Auto-skipped</span>
                         ) : (
-                          <span className="text-xs text-green-600">Will import</span>
+                          <span className="text-xs text-accent-green">Will import</span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="text-sm font-medium" style={{ color: 'var(--card-fg)' }}>
-            Will import: <strong className="text-green-600">{previewCounts().importCount}</strong>{" "}
+          <div className="text-sm font-medium text-card-foreground">
+            Will import: <strong className="text-accent-green">{previewCounts().importCount}</strong>{" "}
             | Will update: <strong className="text-yellow-600">{previewCounts().updateCount}</strong>{" "}
-            | Will skip: <strong className="text-gray-500">{previewCounts().skipCount}</strong>
+            | Will skip: <strong className="text-muted-foreground">{previewCounts().skipCount}</strong>
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={() => setStep(2)}
-              className="px-4 py-2 border rounded-lg text-sm"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-            >
-              Back
-            </button>
-            <button
+            <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+            <Button
               onClick={handleImport}
               disabled={loading || previewCounts().importCount + previewCounts().updateCount === 0}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg text-sm disabled:opacity-50"
             >
-              {loading ? "Importing…" : `Import ${previewCounts().importCount + previewCounts().updateCount} Rows`}
-            </button>
+              {loading ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Importing...</>
+              ) : (
+                `Import ${previewCounts().importCount + previewCounts().updateCount} Rows`
+              )}
+            </Button>
           </div>
         </div>
       )}
 
-      {/* STEP 4: Importing (transition) */}
       {step === 4 && (
-        <div className="text-center py-8" style={{ color: 'var(--card-fg)' }}>
-          <div className="animate-spin w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p>Importing participants…</p>
+        <div className="text-center py-8 text-card-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-accent-amber mx-auto mb-4" />
+          <p>Importing participants&hellip;</p>
         </div>
       )}
 
-      {/* STEP 5: Summary */}
       {step === 5 && result && (
-        <div
-          className="rounded-xl border p-6 space-y-4"
-          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}
-        >
-          <h3 className="text-lg font-semibold text-green-600">Import Complete</h3>
-          <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>
-            Imported into <strong>{groups.find((g) => g._id === selectedGroup)?.name || groupLabel}</strong>
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-green-50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{result.imported}</p>
-              <p className="text-xs text-green-700">Imported</p>
-            </div>
-            <div className="bg-yellow-50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-600">{result.updated}</p>
-              <p className="text-xs text-yellow-700">Updated</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-gray-600">{result.skipped}</p>
-              <p className="text-xs text-gray-700">Skipped</p>
-            </div>
-            <div className={`rounded-lg p-4 text-center ${result.errors > 0 ? "bg-red-50" : "bg-gray-50"}`}>
-              <p className={`text-2xl font-bold ${result.errors > 0 ? "text-red-600" : "text-gray-600"}`}>{result.errors}</p>
-              <p className={`text-xs ${result.errors > 0 ? "text-red-700" : "text-gray-700"}`}>Errors</p>
-            </div>
-          </div>
-
-          {result.credentials?.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--card-fg)' }}>Generated Credentials</h4>
-              <div className="overflow-x-auto rounded-lg border mb-4" style={{ borderColor: 'var(--border-card)' }}>
-                <table className="min-w-full text-xs">
-                  <thead style={{ backgroundColor: 'var(--surface)' }}>
-                    <tr>
-                      <th className="p-2 text-left">Name</th>
-                      <th className="p-2 text-left">Email</th>
-                      <th className="p-2 text-left">Password</th>
-                      <th className="p-2 text-left">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.credentials.map((c, i) => (
-                      <tr key={i} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                        <td className="p-2">{c.name}</td>
-                        <td className="p-2">{c.email}</td>
-                        <td className="p-2 font-mono text-orange-600">{c.password}</td>
-                        <td className="p-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.action === "imported" ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50"}`}>
-                            {c.action === "imported" ? "New" : "Updated"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-accent-green">Import Complete</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Imported into <strong>{groups.find((g) => g._id === selectedGroup)?.name || groupLabel}</strong>
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-accent-green/10 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-accent-green">{result.imported}</p>
+                <p className="text-xs text-accent-green">Imported</p>
               </div>
-              <p className="text-xs mb-4" style={{ color: 'var(--chart-axis)' }}>
-                Passwords are auto-generated. If <strong>Admission No</strong> was provided, password = {`<admission_no> + <class>`} (e.g. "202501MCAB").
-                Otherwise a random password was generated. Share these credentials with participants.
-              </p>
+              <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-yellow-600">{result.updated}</p>
+                <p className="text-xs text-yellow-700">Updated</p>
+              </div>
+              <div className="bg-muted rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-muted-foreground">{result.skipped}</p>
+                <p className="text-xs text-muted-foreground">Skipped</p>
+              </div>
+              <div className={`rounded-lg p-4 text-center ${result.errors > 0 ? "bg-red-50" : "bg-muted"}`}>
+                <p className={`text-2xl font-bold ${result.errors > 0 ? "text-red-600" : "text-muted-foreground"}`}>{result.errors}</p>
+                <p className={`text-xs ${result.errors > 0 ? "text-red-700" : "text-muted-foreground"}`}>Errors</p>
+              </div>
             </div>
-          )}
 
-          {result.error_details?.length > 0 && (
-            <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--border-card)' }}>
-              <table className="min-w-full text-xs">
-                <thead style={{ backgroundColor: 'var(--surface)' }}>
-                  <tr>
-                    <th className="p-2 text-left">Row</th>
-                    <th className="p-2 text-left">Field</th>
-                    <th className="p-2 text-left">Error</th>
-                    <th className="p-2 text-left">Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.error_details.map((err, i) => (
-                    <tr key={i} className="border-b" style={{ borderBottomColor: 'var(--border-divider)' }}>
-                      <td className="p-2">{err.row_number}</td>
-                      <td className="p-2">{err.field || "—"}</td>
-                      <td className="p-2 text-red-600">{err.error}</td>
-                      <td className="p-2">{JSON.stringify(err.row_data)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {result.credentials?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2 text-card-foreground">Generated Credentials</h4>
+                <div className="overflow-x-auto rounded-lg border border-border mb-4">
+                  <Table>
+                    <TableHeader className="bg-muted">
+                      <TableRow>
+                        <TableHead className="text-xs">Name</TableHead>
+                        <TableHead className="text-xs">Email</TableHead>
+                        <TableHead className="text-xs">Password</TableHead>
+                        <TableHead className="text-xs">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.credentials.map((c, i) => (
+                        <TableRow key={i} className="border-b border-border">
+                          <TableCell className="text-xs">{c.name}</TableCell>
+                          <TableCell className="text-xs">{c.email}</TableCell>
+                          <TableCell className="text-xs font-mono text-accent-amber">{c.password}</TableCell>
+                          <TableCell>
+                            <Badge variant={c.action === "imported" ? "success" : "outline"} className={c.action !== "imported" ? "text-yellow-600 bg-yellow-50 border-yellow-200" : ""}>
+                              {c.action === "imported" ? "New" : "Updated"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs mb-4 text-muted-foreground">
+                  Passwords are auto-generated. If <strong>Admission No</strong> was provided, password = {`<admission_no> + <class>`} (e.g. "202501MCAB").
+                  Otherwise a random password was generated. Share these credentials with participants.
+                </p>
+              </div>
+            )}
+
+            {result.error_details?.length > 0 && (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader className="bg-muted">
+                    <TableRow>
+                      <TableHead className="text-xs">Row</TableHead>
+                      <TableHead className="text-xs">Field</TableHead>
+                      <TableHead className="text-xs">Error</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {result.error_details.map((err, i) => (
+                      <TableRow key={i} className="border-b border-border">
+                        <TableCell className="text-xs">{err.row_number}</TableCell>
+                        <TableCell className="text-xs">{err.field || "—"}</TableCell>
+                        <TableCell className="text-xs text-red-600">{err.error}</TableCell>
+                        <TableCell className="text-xs">{JSON.stringify(err.row_data)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={resetAll}>Import Another File</Button>
+              <Button onClick={onDone}>Back to Participants</Button>
             </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              onClick={resetAll}
-              className="px-4 py-2 border rounded-lg text-sm"
-              style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-            >
-              Import Another File
-            </button>
-            <button
-              onClick={onDone}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm"
-            >
-              Back to Participants
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

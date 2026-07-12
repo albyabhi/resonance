@@ -1,126 +1,195 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
-/* SaaS Premium theme tokens (Tailwind v4 style) */
+/* ── Design Tokens (Tailwind v4 @theme) ───────────────────
+   Maps shadcn-convention Tailwind classes (bg-background,
+   text-foreground, border-border, ring-ring, etc.) to CSS
+   variables defined in :root / .dark below.
+   ────────────────────────────────────────────────────────── */
 @theme {
-  /* Brand palette - Slate & Indigo */
-  --color-primary: #4f46e5; /* Indigo-600 */
-  --color-primary-foreground: #ffffff;
-  --color-primary-dark: #6366f1; /* Indigo-500 */
-  
-  --color-secondary: #7c3aed; /* Violet-600 */
-  --color-secondary-dark: #8b5cf6; /* Violet-500 */
+  /* ── shadcn standard tokens ────────────────────────── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  /* Light Theme */
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-card-border: rgba(15, 23, 42, 0.06);
-  --color-surface: #e2e8f0;
-  
-  /* Dark Theme */
-  --color-background-dark: #020617;
-  --color-foreground-dark: #f8fafc;
-  --color-card-dark: #0f172a;
-  --color-card-foreground-dark: #f8fafc;
-  --color-card-border-dark: rgba(148, 163, 184, 0.1);
-  --color-surface-dark: #1e293b;
+  /* ── Custom accent tokens (multi-accent system) ────── */
+  --color-accent-red: var(--accent-red);
+  --color-accent-amber: var(--accent-amber);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-green: var(--accent-green);
+  --color-chart-purple: var(--chart-purple);
+  --color-chart-red: var(--chart-red);
+  --color-status-success: var(--status-success);
+  --color-status-error: var(--status-error);
 
-  /* Typography */
-  --font-sans: "Inter", "system-ui", sans-serif;
-  --font-heading: "Outfit", "Inter", sans-serif;
+  /* ── Radius (derived from single base --radius) ────── */
+  --radius: 1rem;
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+
+  /* ── Typography ─────────────────────────────────────── */
+  --font-sans: "Inter", "system-ui", "-apple-system", sans-serif;
+  --font-heading: "Inter", "system-ui", sans-serif;
   --font-mono: "JetBrains Mono", "monospace";
 
-  /* Status Colors */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #f43f5e;
-  --color-blue: #3b82f6;
-  --color-violet: #8b5cf6;
-
-  /* Radius System */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 32px;
-
-  /* Animation Eases */
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* ── Animation easings ──────────────────────────────── */
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Dark Variant Configuration for Tailwind v4 */
-  --variant-dark: .dark &;
 }
 
-/* Base layer */
+/* ── CSS Custom Properties (switched via :root / .dark) ── */
 @layer base {
   :root {
     --header-h: 64px;
-    --sidebar-w: 280px;
+    --sidebar-w: 260px;
     --sidebar-w-collapsed: 80px;
 
-    /* ── Light palette ──
-       3-level hierarchy: bg (#f8fafc) → surface (#e2e8f0) → card (#fff)
-       Rule: NO transparency in light mode — solids + shadows only
-    */
-    --bg: #f8fafc;
-    --text: #0f172a;
-    --accent: #4f46e5;
-    --meta-color: #f8fafc;
-    --card: #ffffff;
-    --card-fg: #0f172a;
-    --card-bdr: rgba(15, 23, 42, 0.1);
-    --surface: #e2e8f0;
+    /* ── Base palette ─────────────────────────────────── */
+    --background: #F4F5F7;
+    --foreground: #0A0A0A;
+    --card: #FFFFFF;
+    --card-foreground: #0A0A0A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0A0A0A;
+    --primary: #1EA1FF;
+    --primary-foreground: #FFFFFF;
+    --secondary: #A39BFD;
+    --secondary-foreground: #FFFFFF;
+    --muted: #EFF1F3;
+    --muted-foreground: #6B7280;
+    --accent: #F4F5F7;
+    --accent-foreground: #0A0A0A;
+    --destructive: #FA6567;
+    --destructive-foreground: #FFFFFF;
+    --border: #E5E7EB;
+    --input: #E5E7EB;
+    --ring: #1EA1FF;
 
-    /* Elevation (light) — stronger shadows for white cards on light bg */
-    --shadow-card: 0 2px 6px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
-    --shadow-card-hover: 0 4px 12px rgba(15, 23, 42, 0.1), 0 12px 32px rgba(15, 23, 42, 0.1);
-    --shadow-section: 0 1px 4px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.05);
-    --border-card: 1px solid rgba(15, 23, 42, 0.06);
-    --border-divider: rgba(15, 23, 42, 0.1);
+    /* ── Multi-accent system ──────────────────────────── */
+    --accent-red: #FA6567;
+    --accent-red-tint: #FCB7B8;
+    --accent-amber: #F5A15A;
+    --accent-amber-tint: #FDE0C4;
+    --accent-teal: #12B8AF;
+    --accent-teal-tint: #91E0DF;
+    --accent-blue: #1EA1FF;
+    --accent-blue-tint: #B8E0FF;
+    --accent-purple: #A39BFD;
+    --accent-purple-tint: #D8D5FF;
+    --accent-green: #22C55E;
+    --accent-green-tint: #B8F0C8;
+    --chart-purple: #A39BFD;
+    --chart-red: #F16C6C;
+    --status-success: #22C55E;
+    --status-error: #EF4444;
 
-    /* Chart tokens (light) — solid colors, no transparency */
-    --chart-grid: #e2e8f0;
-    --chart-axis: #64748b;
-    --chart-bar-default: #94a3b8;
-    --chart-surface: #f1f5f9;
+    /* ── Elevation (light) ────────────────────────────── */
+    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.04);
+
+    /* ── Backward compat aliases ──────────────────────── */
+    --border-divider: var(--border);
+    --chart-grid: var(--border);
+    --chart-axis: var(--muted-foreground);
+    --chart-bar-default: var(--muted);
+    --chart-surface: var(--muted);
+    --card-fg: var(--card-foreground);
+    --surface: var(--muted);
+    --bg: var(--background);
+    --text: var(--foreground);
+    --accent: var(--primary);
+    --card-bdr: var(--border);
   }
 
   .dark {
     color-scheme: dark;
-    /* ── Dark palette ── flat solid, no gradient */
-    --bg: #020617;
-    --text: #f1f5f9;
-    --accent: #818cf8;
-    --meta-color: #020617;
-    --card: #0f172a;
-    --card-fg: #e2e8f0;
-    --card-bdr: rgba(148, 163, 184, 0.1);
-    --surface: #1e293b;
 
-    /* Elevation (dark) — subtle ring + depth */
-    --shadow-card: 0 0 0 1px rgba(148, 163, 184, 0.07), 0 1px 4px rgba(0, 0, 0, 0.4);
-    --shadow-card-hover: 0 0 0 1px rgba(99, 102, 241, 0.15), 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 24px rgba(99, 102, 241, 0.04);
-    --shadow-section: 0 0 0 1px rgba(148, 163, 184, 0.05), 0 1px 3px rgba(0, 0, 0, 0.3);
-    --border-card: 1px solid rgba(148, 163, 184, 0.1);
-    --border-divider: rgba(148, 163, 184, 0.08);
+    /* ── Base palette (dark) ──────────────────────────── */
+    --background: #111827;
+    --foreground: #F3F4F6;
+    --card: #1F2937;
+    --card-foreground: #F3F4F6;
+    --popover: #1F2937;
+    --popover-foreground: #F3F4F6;
+    --primary: #60A5FA;
+    --primary-foreground: #FFFFFF;
+    --secondary: #C4B5FD;
+    --secondary-foreground: #FFFFFF;
+    --muted: #374151;
+    --muted-foreground: #9CA3AF;
+    --accent: #374151;
+    --accent-foreground: #F3F4F6;
+    --destructive: #F87171;
+    --destructive-foreground: #FFFFFF;
+    --border: #374151;
+    --input: #4B5563;
+    --ring: #60A5FA;
 
-    /* Chart tokens (dark) */
+    /* ── Multi-accent system (dark) ───────────────────── */
+    --accent-red: #F87171;
+    --accent-red-tint: rgba(250, 101, 103, 0.15);
+    --accent-amber: #FBBF24;
+    --accent-amber-tint: rgba(245, 161, 90, 0.15);
+    --accent-teal: #2DD4BF;
+    --accent-teal-tint: rgba(18, 184, 175, 0.15);
+    --accent-blue: #60A5FA;
+    --accent-blue-tint: rgba(30, 161, 255, 0.15);
+    --accent-purple: #A78BFA;
+    --accent-purple-tint: rgba(163, 155, 253, 0.15);
+    --accent-green: #34D399;
+    --accent-green-tint: rgba(34, 197, 94, 0.15);
+    --chart-purple: #A78BFA;
+    --chart-red: #F87171;
+    --status-success: #22C55E;
+    --status-error: #EF4444;
+
+    /* ── Elevation (dark) ─────────────────────────────── */
+    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3);
+
+    /* ── Backward compat aliases ──────────────────────── */
+    --border-divider: rgba(148, 163, 184, 0.15);
     --chart-grid: rgba(148, 163, 184, 0.08);
-    --chart-axis: #94a3b8;
+    --chart-axis: #94A3B8;
     --chart-bar-default: #475569;
-    --chart-surface: #1e293b;
+    --chart-surface: rgba(30, 41, 59, 0.5);
+    --card-fg: var(--card-foreground);
+    --surface: var(--muted);
+    --bg: var(--background);
+    --text: var(--foreground);
+    --accent: var(--primary);
+    --card-bdr: var(--border);
   }
-  
+
+  * {
+    @apply border-border;
+  }
+
   html {
     scroll-behavior: smooth;
     transition: background-color 0.3s, color 0.3s;
   }
-  
+
   body {
-    background-color: var(--bg);
-    color: var(--text);
+    background-color: var(--background);
+    color: var(--foreground);
     @apply antialiased transition-colors duration-300;
   }
 
@@ -130,126 +199,133 @@
   }
 }
 
-/* Premium Utilities */
+/* ── Utility Classes ──────────────────────────────────── */
 @layer utilities {
-  /* ── Glass header/nav ──────────────────────────────────── */
-  .glass {
-    @apply backdrop-blur-xl border-b;
-    background: rgba(255, 255, 255, 0.82);
-    border-color: rgba(15, 23, 42, 0.08);
-  }
-  
-  .dark .glass {
-    background: rgba(2, 6, 23, 0.85);
-    border-color: rgba(148, 163, 184, 0.06);
-  }
-
-  /* ── Card Premium ──────────────────────────────────────── */
+  /* ── Cards ──────────────────────────────────────────── */
   .card-premium {
-    @apply w-full rounded-2xl p-6 transition-all duration-300;
+    @apply w-full rounded-lg p-5 transition-all duration-200;
     background-color: var(--card);
-    border: var(--border-card);
     box-shadow: var(--shadow-card);
   }
 
   .card-premium:hover {
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   }
 
-  /* ── Card secondary — reduced visual weight ────────────── */
   .card-secondary {
-    @apply w-full rounded-2xl p-5 transition-all duration-300;
+    @apply w-full rounded-lg p-5 transition-all duration-200;
     background-color: var(--card);
-    border: var(--border-card);
-    box-shadow: var(--shadow-section);
+    box-shadow: var(--shadow-card);
   }
 
-  /* ── Card-divider ──────────────────────────────────────── */
   .card-divider {
     border-color: var(--border-divider);
   }
 
-  /* ── Chart surface — inner container for charts ────────── */
+  /* ── Chart surface ──────────────────────────────────── */
   .chart-surface {
-    @apply rounded-xl;
+    @apply rounded-lg;
     background: var(--chart-surface);
     padding: 20px;
   }
 
-  /* ── Theme utilities ───────────────────────────────────── */
-  .theme-card {
-    @apply rounded-2xl p-6 transition-all duration-300;
-    background-color: var(--card);
-    border: var(--border-card);
-    box-shadow: var(--shadow-card);
+  /* ── Glass header ───────────────────────────────────── */
+  .glass {
+    @apply backdrop-blur-xl border-b;
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(0, 0, 0, 0.06);
   }
 
-  .theme-card:hover {
-    box-shadow: var(--shadow-card-hover);
+  .dark .glass {
+    background: rgba(17, 24, 39, 0.85);
+    border-color: rgba(148, 163, 184, 0.06);
   }
 
-  .theme-panel {
-    background-color: var(--surface);
-    border: var(--border-card);
-  }
-
-  .theme-input {
-    @apply w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20;
-    background-color: var(--card);
-    border: var(--border-card);
-    color: var(--card-fg);
-  }
-
-  .theme-input::placeholder {
-    color: var(--chart-axis);
-  }
-
-  .theme-input:focus {
-    border-color: var(--accent);
-  }
-
+  /* ── Theme text utilities ────────────────────────────── */
   .theme-text-primary {
-    color: var(--card-fg);
+    color: var(--card-foreground);
   }
 
   .theme-text-secondary {
-    @apply text-slate-500 dark:text-slate-400;
+    color: var(--muted-foreground);
   }
 
   .theme-text-muted {
-    @apply text-slate-400 dark:text-slate-500;
+    color: var(--muted-foreground);
+    opacity: 0.7;
   }
 
-  .btn-premium-primary {
-    @apply relative px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
-    background: var(--color-primary);
-    color: var(--color-primary-foreground);
-    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(79, 70, 229, 0.06);
+  /* ── Theme input ────────────────────────────────────── */
+  .theme-input {
+    @apply w-full rounded-lg focus:outline-none focus:ring-2;
+    background-color: var(--background);
+    border: 1px solid var(--input);
+    color: var(--foreground);
+    --tw-ring-color: var(--ring);
+    --tw-ring-opacity: 0.2;
   }
 
-  /* ── Elevation helpers ─────────────────────────────────── */
+  .theme-input:focus {
+    border-color: var(--ring);
+  }
+
+  .theme-input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  /* ── Icon tile colors (stat cards) ──────────────────── */
+  .icon-tile-red {
+    background-color: var(--accent-red-tint);
+    color: var(--accent-red);
+  }
+
+  .icon-tile-amber {
+    background-color: var(--accent-amber-tint);
+    color: var(--accent-amber);
+  }
+
+  .icon-tile-teal {
+    background-color: var(--accent-teal-tint);
+    color: var(--accent-teal);
+  }
+
+  .icon-tile-blue {
+    background-color: var(--accent-blue-tint);
+    color: var(--accent-blue);
+  }
+
+  .icon-tile-purple {
+    background-color: var(--accent-purple-tint);
+    color: var(--accent-purple);
+  }
+
+  .icon-tile-green {
+    background-color: var(--accent-green-tint);
+    color: var(--accent-green);
+  }
+
+  /* ── Legacy compat aliases (pre-shadcn) ──────────────── */
+  .theme-card {
+    @apply w-full rounded-lg p-5;
+    background-color: var(--card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .theme-panel {
+    background-color: var(--card);
+  }
+
+  /* ── Shadow helpers ─────────────────────────────────── */
   .shadow-soft {
-    box-shadow: var(--shadow-section);
+    box-shadow: var(--shadow-card);
   }
 
   .shadow-elevated {
     box-shadow: var(--shadow-card);
   }
-
-  .shadow-elevated-hover {
-    box-shadow: var(--shadow-card-hover);
-  }
-
-  .glow-indigo {
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 0 20px rgba(99, 102, 241, 0.15);
-  }
-
-  .glow-success {
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.15);
-  }
 }
 
-/* Custom Scrollbars */
+/* ── Custom Scrollbars ───────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -260,9 +336,9 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+  @apply bg-muted-foreground/30 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400 dark:bg-slate-600;
+  @apply bg-muted-foreground/50;
 }

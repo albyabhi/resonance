@@ -16,18 +16,22 @@ import {
   Edit3,
   Loader2,
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const STATUS_BADGE = (status) => {
   const map = {
-    draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-    registration_open: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    registration_closed: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    ongoing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    completed: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    draft: "bg-muted text-muted-foreground border-border",
+    registration_open: "bg-accent-green/10 text-accent-green border-accent-green/20",
+    registration_closed: "bg-accent-amber/10 text-accent-amber border-accent-amber/20",
+    ongoing: "bg-accent-blue/10 text-accent-blue border-accent-blue/20",
+    completed: "bg-muted text-muted-foreground border-border",
   };
-  return map[status] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  return map[status] || "bg-muted text-muted-foreground border-border";
 };
 
 export default function CoordinatorEventManagement() {
@@ -41,16 +45,10 @@ export default function CoordinatorEventManagement() {
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-
-  // Chest prefix state
   const [chestPrefix, setChestPrefix] = useState("");
   const [prefixSaving, setPrefixSaving] = useState(false);
-
-  // Auto-assign state
   const [autoStart, setAutoStart] = useState(1);
   const [autoPrefix, setAutoPrefix] = useState("");
-
-  // Inline chest edit
   const [editingChest, setEditingChest] = useState(null);
   const [editValue, setEditValue] = useState("");
 
@@ -69,8 +67,8 @@ export default function CoordinatorEventManagement() {
       try {
         setLoading(true);
         setError("");
-    const compId = competition?._id || competition?.id || competition?.competition_id;
-    const query = compId ? `?competition_id=${encodeURIComponent(compId)}` : "";
+        const compId = competition?._id || competition?.id || competition?.competition_id;
+        const query = compId ? `?competition_id=${encodeURIComponent(compId)}` : "";
         const { events: evts } = await apiCall(`/api/event${query}`);
         setEvents(evts || []);
         if ((evts || []).length > 0) {
@@ -125,7 +123,6 @@ export default function CoordinatorEventManagement() {
   }, [events, searchQuery]);
 
   const hasChestConfig = selectedEvent?.chest_prefix?.trim().length > 0;
-
   const assignedCount = useMemo(() => teams.filter((t) => t.chest_no).length, [teams]);
   const unassignedCount = teams.length - assignedCount;
 
@@ -225,7 +222,7 @@ export default function CoordinatorEventManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent-amber" />
       </div>
     );
   }
@@ -233,35 +230,33 @@ export default function CoordinatorEventManagement() {
   return (
     <div className="flex flex-col gap-6">
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* LEFT: Event list */}
         <div className="w-full shrink-0 lg:w-80 xl:w-96">
-          <div className="rounded-xl border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-            <div className="border-b p-4" style={{ borderBottomColor: 'var(--border-divider)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>My Events</h3>
-              <p className="mt-0.5 text-xs" style={{ color: 'var(--chart-axis)' }}>{events.length} event{events.length !== 1 ? "s" : ""} assigned</p>
+          <Card>
+            <div className="border-b border-border p-4">
+              <CardTitle className="text-sm font-semibold">My Events</CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">{events.length} event{events.length !== 1 ? "s" : ""} assigned</p>
               <div className="relative mt-3">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--chart-axis)' }} />
-                <input
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search events..."
-                  className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                  className="w-full rounded-lg pl-9"
                 />
               </div>
             </div>
             <div className="max-h-[500px] overflow-y-auto">
               {filteredEvents.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
-                  <Calendar className="h-8 w-8" style={{ color: 'var(--chart-axis)' }} />
-                  <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>No events assigned</p>
+                  <Calendar className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">No events assigned</p>
                 </div>
               ) : (
                 filteredEvents.map((evt) => {
@@ -269,82 +264,78 @@ export default function CoordinatorEventManagement() {
                   const isSelected = id === selectedEventId;
                   const title = evt.title || evt.name || "Untitled";
                   return (
-                    <button
+                    <Button
                       key={id}
+                      variant="ghost"
                       onClick={() => setSelectedEventId(id)}
-                      className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
-                      style={{
-                        backgroundColor: isSelected ? 'var(--accent-bg)' : 'transparent',
-                        borderLeft: isSelected ? '3px solid #ea580c' : '3px solid transparent',
-                      }}
+                      className={`w-full justify-between rounded-none px-4 py-3 h-auto hover:bg-muted ${
+                        isSelected ? "bg-primary/10 border-l-[3px] border-accent-amber" : "border-l-[3px] border-transparent"
+                      }`}
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium" style={{ color: 'var(--card-fg)' }}>{title}</p>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-medium text-card-foreground">{title}</p>
                         <div className="mt-1 flex items-center gap-2">
-                          <span className="text-xs capitalize" style={{ color: 'var(--chart-axis)' }}>{evt.category}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_BADGE(evt.status)}`}>
+                          <span className="text-xs capitalize text-muted-foreground">{evt.category}</span>
+                          <Badge variant="outline" className={STATUS_BADGE(evt.status)}>
                             {evt.status?.replace(/_/g, " ")}
-                          </span>
+                          </Badge>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--chart-axis)' }} />
-                    </button>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Button>
                   );
                 })
               )}
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* RIGHT: Event detail + chest management */}
         <div className="min-w-0 flex-1">
-          <div className="rounded-xl border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
+          <Card>
             {selectedEvent ? (
               <>
-                {/* Header */}
-                <div className="border-b p-4" style={{ borderBottomColor: 'var(--border-divider)' }}>
+                <CardHeader className="border-b border-border">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>
+                      <CardTitle className="text-sm font-semibold">
                         {selectedEvent.title || selectedEvent.name}
-                      </h3>
-                      <p className="mt-0.5 text-xs" style={{ color: 'var(--chart-axis)' }}>
+                      </CardTitle>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {teams.length} team{teams.length !== 1 ? "s" : ""}
-                        {hasChestConfig ? ` · ${assignedCount} with chest numbers` : ""}
-                        {unassignedCount > 0 ? ` · ${unassignedCount} unassigned` : ""}
+                        {hasChestConfig ? ` \u00B7 ${assignedCount} with chest numbers` : ""}
+                        {unassignedCount > 0 ? ` \u00B7 ${unassignedCount} unassigned` : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {hasChestConfig && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-[10px] font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        <Badge variant="outline" className="inline-flex items-center gap-1 bg-accent-amber/10 text-accent-amber border-accent-amber/20">
                           <Hash className="h-3 w-3" />
                           {selectedEvent.chest_prefix}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
 
-                  {/* Chest prefix editor */}
-                  <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border p-3" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                  <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted p-3">
                     <div className="min-w-0 flex-1">
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--chart-axis)' }}>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Chest Number Prefix
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={chestPrefix}
                         onChange={(e) => setChestPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                         placeholder="e.g. GD, SD, MT"
                         maxLength={10}
-                        className="w-full rounded-lg border px-3 py-2 text-sm font-mono"
-                        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                        className="w-full font-mono"
                       />
                     </div>
-                    <button
+                    <Button
+                      variant="outline"
                       onClick={savePrefix}
                       disabled={prefixSaving}
-                      className="flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-medium transition hover:bg-orange-50 hover:text-orange-600 disabled:opacity-50"
-                      style={{ borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                      className="flex items-center gap-1.5"
+                      size="sm"
                     >
                       {prefixSaving ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -352,42 +343,40 @@ export default function CoordinatorEventManagement() {
                         <Save className="h-3.5 w-3.5" />
                       )}
                       {prefixSaving ? "Saving..." : "Save Prefix"}
-                    </button>
+                    </Button>
                   </div>
 
-                  {/* Auto-assign controls */}
-                  <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border p-3" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                  <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted p-3">
                     <div className="w-24">
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--chart-axis)' }}>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Start #
                       </label>
-                      <input
+                      <Input
                         type="number"
                         value={autoStart}
                         onChange={(e) => setAutoStart(Math.max(1, parseInt(e.target.value, 10) || 1))}
                         min={1}
-                        className="w-full rounded-lg border px-3 py-2 text-sm"
-                        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                        className="w-full"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--chart-axis)' }}>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Prefix for auto-assign
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={autoPrefix}
                         onChange={(e) => setAutoPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                         placeholder={chestPrefix || "Optional prefix"}
                         maxLength={10}
-                        className="w-full rounded-lg border px-3 py-2 text-sm font-mono"
-                        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                        className="w-full font-mono"
                       />
                     </div>
-                    <button
+                    <Button
                       onClick={handleAutoAssign}
                       disabled={actionLoading || unassignedCount === 0}
-                      className="flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white transition hover:bg-orange-600 disabled:opacity-50"
+                      className="flex items-center gap-1.5 bg-accent-amber hover:bg-accent-amber/90 text-white"
+                      size="sm"
                     >
                       {actionLoading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -395,120 +384,118 @@ export default function CoordinatorEventManagement() {
                         <RefreshCw className="h-3.5 w-3.5" />
                       )}
                       {actionLoading ? "Assigning..." : `Auto-Assign (${unassignedCount})`}
-                    </button>
+                    </Button>
                   </div>
-                </div>
+                </CardHeader>
 
-                {/* Teams list */}
-                <div className="p-4">
+                <CardContent className="p-4">
                   {teamsLoading ? (
                     <div className="flex items-center justify-center py-10">
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+                      <Loader2 className="h-6 w-6 animate-spin text-accent-amber" />
                     </div>
                   ) : teams.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-10 text-center">
-                      <Users className="h-8 w-8" style={{ color: 'var(--chart-axis)' }} />
-                      <p className="text-sm" style={{ color: 'var(--chart-axis)' }}>No teams registered for this event</p>
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">No teams registered for this event</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {teams.map((team) => (
-                        <div
-                          key={team._id}
-                          className="rounded-xl border p-4"
-                          style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
-                        >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold" style={{ color: 'var(--card-fg)' }}>
-                                  {team.name || "Individual"}
+                        <Card key={team._id} className="bg-muted border-border">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold text-card-foreground">
+                                    {team.name || "Individual"}
+                                  </p>
+                                  {team.chest_no && (
+                                    <Badge variant="outline" className="inline-flex items-center gap-1 bg-accent-amber/10 text-accent-amber border-accent-amber/20 text-xs font-bold">
+                                      <Hash className="h-3 w-3" />
+                                      {team.chest_no}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {team.group_id?.name || "No group"}
                                 </p>
-                                {team.chest_no && (
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                                    <Hash className="h-3 w-3" />
-                                    {team.chest_no}
-                                  </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {editingChest === team._id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="text"
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
+                                      placeholder={autoPrefix ? `${autoPrefix}-?` : "Chest #"}
+                                      maxLength={20}
+                                      className="w-28 text-xs font-mono"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") confirmEditChest();
+                                        if (e.key === "Escape") cancelEditChest();
+                                      }}
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={confirmEditChest}
+                                      disabled={actionLoading || !editValue.trim()}
+                                      className="text-accent-green hover:bg-accent-green/10"
+                                    >
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={cancelEditChest}
+                                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => startEditChest(team)}
+                                    className="gap-1.5 text-muted-foreground hover:bg-accent-amber/10 hover:text-accent-amber"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                    {team.chest_no ? "Edit" : "Assign"}
+                                  </Button>
                                 )}
                               </div>
-                              <p className="mt-0.5 text-xs" style={{ color: 'var(--chart-axis)' }}>
-                                {team.group_id?.name || "No group"}
-                              </p>
                             </div>
 
-                            {/* Inline chest number editor */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {editingChest === team._id ? (
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    type="text"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
-                                    placeholder={autoPrefix ? `${autoPrefix}-?` : "Chest #"}
-                                    maxLength={20}
-                                    className="w-28 rounded-lg border px-2.5 py-1.5 text-xs font-mono"
-                                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") confirmEditChest();
-                                      if (e.key === "Escape") cancelEditChest();
-                                    }}
-                                  />
-                                  <button
-                                    onClick={confirmEditChest}
-                                    disabled={actionLoading || !editValue.trim()}
-                                    className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium text-green-600 transition hover:bg-green-50 disabled:opacity-50"
-                                    style={{ borderColor: 'var(--border-divider)' }}
+                            {team.members && team.members.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-1.5">
+                                {team.members.map((m) => (
+                                  <Badge
+                                    key={m._id}
+                                    variant="outline"
+                                    className="bg-card text-muted-foreground text-xs"
                                   >
-                                    <CheckCircle className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={cancelEditChest}
-                                    className="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition hover:bg-red-50 hover:text-red-600"
-                                    style={{ borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => startEditChest(team)}
-                                  className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition hover:bg-orange-50 hover:text-orange-600"
-                                  style={{ borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}
-                                >
-                                  <Edit3 className="h-3.5 w-3.5" />
-                                  {team.chest_no ? "Edit" : "Assign"}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {team.members && team.members.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-1.5">
-                              {team.members.map((m) => (
-                                <span
-                                  key={m._id}
-                                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
-                                  style={{ backgroundColor: 'var(--card)', color: 'var(--chart-axis)' }}
-                                >
-                                  {m.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                                    {m.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   )}
-                </div>
+                </CardContent>
               </>
             ) : (
-              <div className="flex flex-col items-center gap-2 py-16 text-center">
-                <Hash className="h-10 w-10" style={{ color: 'var(--chart-axis)' }} />
-                <p className="text-sm font-medium" style={{ color: 'var(--chart-axis)' }}>Select an event to manage chest numbers</p>
-              </div>
+              <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+                <Hash className="h-10 w-10 text-muted-foreground" />
+                <p className="text-sm font-medium text-muted-foreground">Select an event to manage chest numbers</p>
+              </CardContent>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

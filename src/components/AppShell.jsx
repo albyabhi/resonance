@@ -7,20 +7,17 @@ export default function AppShell({ onLogout = () => {}, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Theme is now managed by ThemeProvider (Phase 2)
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const handleMenuClick = useCallback(() => setMobileOpen(true), []);
   const handleClose = useCallback(() => setMobileOpen(false), []);
   const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
 
   return (
-    <div className="h-screen h-[100dvh] max-h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="h-screen h-[100dvh] max-h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
       <Header
         onLogout={onLogout}
         onMenuClick={handleMenuClick}
-        theme={theme}
-        setTheme={setTheme}
-        resolvedTheme={resolvedTheme}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
       />

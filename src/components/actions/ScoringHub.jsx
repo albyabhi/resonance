@@ -3,6 +3,8 @@ import usePermission from "../../hooks/usePermission";
 import ScoreReview from "./ScoreReview";
 import ManageResult from "./ManageResult";
 import AdminScoreboard from "./AdminScoreboard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
+import { Card } from "../ui/card";
 
 const TABS = [
   { id: "score-review", label: "Score Review", roles: ["super_admin", "organizer"], component: ScoreReview },
@@ -29,71 +31,52 @@ const ScoringHub = () => {
     }
   }, [activeTab, visibleTabs]);
 
-  const activeConfig = TABS.find((t) => t.id === activeTab);
-  const ActiveComponent = activeConfig?.component;
-
   if (visibleTabs.length === 0) {
     return (
-      <div className="rounded-xl shadow-sm p-6 border text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <p className="text-sm" style={{ color: "var(--chart-axis)" }}>Scoring is not available for your role.</p>
-      </div>
+      <Card className="rounded-lg p-5 border-0 shadow-none">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Scoring is not available for your role.</p>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-xl shadow-sm border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-      {/* Tab Navigation */}
-      <div className="border-b" style={{ borderBottomColor: "var(--border-divider)" }}>
-        {/* Desktop tabs */}
-        <div className="hidden md:flex flex-wrap">
-          {visibleTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-4 py-3 text-sm font-medium transition-colors focus:outline-none ${
-                activeTab === tab.id
-                  ? "text-orange-600 dark:text-orange-400"
-                  : "hover:text-gray-600 dark:hover:text-gray-300"
-              }`}
-              style={{ color: activeTab === tab.id ? undefined : "var(--chart-axis)" }}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-              )}
-            </button>
-          ))}
+    <Card className="rounded-lg p-5 border-0 shadow-none">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="border-b border-border">
+          <TabsList className="hidden md:flex w-full justify-start h-auto bg-transparent p-0 rounded-none">
+            {visibleTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="relative rounded-none border-b-2 border-transparent px-4 py-3 text-sm font-medium data-[state=active]:border-accent-amber data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-accent-amber hover:text-foreground/80"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsList className="flex md:hidden w-full justify-start h-auto bg-transparent p-0 rounded-none overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            {visibleMobile.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="relative flex-shrink-0 rounded-none border-b-2 border-transparent px-4 py-3 text-xs font-medium data-[state=active]:border-accent-amber data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-accent-amber hover:text-foreground/80"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
 
-        {/* Mobile tabs */}
-        <div className="flex md:hidden overflow-x-auto [&::-webkit-scrollbar]:hidden">
-          {visibleMobile.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex-shrink-0 px-4 py-3 text-xs font-medium transition-colors focus:outline-none ${
-                activeTab === tab.id
-                  ? "text-orange-600 dark:text-orange-400"
-                  : "hover:text-gray-600 dark:hover:text-gray-300"
-              }`}
-              style={{ color: activeTab === tab.id ? undefined : "var(--chart-axis)" }}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="p-0">
-        {ActiveComponent && <ActiveComponent />}
-      </div>
-    </div>
+        {visibleTabs.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id} className="mt-0 p-0">
+            {tab.component && <tab.component />}
+          </TabsContent>
+        ))}
+      </Tabs>
+    </Card>
   );
 };
 

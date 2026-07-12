@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { FadeIn } from "../AnimateReveal";
-import { UserPlus, Users, Edit3, Trash2, Search, Copy, ExternalLink, Link } from "lucide-react";
+import { UserPlus, Users, Edit3, Trash2, Search, Copy, ExternalLink } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Label } from "../ui/label";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "../ui/alert-dialog";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -139,7 +147,6 @@ const ManageUser = () => {
   };
 
   const handleDelete = async (userId) => {
-    if (!window.confirm("Are you sure you want to remove this user?")) return;
     try {
       await apiCall(`/api/users/${userId}`, { method: "DELETE" });
       await fetchUsers();
@@ -180,276 +187,222 @@ const ManageUser = () => {
     <FadeIn>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold theme-text-primary">User Management</h2>
-          <button
+          <h2 className="text-xl font-bold text-foreground">User Management</h2>
+          <Button
             onClick={() => { setActiveTab(activeTab === "manage" ? "add" : "manage"); setEditingUserId(null); setCredentials(null); setFormData({ name: "", username: "", password: "", role: "participant", house: "" }); }}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
-            {activeTab === "manage" ? <UserPlus className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+            {activeTab === "manage" ? <UserPlus className="h-4 w-4 mr-2" /> : <Users className="h-4 w-4 mr-2" />}
             {activeTab === "manage" ? "Add User" : "View All"}
-          </button>
+          </Button>
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+          <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
             {error}
           </div>
         )}
 
         {credentials && (
-          <div className="rounded-2xl p-6 theme-card border-2 border-green-200 dark:border-green-900/40">
-            <h3 className="text-lg font-semibold text-green-600 dark:text-green-400 mb-4">
-              User Created — Share Credentials
-            </h3>
-            <div className="overflow-x-auto rounded-lg border mb-4" style={{ borderColor: 'var(--border-card)' }}>
-              <table className="w-full text-sm">
-                <thead style={{ backgroundColor: 'var(--surface)' }}>
-                  <tr>
-                    <th className="p-3 text-left font-semibold theme-text-secondary">Field</th>
-                    <th className="p-3 text-left font-semibold theme-text-secondary">Value</th>
-                    <th className="p-3 text-left font-semibold theme-text-secondary">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b" style={{ borderColor: 'var(--border-divider)' }}>
-                    <td className="p-3 font-medium theme-text-primary">Email</td>
-                    <td className="p-3 theme-text-secondary">{credentials.email}</td>
-                    <td className="p-3">
-                      <button onClick={() => copyToClipboard(credentials.email, "Email")}
-                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
-                        style={{ color: 'var(--accent)' }}>
-                        <Copy className="h-3 w-3" /> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b" style={{ borderColor: 'var(--border-divider)' }}>
-                    <td className="p-3 font-medium theme-text-primary">Password</td>
-                    <td className="p-3 font-mono text-orange-600 dark:text-orange-400">{credentials.password}</td>
-                    <td className="p-3">
-                      <button onClick={() => copyToClipboard(credentials.password, "Password")}
-                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
-                        style={{ color: 'var(--accent)' }}>
-                        <Copy className="h-3 w-3" /> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 font-medium theme-text-primary">Setup Link</td>
-                    <td className="p-3">
-                      <span className="text-xs break-all theme-text-secondary">{credentials.setup_link}</span>
-                    </td>
-                    <td className="p-3">
-                      <button onClick={() => copyToClipboard(credentials.setup_link, "Setup link")}
-                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded hover:bg-indigo-500/10"
-                        style={{ color: 'var(--accent)' }}>
-                        <Copy className="h-3 w-3" /> Copy Link
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs mb-4" style={{ color: 'var(--chart-axis)' }}>
-              Share the password or the setup link with the user. The link expires in 7 days.
-              The user can set their password at the link and then sign in.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setCredentials(null); setActiveTab("manage"); }}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
-                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
-              >
-                Done — View All Users
-              </button>
-              <button
-                onClick={() => { setCredentials(null); }}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-80"
-                style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}
-              >
-                Add Another User
-              </button>
-            </div>
-          </div>
+          <Card className="border-2 border-accent-green/40">
+            <CardHeader>
+              <CardTitle className="text-accent-green">User Created — Share Credentials</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto rounded-lg border border-border mb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium text-foreground">Email</TableCell>
+                      <TableCell className="text-muted-foreground">{credentials.email}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.email, "Email")}>
+                          <Copy className="h-3 w-3 mr-1" /> Copy
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-foreground">Password</TableCell>
+                      <TableCell className="font-mono text-accent-amber">{credentials.password}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.password, "Password")}>
+                          <Copy className="h-3 w-3 mr-1" /> Copy
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-foreground">Setup Link</TableCell>
+                      <TableCell className="text-xs break-all text-muted-foreground">{credentials.setup_link}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.setup_link, "Setup link")}>
+                          <Copy className="h-3 w-3 mr-1" /> Copy Link
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Share the password or the setup link with the user. The link expires in 7 days.
+                The user can set their password at the link and then sign in.
+              </p>
+              <div className="flex gap-2">
+                <Button onClick={() => { setCredentials(null); setActiveTab("manage"); }}>
+                  Done — View All Users
+                </Button>
+                <Button variant="secondary" onClick={() => { setCredentials(null); }}>
+                  Add Another User
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {activeTab === "add" && !credentials && (
-          <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl p-6 theme-card">
-            <h3 className="text-lg font-semibold theme-text-primary">
-              {editingUserId ? "Edit User" : "Add New User"}
-            </h3>
-            <p className="text-xs theme-text-secondary -mt-3">
-              Password is optional — leave blank to auto-generate a secure password and setup link.
-            </p>
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">Name</label>
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Full name"
-                  required
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">Email</label>
-                <input
-                  name="username"
-                  type="email"
-                  value={formData.username}
-                  onChange={handleChange}
-                  placeholder="email@example.com"
-                  required
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                />
-              </div>
-
-              {!editingUserId && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">
-                    Password <span className="font-normal lowercase opacity-60">(optional)</span>
-                  </label>
-                  <input
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Leave blank to auto-generate"
-                    className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                    style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle>{editingUserId ? "Edit User" : "Add New User"}</CardTitle>
+              <CardDescription>
+                Password is optional — leave blank to auto-generate a secure password and setup link.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" name="name" value={formData.name} onChange={handleChange} placeholder="Full name" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Email</Label>
+                    <Input id="username" name="username" type="email" value={formData.username} onChange={handleChange} placeholder="email@example.com" required />
+                  </div>
+                  {!editingUserId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Leave blank to auto-generate" />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select name="role" value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                      <SelectTrigger id="role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="house">{groupLabel || "Group"}</Label>
+                    <Select name="house" value={formData.house} onValueChange={(value) => setFormData({...formData, house: value})}>
+                      <SelectTrigger id="house">
+                        <SelectValue placeholder={`Select ${groupLabel || "Group"}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {houses.map((h) => (
+                          <SelectItem key={h._id} value={h._id}>{h.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">Role</label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                >
-                  {roleOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider theme-text-secondary">
-                  {groupLabel || "Group"}
-                </label>
-                <select
-                  name="house"
-                  value={formData.house}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all focus:ring-2"
-                  style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                >
-                  <option value="">Select {groupLabel || "Group"}</option>
-                  {houses.map((h) => (
-                    <option key={h._id} value={h._id}>{h.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-50"
-                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
-              >
-                {loading ? "Saving..." : (editingUserId ? "Update User" : "Add User")}
-              </button>
-              {editingUserId && (
-                <button
-                  type="button"
-                  onClick={() => { setEditingUserId(null); setFormData({ name: "", username: "", password: "", role: "participant", house: "" }); }}
-                  className="inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all hover:opacity-80"
-                  style={{ backgroundColor: 'var(--surface)', color: 'var(--card-fg)' }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Saving..." : (editingUserId ? "Update User" : "Add User")}
+                  </Button>
+                  {editingUserId && (
+                    <Button variant="secondary" type="button" onClick={() => { setEditingUserId(null); setFormData({ name: "", username: "", password: "", role: "participant", house: "" }); }}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         )}
 
         {activeTab === "manage" && (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 opacity-40" />
-              <input
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search users by name..."
-                className="w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2"
-                style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
+                className="pl-10"
               />
             </div>
 
-            <div className="overflow-x-auto rounded-2xl theme-card">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: 'var(--border-divider)' }}>
-                    <th className="px-4 py-3 font-semibold theme-text-secondary">Name</th>
-                    <th className="px-4 py-3 font-semibold theme-text-secondary">Email</th>
-                    <th className="px-4 py-3 font-semibold theme-text-secondary">Role</th>
-                    <th className="px-4 py-3 font-semibold theme-text-secondary">{groupLabel || "House"}</th>
-                    <th className="px-4 py-3 font-semibold theme-text-secondary">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>{groupLabel || "House"}</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {loading ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center theme-text-secondary">Loading...</td></tr>
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading...</TableCell>
+                    </TableRow>
                   ) : filteredUsers.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center theme-text-secondary">No users found</td></tr>
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No users found</TableCell>
+                    </TableRow>
                   ) : (
                     filteredUsers.map((user) => (
-                      <tr key={user._id} className="border-b last:border-0" style={{ borderColor: 'var(--border-divider)' }}>
-                        <td className="px-4 py-3 font-medium theme-text-primary">{user.name}</td>
-                        <td className="px-4 py-3 theme-text-secondary">{user.username || user.email}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold"
-                            style={{ backgroundColor: 'var(--surface)', color: 'var(--accent)' }}>
-                            {roleLabel(user.role || user.membership_role)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 theme-text-secondary">{user.house?.name || "-"}</td>
-                        <td className="px-4 py-3">
+                      <TableRow key={user._id}>
+                        <TableCell className="font-medium text-foreground">{user.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{user.username || user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{roleLabel(user.role || user.membership_role)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.house?.name || "-"}</TableCell>
+                        <TableCell>
                           <div className="flex gap-1">
-                            <button
-                              onClick={() => handleResendLink(user._id)}
-                              title="Generate setup link"
-                              className="rounded-lg p-2 transition-colors hover:bg-emerald-500/10"
-                            >
-                              <ExternalLink className="h-4 w-4 text-emerald-500" />
-                            </button>
-                            <button onClick={() => handleEdit(user)}
-                              className="rounded-lg p-2 transition-colors hover:bg-indigo-500/10">
-                              <Edit3 className="h-4 w-4" style={{ color: 'var(--accent)' }} />
-                            </button>
-                            <button onClick={() => handleDelete(user._id)}
-                              className="rounded-lg p-2 transition-colors hover:bg-red-500/10">
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </button>
+                            <Button variant="ghost" size="icon" onClick={() => handleResendLink(user._id)} title="Generate setup link">
+                              <ExternalLink className="h-4 w-4 text-accent-green" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove User</AlertDialogTitle>
+                                  <AlertDialogDescription>Are you sure you want to remove this user? This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(user._id)}>Remove</AlertDialogAction>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </Card>
           </div>
         )}
       </div>

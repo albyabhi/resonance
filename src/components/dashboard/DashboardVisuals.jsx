@@ -5,6 +5,9 @@ import { Calendar, Trophy, AlertCircle, CheckCircle, Activity, TrendingUp, Medal
 import usePermission from "../../hooks/usePermission";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -15,17 +18,17 @@ import HousePerformanceChart from "../charts/HousePerformanceChart";
 import { FadeIn } from "../AnimateReveal";
 import DashboardEmptyState from "./DashboardEmptyState";
 
-function SectionCard({ title, description, className = "", children, noPad = false }) {
+function SectionCard({ title, description, className = "", children }) {
   return (
-    <div className={`card-premium ${className}`}>
-      <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid var(--border-divider)' }}>
-        <h3 className="text-base font-semibold" style={{ color: 'var(--card-fg)' }}>{title}</h3>
-        <p className="mt-0.5 text-xs" style={{ color: 'var(--chart-axis)' }}>{description}</p>
-      </div>
-      <div className={noPad ? "" : "p-4"}>
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>
         <div className="chart-surface">{children}</div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -92,27 +95,30 @@ function StandingsTable({ scoreboard = [], userHouseId }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--border-divider)" }}>
-      <div className="grid grid-cols-[56px_1fr_92px] border-b px-4 py-3 text-xs font-semibold uppercase" style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}>
-        <span>Rank</span>
-        <span>{groupLabel}</span>
-        <span className="text-right">Points</span>
-      </div>
-      {leaders.map((item, index) => {
-        const isCurrent = userHouseId && getScoreboardId(item) === getId(userHouseId);
-        return (
-          <div
-            key={getScoreboardId(item) || index}
-            className="grid grid-cols-[56px_1fr_92px] items-center border-b px-4 py-3 last:border-b-0"
-            style={{ borderColor: "var(--border-divider)", backgroundColor: isCurrent ? "rgba(79, 70, 229, 0.08)" : "transparent" }}
-          >
-            <span className="text-sm font-semibold" style={{ color: "var(--card-fg)" }}>#{item.rank || index + 1}</span>
-            <span className="min-w-0 truncate text-sm font-medium" style={{ color: "var(--card-fg)" }}>{getScoreboardName(item)}</span>
-            <span className="text-right text-sm font-semibold" style={{ color: "var(--card-fg)" }}>{getScoreboardPoints(item).toLocaleString()}</span>
-          </div>
-        );
-      })}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-14">Rank</TableHead>
+          <TableHead>{groupLabel}</TableHead>
+          <TableHead className="text-right">Points</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {leaders.map((item, index) => {
+          const isCurrent = userHouseId && getScoreboardId(item) === getId(userHouseId);
+          return (
+            <TableRow
+              key={getScoreboardId(item) || index}
+              style={{ backgroundColor: isCurrent ? "rgba(30, 161, 255, 0.06)" : undefined }}
+            >
+              <TableCell className="font-semibold">#{item.rank || index + 1}</TableCell>
+              <TableCell className="font-medium truncate max-w-[200px]">{getScoreboardName(item)}</TableCell>
+              <TableCell className="text-right font-semibold">{getScoreboardPoints(item).toLocaleString()}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -200,9 +206,9 @@ function ResultProgress({ results = [] }) {
   const total = results.length || 1;
 
   const items = [
-    { label: "Approved", value: counts.approved || 0, color: "bg-emerald-500" },
-    { label: "Pending", value: counts.pending || 0, color: "bg-amber-500" },
-    { label: "Rejected", value: counts.rejected || 0, color: "bg-rose-500" },
+    { label: "Approved", value: counts.approved || 0, color: "var(--accent-green)" },
+    { label: "Pending", value: counts.pending || 0, color: "var(--accent-amber)" },
+    { label: "Rejected", value: counts.rejected || 0, color: "var(--accent-red)" },
   ];
 
   return (
@@ -210,11 +216,11 @@ function ResultProgress({ results = [] }) {
       {items.map((item) => (
         <div key={item.label}>
           <div className="mb-1.5 flex items-center justify-between text-sm">
-            <span style={{ color: "var(--card-fg)" }}>{item.label}</span>
-            <span className="font-semibold" style={{ color: "var(--card-fg)" }}>{item.value}</span>
+            <span style={{ color: "var(--card-foreground)" }}>{item.label}</span>
+            <span className="font-semibold" style={{ color: "var(--card-foreground)" }}>{item.value}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-            <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.round((item.value / total) * 100)}%` }} />
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full" style={{ width: `${Math.round((item.value / total) * 100)}%`, backgroundColor: item.color }} />
           </div>
         </div>
       ))}
@@ -264,17 +270,18 @@ export default function DashboardVisuals() {
       <div className="flex w-full flex-col gap-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {[1,2,3,4].map(i => (
-            <div key={i} className="h-32 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-2xl border border-neutral-200 dark:border-neutral-700"></div>
+            <div key={i} className="h-32 animate-pulse rounded-lg bg-muted"></div>
           ))}
         </div>
-        <div className="h-[400px] bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-2xl border border-neutral-200 dark:border-neutral-700 w-full"></div>
+        <div className="h-[400px] animate-pulse rounded-lg bg-muted w-full"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex w-full items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
+      <div className="flex w-full items-center gap-3 rounded-lg border p-6 text-sm"
+        style={{ borderColor: "var(--accent-red)", backgroundColor: "var(--accent-red-tint)", color: "var(--accent-red)" }}>
         <AlertCircle className="h-5 w-5" />
         Unable to load dashboard data: {error}
       </div>
@@ -374,15 +381,13 @@ export default function DashboardVisuals() {
                         {evt.rounds} round(s) · {submitted} submitted · {draft} draft
                       </p>
                     </div>
-                    <span className={`text-xs rounded px-2 py-1 font-medium ${
-                      evt.status === "judging"
-                        ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-                        : evt.status === "ongoing"
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                          : "bg-gray-50 text-gray-600 dark:bg-gray-500/10 dark:text-gray-400"
-                    }`}>
+                    <Badge variant={
+                      evt.status === "judging" ? "secondary" :
+                      evt.status === "ongoing" ? "success" :
+                      "outline"
+                    }>
                       {evt.status?.replace(/_/g, " ")}
-                    </span>
+                    </Badge>
                   </div>
                 );
               })}

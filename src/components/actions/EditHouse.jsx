@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { AlertCircle, CheckCircle, Loader2, Save, Upload } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -35,7 +39,6 @@ const EditHouse = () => {
         setSuccess("");
         if (String(role || "").toLowerCase() !== "captain") throw new Error("Only captains can edit group details");
 
-        // Use group data from auth context (user.house = captainGroup from login response)
         const groupData = user?.house;
         if (groupData?._id) {
           setGroupId(groupData._id);
@@ -89,66 +92,97 @@ const EditHouse = () => {
   };
 
   return (
-    <div className="theme-card p-4">
-      <div className="mb-3">
-        <h2 className="text-lg font-semibold theme-text-primary">Manage Group Logo</h2>
-        <p className="text-sm theme-text-secondary">Update your group logo URL.</p>
-      </div>
-
-      {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">{error}</div>}
-      {success && <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400">{success}</div>}
-
-      {loading ? (
-        <div className="text-sm theme-text-secondary">Loading...</div>
-      ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="theme-panel mb-4 grid grid-cols-2 gap-4 rounded-lg p-3">
-            <div>
-              <p className="text-xs font-semibold uppercase theme-text-muted">Group Name</p>
-              <p className="font-medium theme-text-primary">{name || "-"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase theme-text-muted">Group Code</p>
-              <p className="font-medium theme-text-primary">{name ? name.substring(0, 3).toUpperCase() : "-"}</p>
-            </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Upload className="h-5 w-5 text-muted-foreground" />
+          <CardTitle>Manage Group Logo</CardTitle>
+        </div>
+        <CardDescription>Update your group logo URL.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <div className="mb-4 rounded-lg border border-accent-red/20 bg-accent-red/10 px-3 py-2 text-accent-red text-sm">
+            <AlertCircle className="inline h-4 w-4 mr-1" />
+            {error}
           </div>
+        )}
+        {success && (
+          <div className="mb-4 rounded-lg border border-accent-green/20 bg-accent-green/10 px-3 py-2 text-accent-green text-sm">
+            <CheckCircle className="inline h-4 w-4 mr-1" />
+            {success}
+          </div>
+        )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium theme-text-secondary">
-              Logo URL <span className="theme-text-muted">(optional)</span>
-            </label>
-            <input
-              type="url"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://example.com/logo.png"
-              className="theme-input px-3 py-2"
-            />
-            {logoUrl ? (
-              <div className="mt-2">
-                <div className="mb-1 text-xs theme-text-secondary">Preview</div>
-                <div className={`theme-panel flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border ${previewOk ? "" : "border-rose-300 dark:border-rose-500/30"}`}>
-                  <img
-                    src={logoUrl}
-                    alt="Group logo preview"
-                    className="h-full w-full object-contain"
-                    onError={() => setPreviewOk(false)}
-                    onLoad={() => setPreviewOk(true)}
-                  />
-                </div>
-                {!previewOk && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">Failed to load image. Check the URL.</p>}
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading...
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="bg-muted rounded-lg p-3 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Group Name</p>
+                <p className="font-medium text-card-foreground">{name || "-"}</p>
               </div>
-            ) : null}
-          </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Group Code</p>
+                <p className="font-medium text-card-foreground">{name ? name.substring(0, 3).toUpperCase() : "-"}</p>
+              </div>
+            </div>
 
-          <div className="pt-2">
-            <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50">
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-muted-foreground">
+                Logo URL <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Input
+                type="url"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://example.com/logo.png"
+              />
+              {logoUrl ? (
+                <div className="mt-2">
+                  <div className="mb-1 text-xs text-muted-foreground">Preview</div>
+                  <div className={`bg-muted flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border ${previewOk ? "border-border" : "border-accent-red/30"}`}>
+                    <img
+                      src={logoUrl}
+                      alt="Group logo preview"
+                      className="h-full w-full object-contain"
+                      onError={() => setPreviewOk(false)}
+                      onLoad={() => setPreviewOk(true)}
+                    />
+                  </div>
+                  {!previewOk && (
+                    <p className="mt-1 text-xs text-accent-red">
+                      <AlertCircle className="inline h-3 w-3 mr-0.5" />
+                      Failed to load image. Check the URL.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

@@ -19,6 +19,26 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useMobileMode } from "../utils/useMobileMode";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Label } from "../ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../ui/select";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../ui/table";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -94,13 +114,12 @@ const JudgeDashboard = () => {
     }
   }, [apiCall]);
 
-  const handleEventChange = (e) => {
-    const id = e.target.value;
+  const handleEventChange = (value) => {
+    const id = value;
     setSelectedEventId(id);
     setSelectedRound(1);
     setSession(null);
     setSessionMeta(null);
-
     setRanking([]);
     setViewState(VIEW.LOADING);
     if (id) {
@@ -110,8 +129,8 @@ const JudgeDashboard = () => {
     }
   };
 
-  const handleRoundChange = (e) => {
-    const round = parseInt(e.target.value, 10) || 1;
+  const handleRoundChange = (value) => {
+    const round = parseInt(value, 10) || 1;
     setSelectedRound(round);
     setSession(null);
     setSessionMeta(null);
@@ -146,7 +165,6 @@ const JudgeDashboard = () => {
       setScoreMax(data.score_scale?.max || 100);
       setScoreInput("");
       setNotesInput("");
-  
       toast.success("Judging session started");
       setViewState(VIEW.JUDGING);
     } catch (err) {
@@ -318,7 +336,6 @@ const JudgeDashboard = () => {
         method: "DELETE",
       });
       setSession(null);
-  
       toast.success("Session abandoned");
       loadSessionInfo(selectedEventId, selectedRound);
     } catch (err) {
@@ -327,206 +344,206 @@ const JudgeDashboard = () => {
     }
   };
 
-  // ─── RENDER: Loading ──────────────────────────────────────────────────────
   if (viewState === VIEW.LOADING) {
     return (
-      <div className="flex items-center justify-center py-20" style={{ color: "var(--chart-axis)" }}>
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
         <span className="text-sm">Loading...</span>
       </div>
     );
   }
 
-  // ─── RENDER: Idle (no event selected) ─────────────────────────────────────
   if (viewState === VIEW.IDLE || !selectedEventId) {
     return (
-      <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--card-fg)" }}>Judge Dashboard</h2>
-          <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Judge Dashboard</CardTitle>
+          <p className="text-sm text-muted-foreground">
             Select an event and round to start judging.
           </p>
-        </div>
+        </CardHeader>
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-3 text-sm">
-            {error}
-          </div>
-        )}
+        <CardContent>
+          {error && (
+            <div className="border border-destructive/20 bg-destructive/10 text-destructive rounded-lg px-3 py-2 mb-3 text-sm">
+              {error}
+            </div>
+          )}
 
-        <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} gap-3 mb-4`}>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--chart-axis)" }}>Assigned Events</label>
-            <select
-              value={selectedEventId}
-              onChange={handleEventChange}
-              className={`w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? "min-h-[48px] text-base px-4" : "px-3 py-2 text-sm"}`}
-              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-            >
-              <option value="">Select an event</option>
-              {(assignments || []).map((a) => (
-                <option key={a._id} value={a.event_id?._id || a.event_id}>
-                  {a.event_id?.name || "Unknown Event"}
-                </option>
-              ))}
-            </select>
+          <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} gap-3 mb-4`}>
+            <div>
+              <Label className="mb-1 block">Assigned Events</Label>
+              <Select value={selectedEventId} onValueChange={handleEventChange}>
+                <SelectTrigger className={`w-full ${isMobile ? "min-h-[48px] text-base" : ""}`}>
+                  <SelectValue placeholder="Select an event" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Select an event</SelectItem>
+                  {(assignments || []).map((a) => (
+                    <SelectItem key={a._id} value={a.event_id?._id || a.event_id}>
+                      {a.event_id?.name || "Unknown Event"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={`flex ${isMobile ? "" : "items-end"}`}>
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                className={`w-full gap-1 ${isMobile ? "min-h-[48px] text-base" : ""}`}
+              >
+                <RefreshCw className="h-4 w-4" /> Refresh
+              </Button>
+            </div>
           </div>
-          <div className={`flex ${isMobile ? "" : "items-end"}`}>
-            <button
-              onClick={handleRefresh}
-              className={`w-full border rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 flex items-center justify-center gap-1 ${isMobile ? "min-h-[48px] text-base" : "px-3 py-2 text-sm"}`}
-              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-            >
-              <RefreshCw className="h-4 w-4" /> Refresh
-            </button>
-          </div>
-        </div>
 
-        {assignments.length === 0 && (
-          <div className="text-center py-8">
-            <ClipboardList className="h-10 w-10 mx-auto mb-2" style={{ color: "var(--chart-axis)" }} />
-            <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
-              No events assigned to you yet. Contact an organizer to get assigned.
-            </p>
-          </div>
-        )}
-      </div>
+          {assignments.length === 0 && (
+            <div className="text-center py-8">
+              <ClipboardList className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No events assigned to you yet. Contact an organizer to get assigned.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
-  // ─── RENDER: Waiting / Start ──────────────────────────────────────────────
   if (viewState === VIEW.WAITING) {
     const evt = sessionMeta?.event || {};
     const canStart = sessionMeta?.can_start && !session;
     const hasExistingSession = !!session;
 
     return (
-      <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--card-fg)" }}>{evt.name || "Event"}</h2>
-          <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{evt.name || "Event"}</CardTitle>
+          <p className="text-sm text-muted-foreground">
             {evt.category} &middot; {evt.event_type} &middot; Round {selectedRound}
           </p>
-        </div>
+        </CardHeader>
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" style={{ color: "var(--chart-axis)" }}>Round</label>
-          <select
-            value={selectedRound}
-            onChange={handleRoundChange}
-            className={`w-full max-w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? "min-h-[48px] text-base px-4" : "px-3 py-2 text-sm"}`}
-            style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-          >
-            {Array.from({ length: evt.rounds || 1 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>Round {i + 1}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="border rounded-lg p-3 text-center" style={{ borderColor: "var(--border-divider)" }}>
-            <Users className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--chart-axis)" }} />
-            <p className="text-lg font-bold" style={{ color: "var(--card-fg)" }}>{sessionMeta?.participant_count || 0}</p>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Teams</p>
-          </div>
-          <div className="border rounded-lg p-3 text-center" style={{ borderColor: "var(--border-divider)" }}>
-            <Hash className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--chart-axis)" }} />
-            <p className="text-lg font-bold" style={{ color: "var(--card-fg)" }}>{sessionMeta?.teams_without_chest || 0}</p>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>No Chest</p>
-          </div>
-          <div className="border rounded-lg p-3 text-center" style={{ borderColor: "var(--border-divider)" }}>
-            <span className="text-2xl mb-1 block">{evt.status === "judging" ? "✓" : "—"}</span>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-              {evt.status?.replace(/_/g, " ") || "Status"}
-            </p>
-          </div>
-          <div className="border rounded-lg p-3 text-center" style={{ borderColor: "var(--border-divider)" }}>
-            <Trophy className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--chart-axis)" }} />
-            <p className="text-lg font-bold" style={{ color: "var(--card-fg)" }}>{evt.rounds || 1}</p>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>Rounds</p>
-          </div>
-        </div>
-
-        {!sessionMeta?.all_have_chests && (
-          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Waiting for chest numbers. An event coordinator must assign chest numbers before judging can begin.</span>
-          </div>
-        )}
-
-        {["result_pending", "published", "completed", "cancelled"].includes(evt.status) && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Cannot start judging: event is &ldquo;{evt.status?.replace(/_/g, " ")}&rdquo;.</span>
-          </div>
-        )}
-
-        <div className="border rounded-lg p-4 mb-4" style={{ borderColor: "var(--border-divider)", backgroundColor: "var(--surface)" }}>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--card-fg)" }}>
-            Score Scale (max points)
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={scoreMax}
-            onChange={(e) => setScoreMax(Math.max(1, parseInt(e.target.value, 10) || 100))}
-            className={`border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? "min-h-[48px] text-base px-4" : "px-3 py-2 text-sm"} max-w-[120px]`}
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-            disabled={hasExistingSession}
-          />
-          <p className="text-xs mt-1" style={{ color: "var(--chart-axis)" }}>Score range: 0 to {scoreMax}</p>
-        </div>
-
-        {hasExistingSession && (
-          <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-400 rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 shrink-0" />
-            <span>You have an existing session for this event. You can resume or abandon it.</span>
-          </div>
-        )}
-
-        <div className="flex gap-3 flex-wrap">
-          {hasExistingSession ? (
-            <>
-              <button
-                onClick={handleResumeSession}
-                className="px-6 py-2 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" /> Resume Session
-              </button>
-              <button
-                onClick={handleAbandonSession}
-                className="px-6 py-2 border rounded-lg font-bold hover:bg-red-50 hover:text-red-600 flex items-center gap-2"
-                style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-              >
-                <X className="h-4 w-4" /> Abandon
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleStartSession}
-              disabled={!canStart || sessionActionLoading}
-              className={`px-6 py-2 rounded-lg font-bold flex items-center gap-2 ${
-                canStart
-                  ? "bg-orange-600 text-white hover:bg-orange-700"
-                  : "bg-gray-200 text-gray-400 dark:bg-gray-800 cursor-not-allowed"
-              }`}
-            >
-              {sessionActionLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              Start Judging
-            </button>
+        <CardContent>
+          {error && (
+            <div className="border border-destructive/20 bg-destructive/10 text-destructive rounded-lg px-3 py-2 mb-3 text-sm">
+              {error}
+            </div>
           )}
-        </div>
-      </div>
+
+          <div className="mb-4">
+            <Label className="mb-1 block">Round</Label>
+            <Select value={String(selectedRound)} onValueChange={handleRoundChange}>
+              <SelectTrigger className={`max-w-[200px] ${isMobile ? "min-h-[48px] text-base" : ""}`}>
+                <SelectValue placeholder="Select round" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: evt.rounds || 1 }, (_, i) => (
+                  <SelectItem key={i + 1} value={String(i + 1)}>Round {i + 1}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="border border-border rounded-lg p-3 text-center">
+              <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-lg font-bold text-card-foreground">{sessionMeta?.participant_count || 0}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Teams</p>
+            </div>
+            <div className="border border-border rounded-lg p-3 text-center">
+              <Hash className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-lg font-bold text-card-foreground">{sessionMeta?.teams_without_chest || 0}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">No Chest</p>
+            </div>
+            <div className="border border-border rounded-lg p-3 text-center">
+              <span className="text-2xl mb-1 block">{evt.status === "judging" ? "\u2713" : "\u2014"}</span>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                {evt.status?.replace(/_/g, " ") || "Status"}
+              </p>
+            </div>
+            <div className="border border-border rounded-lg p-3 text-center">
+              <Trophy className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-lg font-bold text-card-foreground">{evt.rounds || 1}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Rounds</p>
+            </div>
+          </div>
+
+          {!sessionMeta?.all_have_chests && (
+            <div className="bg-accent-amber/10 border border-accent-amber/20 text-accent-amber rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Waiting for chest numbers. An event coordinator must assign chest numbers before judging can begin.</span>
+            </div>
+          )}
+
+          {["result_pending", "published", "completed", "cancelled"].includes(evt.status) && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>Cannot start judging: event is &ldquo;{evt.status?.replace(/_/g, " ")}&rdquo;.</span>
+            </div>
+          )}
+
+          <div className="border border-border rounded-lg p-4 mb-4 bg-muted">
+            <Label className="mb-2 block text-card-foreground">
+              Score Scale (max points)
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              value={scoreMax}
+              onChange={(e) => setScoreMax(Math.max(1, parseInt(e.target.value, 10) || 100))}
+              className={`max-w-[120px] ${isMobile ? "min-h-[48px] text-base" : ""}`}
+              disabled={hasExistingSession}
+            />
+            <p className="text-xs mt-1 text-muted-foreground">Score range: 0 to {scoreMax}</p>
+          </div>
+
+          {hasExistingSession && (
+            <div className="bg-accent-green/10 border border-accent-green/20 text-accent-green rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 shrink-0" />
+              <span>You have an existing session for this event. You can resume or abandon it.</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 flex-wrap">
+            {hasExistingSession ? (
+              <>
+                <Button
+                  onClick={handleResumeSession}
+                  className="gap-2 bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
+                >
+                  <RotateCcw className="h-4 w-4" /> Resume Session
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleAbandonSession}
+                  className="gap-2 font-bold hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <X className="h-4 w-4" /> Abandon
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleStartSession}
+                disabled={!canStart || sessionActionLoading}
+                className={`gap-2 font-bold ${
+                  canStart
+                    ? "bg-accent-amber hover:bg-accent-amber/90 text-white"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
+              >
+                {sessionActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                Start Judging
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -537,7 +554,7 @@ const JudgeDashboard = () => {
     const pct = totalCount > 0 ? Math.round((scoredCount / totalCount) * 100) : 0;
 
     const getParticipantMeta = (p) => {
-      if (!p) return { chest: "—", group: "", team: "" };
+      if (!p) return { chest: "\u2014", group: "", team: "" };
       const tid = String(p.team_id);
       if (sessionMeta?.event?.enable_blind_judging) {
         return { chest: p.chest_no || `T${tid.slice(-4).toUpperCase()}`, group: "", team: "" };
@@ -554,292 +571,293 @@ const JudgeDashboard = () => {
     const meta = getParticipantMeta(participant);
 
     return (
-      <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <div className="mb-4">
+      <Card>
+        <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
             <div>
-              <h2 className="text-lg font-semibold" style={{ color: "var(--card-fg)" }}>
+              <CardTitle>
                 {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
-              </h2>
-              <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
                 {scoredCount} of {totalCount} scored
               </p>
             </div>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleAbandonSession}
-              className="text-xs px-3 py-1.5 border rounded-lg hover:bg-red-50 hover:text-red-600 flex items-center gap-1"
-              style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}
+              className="text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive gap-1"
             >
               <X className="h-3 w-3" /> Abandon
-            </button>
+            </Button>
           </div>
-          <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-800">
+          <div className="w-full h-2 rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-orange-500 transition-all duration-300"
+              className="h-full rounded-full bg-accent-amber transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
-        </div>
+        </CardHeader>
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-3 text-sm">
-            {error}
-          </div>
-        )}
+        <CardContent>
+          {error && (
+            <div className="border border-destructive/20 bg-destructive/10 text-destructive rounded-lg px-3 py-2 mb-3 text-sm">
+              {error}
+            </div>
+          )}
 
-        <div className="border-2 rounded-xl p-4 sm:p-6 mb-4 transition-all" style={{
-          borderColor: isScored ? "var(--border-divider)" : "#ea580c",
-          backgroundColor: "var(--surface)",
-        }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: "var(--chart-axis)" }}>
-              Participant {session.current_index + 1} of {totalCount}
-            </p>
-            {isScored && (
-              <span className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" /> Scored
-              </span>
-            )}
-          </div>
-
-          <div className="text-center mb-4">
-            <p className="text-3xl font-bold" style={{ color: "var(--card-fg)" }}>
-              Chest #{meta.chest}
-            </p>
-            {meta.group && (
-              <p className="text-sm mt-1" style={{ color: "var(--chart-axis)" }}>
-                {meta.group}{meta.team ? ` — ${meta.team}` : ""}
+          <div className={`border-2 rounded-xl p-4 sm:p-6 mb-4 transition-colors bg-muted ${
+            isScored ? "border-border" : "border-accent-amber"
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+                Participant {session.current_index + 1} of {totalCount}
               </p>
-            )}
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" style={{ color: "var(--card-fg)" }}>
-              Score (out of {scoreMax})
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={scoreMax}
-              value={scoreInput}
-              onChange={(e) => setScoreInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleScoreAction("score"); }}
-              className={`w-full border-2 rounded-lg text-center font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? "min-h-[56px] text-2xl px-4" : "py-3 text-xl"}`}
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-              placeholder={`0 – ${scoreMax}`}
-              autoFocus
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--chart-axis)" }}>
-              Notes (optional)
-            </label>
-            <input
-              type="text"
-              value={notesInput}
-              onChange={(e) => setNotesInput(e.target.value)}
-              className={`w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${isMobile ? "min-h-[44px] text-base px-4" : "px-3 py-2 text-sm"}`}
-              style={{ backgroundColor: "var(--card)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-              placeholder="Optional notes..."
-            />
-          </div>
-
-          <div className={`flex gap-3 ${isMobile ? "flex-col" : "flex-row"}`}>
-            <button
-              onClick={() => handleNavigate("prev")}
-              disabled={session.current_index === 0}
-              className={`flex items-center justify-center gap-1.5 px-4 py-2 border rounded-lg font-medium disabled:opacity-30 ${
-                isMobile ? "min-h-[44px] text-base" : "text-sm"
-              }`}
-              style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-            >
-              <ChevronLeft className="h-4 w-4" /> Previous
-            </button>
-
-            <button
-              onClick={() => handleScoreAction("score")}
-              disabled={sessionActionLoading}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white ${
-                isMobile ? "min-h-[48px] text-base" : "text-sm"
-              } ${isScored ? "bg-orange-500 hover:bg-orange-600" : "bg-orange-600 hover:bg-orange-700"}`}
-            >
-              {sessionActionLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>{isScored ? "Update Score" : "Save & Next"} <ChevronRight className="h-4 w-4" /></>
+              {isScored && (
+                <Badge variant="outline" className="bg-accent-green/10 text-accent-green border-accent-green/20 flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" /> Scored
+                </Badge>
               )}
-            </button>
+            </div>
 
-            <button
-              onClick={() => handleScoreAction("skip")}
-              disabled={sessionActionLoading}
-              className={`flex items-center justify-center gap-1.5 px-4 py-2 border rounded-lg font-medium ${
-                isMobile ? "min-h-[44px] text-base" : "text-sm"
-              }`}
-              style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}
-            >
-              <SkipForward className="h-4 w-4" /> Skip
-            </button>
-          </div>
-        </div>
+            <div className="text-center mb-4">
+              <p className="text-3xl font-bold text-card-foreground">
+                Chest #{meta.chest}
+              </p>
+              {meta.group && (
+                <p className="text-sm mt-1 text-muted-foreground">
+                  {meta.group}{meta.team ? ` \u2014 ${meta.team}` : ""}
+                </p>
+              )}
+            </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--chart-axis)" }}>
-              Quick Nav &middot; {scoredCount}/{totalCount}
-            </p>
-            {scoredCount === totalCount && (
-              <button
-                onClick={handleViewRanking}
-                className="text-xs font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1"
+            <div className="mb-4">
+              <Label className="mb-2 block text-card-foreground">
+                Score (out of {scoreMax})
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                max={scoreMax}
+                value={scoreInput}
+                onChange={(e) => setScoreInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleScoreAction("score"); }}
+                className={`w-full border-2 text-center font-mono font-bold focus:ring-accent-amber ${
+                  isMobile ? "min-h-[56px] text-2xl" : "py-3 text-xl"
+                }`}
+                placeholder={`0 \u2013 ${scoreMax}`}
+                autoFocus
+              />
+            </div>
+
+            <div className="mb-4">
+              <Label className="mb-1 block text-muted-foreground">
+                Notes (optional)
+              </Label>
+              <Input
+                type="text"
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+                className={isMobile ? "min-h-[44px] text-base" : ""}
+                placeholder="Optional notes..."
+              />
+            </div>
+
+            <div className={`flex gap-3 ${isMobile ? "flex-col" : "flex-row"}`}>
+              <Button
+                variant="outline"
+                onClick={() => handleNavigate("prev")}
+                disabled={session.current_index === 0}
+                className={`gap-1.5 ${isMobile ? "min-h-[44px] text-base" : ""}`}
               >
-                <Trophy className="h-3 w-3" /> View Ranking
-              </button>
-            )}
+                <ChevronLeft className="h-4 w-4" /> Previous
+              </Button>
+
+              <Button
+                onClick={() => handleScoreAction("score")}
+                disabled={sessionActionLoading}
+                className={`flex-1 gap-1.5 font-bold text-white ${
+                  isMobile ? "min-h-[48px] text-base" : ""
+                } ${isScored ? "bg-accent-amber hover:bg-accent-amber/90" : "bg-accent-amber hover:bg-accent-amber/90"}`}
+              >
+                {sessionActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>{isScored ? "Update Score" : "Save & Next"} <ChevronRight className="h-4 w-4" /></>
+                )}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => handleScoreAction("skip")}
+                disabled={sessionActionLoading}
+                className={`gap-1.5 text-muted-foreground ${isMobile ? "min-h-[44px] text-base" : ""}`}
+              >
+                <SkipForward className="h-4 w-4" /> Skip
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {session.participants.map((p, idx) => {
-              const isCurrent = idx === session.current_index;
-              const isScoredP = p.status === "scored";
-              let btnClass = "min-w-[32px] h-8 rounded text-xs font-bold border transition-all";
-              if (isCurrent && isScoredP) {
-                btnClass += " bg-orange-100 border-orange-400 text-orange-700 dark:bg-orange-500/20 dark:border-orange-400 dark:text-orange-400";
-              } else if (isCurrent) {
-                btnClass += " bg-orange-500 text-white border-orange-500";
-              } else if (isScoredP) {
-                btnClass += " bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400";
-              } else {
-                btnClass += " border-gray-200 text-gray-400 dark:border-gray-700 dark:text-gray-500";
-              }
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleNavigate("goto", idx)}
-                  className={btnClass}
-                  title={`${p.chest_no || `#${idx + 1}`} — ${isScoredP ? "Scored" : "Pending"}`}
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Quick Nav &middot; {scoredCount}/{totalCount}
+              </p>
+              {scoredCount === totalCount && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={handleViewRanking}
+                  className="text-xs text-accent-amber hover:text-accent-amber/80 gap-1"
                 >
-                  {idx + 1}
-                </button>
-              );
-            })}
+                  <Trophy className="h-3 w-3" /> View Ranking
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {session.participants.map((p, idx) => {
+                const isCurrent = idx === session.current_index;
+                const isScoredP = p.status === "scored";
+                let btnClass = "min-w-[32px] h-8 rounded text-xs font-bold border transition-colors";
+                if (isCurrent && isScoredP) {
+                  btnClass += " bg-accent-amber/10 border-accent-amber/30 text-accent-amber";
+                } else if (isCurrent) {
+                  btnClass += " bg-accent-amber text-white border-accent-amber";
+                } else if (isScoredP) {
+                  btnClass += " bg-accent-green/10 border-accent-green/30 text-accent-green";
+                } else {
+                  btnClass += " border-border text-muted-foreground";
+                }
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleNavigate("goto", idx)}
+                    className={btnClass}
+                    title={`${p.chest_no || `#${idx + 1}`} \u2014 ${isScoredP ? "Scored" : "Pending"}`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
   // ─── RENDER: Preview (ranking) ────────────────────────────────────────────
   if (viewState === VIEW.PREVIEW) {
     return (
-      <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--card-fg)" }}>
+      <Card>
+        <CardHeader>
+          <CardTitle>
             {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
-          </h2>
-          <p className="text-sm" style={{ color: "var(--chart-axis)" }}>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
             Ranking Preview &middot; {ranking.length} participant(s)
           </p>
-        </div>
+        </CardHeader>
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-3 text-sm">
-            {error}
-          </div>
-        )}
+        <CardContent>
+          {error && (
+            <div className="border border-destructive/20 bg-destructive/10 text-destructive rounded-lg px-3 py-2 mb-3 text-sm">
+              {error}
+            </div>
+          )}
 
-        <div className="overflow-x-auto rounded-lg border mb-4" style={{ borderColor: "var(--border-divider)" }}>
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b" style={{ borderBottomColor: "var(--border-divider)" }}>
-                <th className="p-3 text-left text-xs uppercase font-semibold" style={{ color: "var(--chart-axis)" }}>Rank</th>
-                <th className="p-3 text-left text-xs uppercase font-semibold" style={{ color: "var(--chart-axis)" }}>Chest #</th>
-                {!sessionMeta?.event?.enable_blind_judging && (
-                  <th className="p-3 text-left text-xs uppercase font-semibold" style={{ color: "var(--chart-axis)" }}>Group</th>
-                )}
-                <th className="p-3 text-right text-xs uppercase font-semibold" style={{ color: "var(--chart-axis)" }}>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranking.map((r, idx) => (
-                <tr
-                  key={idx}
-                  className="border-t"
-                  style={{ borderTopColor: "var(--border-divider)", backgroundColor: idx === 0 ? "rgba(234,88,12,0.05)" : "transparent" }}
-                >
-                  <td className="p-3">
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                      idx === 0 ? "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" :
-                      idx === 1 ? "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400" :
-                      idx === 2 ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" :
-                      "bg-transparent text-gray-500"
-                    }`}>
-                      {r.rank}
-                    </span>
-                  </td>
-                  <td className="p-3 font-semibold" style={{ color: "var(--card-fg)" }}>#{r.chest_no || "—"}</td>
+          <div className="overflow-x-auto rounded-lg border border-border mb-4 bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead className="text-muted-foreground">Rank</TableHead>
+                  <TableHead className="text-muted-foreground">Chest #</TableHead>
                   {!sessionMeta?.event?.enable_blind_judging && (
-                    <td className="p-3" style={{ color: "var(--card-fg)" }}>{r.group_name || r.team_name || "—"}</td>
+                    <TableHead className="text-muted-foreground">Group</TableHead>
                   )}
-                  <td className="p-3 text-right">
-                    <span className="font-bold text-lg" style={{ color: idx < 3 ? "#ea580c" : "var(--card-fg)" }}>
-                      {r.total_score?.toFixed(1)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <TableHead className="text-right text-muted-foreground">Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ranking.map((r, idx) => (
+                  <TableRow
+                    key={idx}
+                    className={`border-border ${idx === 0 ? "bg-accent-amber/5" : ""}`}
+                  >
+                    <TableCell>
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                        idx === 0 ? "bg-accent-amber/10 text-accent-amber" :
+                        idx === 1 ? "bg-muted text-muted-foreground" :
+                        idx === 2 ? "bg-accent-amber/10 text-accent-amber" :
+                        "bg-transparent text-muted-foreground"
+                      }`}>
+                        {r.rank}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-semibold text-card-foreground">#{r.chest_no || "\u2014"}</TableCell>
+                    {!sessionMeta?.event?.enable_blind_judging && (
+                      <TableCell className="text-card-foreground">{r.group_name || r.team_name || "\u2014"}</TableCell>
+                    )}
+                    <TableCell className="text-right">
+                      <span className={`font-bold text-lg ${idx < 3 ? "text-accent-amber" : "text-card-foreground"}`}>
+                        {r.total_score?.toFixed(1)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
-        <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={handleBackToEdit}
-            className="px-6 py-2 border rounded-lg font-bold flex items-center gap-2"
-            style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
-          >
-            <ChevronLeft className="h-4 w-4" /> Back to Edit
-          </button>
-          <button
-            onClick={handleCompleteSession}
-            disabled={sessionActionLoading}
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 flex items-center gap-2"
-          >
-            {sessionActionLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4" />
-            )}
-            {sessionActionLoading ? "Submitting..." : "Confirm & Submit"}
-          </button>
-        </div>
+          <div className="flex gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={handleBackToEdit}
+              className="gap-2 font-bold"
+            >
+              <ChevronLeft className="h-4 w-4" /> Back to Edit
+            </Button>
+            <Button
+              onClick={handleCompleteSession}
+              disabled={sessionActionLoading}
+              className="gap-2 bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
+            >
+              {sessionActionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              {sessionActionLoading ? "Submitting..." : "Confirm & Submit"}
+            </Button>
+          </div>
 
-        <p className="text-xs mt-3" style={{ color: "var(--chart-axis)" }}>
-          Submitting will create ScoreSheet records and send them to the organizer for review and final approval.
-        </p>
-      </div>
+          <p className="text-xs mt-3 text-muted-foreground">
+            Submitting will create ScoreSheet records and send them to the organizer for review and final approval.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   // ─── RENDER: Submitted ────────────────────────────────────────────────────
   if (viewState === VIEW.SUBMITTED) {
     return (
-      <div className="rounded-xl shadow-sm p-4 border text-center" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <div className="py-8">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+      <Card className="text-center">
+        <CardContent className="py-8">
+          <div className="w-16 h-16 rounded-full bg-accent-green/10 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="h-8 w-8 text-accent-green" />
           </div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--card-fg)" }}>
+          <h2 className="text-xl font-bold mb-2 text-card-foreground">
             Session Submitted
           </h2>
-          <p className="text-sm mb-6" style={{ color: "var(--chart-axis)" }}>
+          <p className="text-sm mb-6 text-muted-foreground">
             {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound} &middot; All scores recorded
           </p>
-          <p className="text-sm mb-6" style={{ color: "var(--chart-axis)" }}>
+          <p className="text-sm mb-6 text-muted-foreground">
             {ranking.length} participant(s) scored. Scores are now with the organizer for review.
           </p>
           <div className="flex gap-3 justify-center">
-            <button
+            <Button
               onClick={() => {
                 setSelectedEventId("");
                 setSession(null);
@@ -848,20 +866,20 @@ const JudgeDashboard = () => {
                 setError("");
                 setViewState(VIEW.IDLE);
               }}
-              className="px-6 py-2 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700"
+              className="bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
             >
               Back to Dashboard
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={loadAssignments}
-              className="px-6 py-2 border rounded-lg font-bold"
-              style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
+              className="gap-1 font-bold"
             >
-              <RefreshCw className="h-4 w-4 inline mr-1" /> Refresh
-            </button>
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 

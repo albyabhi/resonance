@@ -7,6 +7,7 @@ import CaptainsDirectory from "../CaptainsDirectory";
 import { useAuth } from "../AuthContext";
 import DashboardVisuals from "./DashboardVisuals";
 import { FadeIn } from "../AnimateReveal";
+import { Button } from "../ui/button";
 import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import useDashboardData from "../../hooks/useDashboardData";
@@ -25,6 +26,7 @@ import CaptainMyGroup from "../actions/CaptainMyGroup";
 import CaptainEventRegister from "../actions/CaptainEventRegister";
 import DashboardStatusWidget from "../actions/DashboardStatusWidget";
 import ManageCompetition from "../actions/ManageCompetition";
+import ProfileSettings from "../actions/ProfileSettings";
 import UserSettings from "../actions/UserSettings";
 import ExportReport from "../actions/ExportReport";
 import JudgeDashboard from "../actions/JudgeDashboard";
@@ -148,7 +150,7 @@ export default function Dashboard({
         onClose={handleCloseSidebar}
         sidebarOpen={sidebarOpen}
         onActionClick={handleActionClick}
-        activeAction={activeAction === "settings" ? "Settings" : (userActions.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || null)}
+        activeAction={["settings", "profile"].includes(activeAction) ? "Profile" : (userActions.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || null)}
 
         onSectionClick={handleSectionClick}
         activeSection={activeAction ? null : "home"}
@@ -162,19 +164,6 @@ export default function Dashboard({
                 {competition?.logoUrl && (
                   <img src={competition.logoUrl} alt="Competition Logo" className="h-16 w-auto object-contain mb-2" />
                 )}
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  {competition?.name || "Competition Name"}
-                </h1>
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {cfg.title}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    {safeRoleKey === "captain" && houseName
-                      ? `${houseName}${houseCode ? ` · ${houseCode}` : ""}`
-                      : `${groupLabel} Overview`}
-                  </p>
-                </div>
               </div>
             </div>
           </FadeIn>
@@ -184,16 +173,12 @@ export default function Dashboard({
               path=":actionSlug"
               element={
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <button
-                    onClick={handleGoBack}
-                    className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition hover:border-indigo-500 hover:text-indigo-500"
-                    style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
-                  >
+                  <Button variant="outline" onClick={handleGoBack} className="mb-6 rounded-full">
                     <ArrowLeft className="h-4 w-4" /> Back
-                  </button>
+                  </Button>
                   {(() => {
-                    if (activeAction === "settings") {
-                      return <UserSettings />;
+                    if (activeAction === "settings" || activeAction === "profile") {
+                      return <ProfileSettings />;
                     }
                     const slugObj = userActions.find((a) => {
                       const dynamicLabel = a.label
@@ -211,8 +196,8 @@ export default function Dashboard({
                     if (!MappedComponent) {
                       return (
                         <div className="card-premium p-10 text-center">
-                          <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Unavailable</h3>
-                          <p className="text-gray-500 dark:text-gray-400">This section is not available right now.</p>
+                          <h3 className="mb-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>Unavailable</h3>
+                          <p style={{ color: "var(--muted-foreground)" }}>This section is not available right now.</p>
                         </div>
                       );
                     }
@@ -266,29 +251,26 @@ export default function Dashboard({
           />
         )}
 
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: '1px solid var(--border-divider)', backgroundColor: 'var(--card)', opacity: 0.95 }}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: "1px solid var(--border-divider)", backgroundColor: "var(--card)" }}>
           <div className="flex h-16 justify-around items-center px-2">
-            <button 
-              onClick={() => handleSectionClick('home')} 
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${!activeAction ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'}`}
-            >
+            <button onClick={() => handleSectionClick("home")}
+              className="flex flex-col items-center justify-center w-full h-full space-y-1"
+              style={{ color: !activeAction ? "var(--primary)" : "var(--muted-foreground)" }}>
               <LayoutDashboard className="w-5 h-5" />
               <span className="text-[10px] font-medium">Dashboard</span>
             </button>
             {cfg.modules.standings && (
-              <button 
-                onClick={() => handleSectionClick('standings')} 
-                className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200`}
-              >
+              <button onClick={() => handleSectionClick("standings")}
+                className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                style={{ color: "var(--muted-foreground)" }}>
                 <Trophy className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Standings</span>
               </button>
             )}
             {cfg.modules.events && (
-              <button 
-                onClick={() => handleSectionClick('events')} 
-                className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200`}
-              >
+              <button onClick={() => handleSectionClick("events")}
+                className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                style={{ color: "var(--muted-foreground)" }}>
                 <CalendarDays className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Events</span>
               </button>

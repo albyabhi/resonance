@@ -1,40 +1,45 @@
 // ─────────────────────────────────────────────────────────────
-// Phase 1 – Single source-of-truth colour palette
+// Theme palette — JS-side tokens matching index.css variables
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Light-theme palette
- */
 export const lightTheme = {
-  "--bg": "#f8fafc",
-  "--text": "#0f172a",
-  "--accent": "#4f46e5",
-  "--meta-color": "#f8fafc",
-  "--card": "#ffffff",
-  "--card-foreground": "#0f172a",
-  "--card-border": "rgba(15, 23, 42, 0.06)",
-  "--surface": "#e2e8f0",
+  "--background": "#F4F5F7",
+  "--foreground": "#0A0A0A",
+  "--card": "#FFFFFF",
+  "--card-foreground": "#0A0A0A",
+  "--primary": "#1EA1FF",
+  "--primary-foreground": "#FFFFFF",
+  "--muted": "#EFF1F3",
+  "--muted-foreground": "#6B7280",
+  "--meta-color": "#F4F5F7",
+  "--border": "#E5E7EB",
+  "--accent-red": "#FA6567",
+  "--accent-amber": "#F5A15A",
+  "--accent-teal": "#12B8AF",
+  "--accent-blue": "#1EA1FF",
+  "--accent-purple": "#A39BFD",
+  "--accent-green": "#22C55E",
 };
 
-/**
- * Dark-theme palette — flat solid, cleaner SaaS look
- */
 export const darkTheme = {
-  "--bg": "#020617",
-  "--text": "#f1f5f9",
-  "--accent": "#818cf8",
-  "--meta-color": "#020617",
-  "--card": "#0f172a",
-  "--card-foreground": "#e2e8f0",
-  "--card-border": "rgba(148, 163, 184, 0.1)",
-  "--surface": "#1e293b",
+  "--background": "#111827",
+  "--foreground": "#F3F4F6",
+  "--card": "#1F2937",
+  "--card-foreground": "#F3F4F6",
+  "--primary": "#60A5FA",
+  "--primary-foreground": "#FFFFFF",
+  "--muted": "#374151",
+  "--muted-foreground": "#9CA3AF",
+  "--meta-color": "#111827",
+  "--border": "#374151",
+  "--accent-red": "#F87171",
+  "--accent-amber": "#FBBF24",
+  "--accent-teal": "#2DD4BF",
+  "--accent-blue": "#60A5FA",
+  "--accent-purple": "#A78BFA",
+  "--accent-green": "#34D399",
 };
 
-/**
- * Convenience: get the meta-color for a given mode.
- * @param {"light" | "dark"} mode
- * @returns {string} CSS colour value
- */
 export function getMetaColor(mode) {
   return mode === "dark" ? darkTheme["--meta-color"] : lightTheme["--meta-color"];
 }

@@ -1,10 +1,13 @@
+import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+
 const DASHBOARD_STATUS_GROUPS = [
-  { key: "registration_open", label: "Registrations Open", color: "bg-blue-500" },
-  { key: "ongoing", label: "Ongoing", color: "bg-emerald-500" },
-  { key: "judging", label: "Judging", color: "bg-amber-500" },
-  { key: "result_pending", label: "Results Pending", color: "bg-orange-500" },
-  { key: "delayed", label: "Delayed", color: "bg-rose-500" },
-  { key: "draft", label: "Draft", color: "bg-gray-400" },
+  { key: "registration_open", label: "Registrations Open", color: "bg-accent-blue" },
+  { key: "ongoing", label: "Ongoing", color: "bg-accent-green" },
+  { key: "judging", label: "Judging", color: "bg-accent-amber" },
+  { key: "result_pending", label: "Results Pending", color: "bg-accent-purple" },
+  { key: "delayed", label: "Delayed", color: "bg-accent-red" },
+  { key: "draft", label: "Draft", color: "bg-muted-foreground" },
 ];
 
 export default function DashboardStatusWidget({ summary = null, loading = false }) {
@@ -14,41 +17,51 @@ export default function DashboardStatusWidget({ summary = null, loading = false 
 
   if (loading && !summary) {
     return (
-      <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--card-fg)" }}>Event Status Overview</h3>
-        <div className="text-xs theme-text-secondary">Loading...</div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Event Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading...
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!summary) return null;
 
   return (
-    <div className="rounded-xl border p-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border-card)" }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--card-fg)" }}>Event Status Overview</h3>
-        <span className="text-xs theme-text-secondary">{total} total</span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {DASHBOARD_STATUS_GROUPS.map((group) => {
-          const count = summary[group.key] || 0;
-          return (
-            <div
-              key={group.key}
-              className="flex flex-col items-center justify-center p-3 rounded-lg border"
-              style={{ borderColor: "var(--border-divider)" }}
-            >
-              <span className="text-2xl font-bold" style={{ color: "var(--card-fg)" }}>
-                {count}
-              </span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className={`h-2 w-2 rounded-full ${group.color}`} />
-                <span className="text-xs theme-text-secondary">{group.label}</span>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Event Status Overview</CardTitle>
+          <span className="text-xs text-muted-foreground">{total} total</span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {DASHBOARD_STATUS_GROUPS.map((group) => {
+            const count = summary[group.key] || 0;
+            return (
+              <div
+                key={group.key}
+                className="flex flex-col items-center justify-center p-3 rounded-lg border border-border"
+              >
+                <span className="text-2xl font-bold text-card-foreground">
+                  {count}
+                </span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                  <span className="text-xs text-muted-foreground">{group.label}</span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
