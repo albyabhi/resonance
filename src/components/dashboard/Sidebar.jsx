@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from "react";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -16,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
-import usePermission from "../../hooks/usePermission";
 
 const sectionNav = [
   { id: "home", label: "Dashboard", icon: LayoutDashboard },
@@ -33,10 +33,11 @@ function SidebarButton({
   active = false,
   collapsed = false,
   label,
-  icon: Icon,
+  icon,
   onClick,
   withArrow = false,
 }) {
+  const Icon = icon;
   return (
     <button
       onClick={onClick}

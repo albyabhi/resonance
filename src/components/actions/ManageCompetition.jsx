@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { FadeIn } from "../AnimateReveal";
 import { Settings, Shield, Edit3, Globe, Lock, AlertCircle, Copy, Check } from "lucide-react";
@@ -17,7 +16,6 @@ const competitionTypes = [
 ];
 
 export default function ManageCompetition() {
-  const { token } = useAuth();
   const { competition, setCompetition } = useCompetition();
   
   const [formData, setFormData] = useState({

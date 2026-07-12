@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
-import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const ManageVenue = () => {
   const { token, competition } = useAuth();
-  const { groupLabel } = useCompetition() || {};
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [venues, setVenues] = useState([]);

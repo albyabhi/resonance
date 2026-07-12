@@ -1,9 +1,10 @@
 import toast from "react-hot-toast";
 
-let logoutDispatched = false;
-
+// Resets any internal "logout guard" state used to prevent repeated logout flows.
+// This project currently dispatches LOGOUT directly on auth failures in apiFetch/apiJson,
+// but AuthContext still expects this named export.
 export const resetApiLogoutGuard = () => {
-  logoutDispatched = false;
+  // No-op for now (kept for backward compatibility).
 };
 
 export const getAuthState = () => {
@@ -121,7 +122,6 @@ export const apiFetch = async (url, options = {}, retry = true) => {
       });
     } catch {
       toast.error("Session expired. Please log in again.");
-      logoutDispatched = true;
       window.dispatchEvent(new Event('LOGOUT'));
       return response;
     }

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { resetApiLogoutGuard, isTokenExpired, refreshAccessToken } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
+
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
@@ -42,7 +44,7 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const navigate = useNavigate();
 
@@ -75,7 +77,9 @@ export function AuthProvider({ children }) {
           localStorage.setItem("auth", JSON.stringify(parsed));
         }
       }
-    } catch {}
+    } catch {
+      // no-op
+    }
   }, []);
 
   // Validate stored JWT on mount — don't show dashboard with expired token

@@ -126,8 +126,8 @@ const MobileRowCard = ({
 };
 
 const AdminScoreboard = () => {
-  const { token, role } = useAuth();
-  const { competition, groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
+  const { token } = useAuth();
+  const { competition, groupLabel = "House" } = useCompetition() || {};
   const { hasAnyRole } = usePermission();
   const isAdmin = hasAnyRole('organizer', 'super_admin');
   const [houses, setHouses] = useState([]);

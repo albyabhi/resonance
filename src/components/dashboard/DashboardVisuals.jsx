@@ -405,50 +405,86 @@ export default function DashboardVisuals() {
   const TOP_HOUSES = "topHouses";
 
   const sectionWidget = (type, colSpan, extraProps = {}) => {
+    // Note: colSpan is intentionally not used for Tailwind dynamic classes.
+    // Parent container handles responsive column spans deterministically.
     switch (type) {
       case STANDINGS:
         return (
-          <SectionCard title="Standings" description={extraProps.description} className={`lg:col-span-${colSpan}`}>
-            <StandingsTable scoreboard={normalizedScoreboard} userHouseId={extraProps.userHouseId !== false ? userGroupId : undefined} />
+          <SectionCard title="Standings" description={extraProps.description} className="w-full min-w-0">
+            <StandingsTable
+              scoreboard={normalizedScoreboard}
+              userHouseId={extraProps.userHouseId !== false ? userGroupId : undefined}
+            />
           </SectionCard>
         );
       case PARTICIPANT_HIGHLIGHTS:
         return (
-          <ParticipantHighlights participantStats={participantStats} userGroupId={extraProps.userGroupId ? userGroupId : undefined} />
+          <div className="w-full min-w-0">
+            <ParticipantHighlights
+              participantStats={participantStats}
+              userGroupId={extraProps.userGroupId ? userGroupId : undefined}
+            />
+          </div>
         );
       case RESULT_PROGRESS:
         return (
-          <SectionCard title="Result progress" description="Approval status across submitted results" className="w-full">
+          <SectionCard title="Result progress" description="Approval status across submitted results" className="w-full min-w-0">
             <ResultProgress results={results} />
           </SectionCard>
         );
       case RECENT_WINNERS:
         return (
-          <SectionCard title="Recent winners" description={extraProps.description || "Latest approved first-place results"} className={`lg:col-span-${colSpan}`}>
+          <SectionCard title="Recent winners" description={extraProps.description || "Latest approved first-place results"} className="w-full min-w-0">
             <RecentWinners results={results} />
           </SectionCard>
         );
       case UPCOMING_EVENTS:
         return (
-          <SectionCard title="New events" description={extraProps.description || "Live and upcoming competition events"} className="w-full">
+          <SectionCard title="New events" description={extraProps.description || "Live and upcoming competition events"} className="w-full min-w-0">
             <UpcomingEvents events={events} schedules={schedules} />
           </SectionCard>
         );
       case TOP_HOUSES:
-        return <TopHouses scoreboard={normalizedScoreboard} />;
+        return (
+          <div className="w-full min-w-0">
+            <TopHouses scoreboard={normalizedScoreboard} />
+          </div>
+        );
       default:
         return null;
     }
   };
 
+  const colSpanClass = (span) => {
+    const map = {
+      1: "lg:col-span-1",
+      2: "lg:col-span-2",
+      3: "lg:col-span-3",
+      4: "lg:col-span-4",
+      5: "lg:col-span-5",
+      6: "lg:col-span-6",
+      7: "lg:col-span-7",
+      8: "lg:col-span-8",
+      9: "lg:col-span-9",
+      10: "lg:col-span-10",
+      11: "lg:col-span-11",
+      12: "lg:col-span-12",
+    };
+    return map[span] || "lg:col-span-12";
+  };
+
   const sectionPanel = (leftSlot, rightSlots, leftCols) => {
     const rightCols = 12 - leftCols;
     const rightArray = Array.isArray(rightSlots) ? rightSlots : [rightSlots];
+
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {leftSlot}
-        <div className={`lg:col-span-${rightCols} flex flex-col gap-6`}>
-          {rightArray.map((item, i) => <React.Fragment key={i}>{item}</React.Fragment>)}
+        <div className={`${colSpanClass(leftCols)} w-full min-w-0`}>{leftSlot}</div>
+
+        <div className={`${colSpanClass(rightCols)} flex flex-col gap-6 w-full min-w-0`}>
+          {rightArray.map((item, i) => (
+            <React.Fragment key={i}>{item}</React.Fragment>
+          ))}
         </div>
       </div>
     );

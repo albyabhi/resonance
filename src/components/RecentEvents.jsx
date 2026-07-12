@@ -128,12 +128,6 @@ function RecentEvents() {
         members: t.members || [],
       }));
 
-      const withMembers = await Promise.all(
-        baseTeams.map(async (t) => {
-          const members = t.members;
-          return { ...t, members: members || [] };
-        })
-      );
       setEventTeams(baseTeams);
     } catch (err) {
       setError(err.message);

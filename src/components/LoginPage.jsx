@@ -17,7 +17,6 @@ export default function LoginPage({ onLogin = () => {} }) {
   // Read redirect parameter from URL
   const queryParams = new URLSearchParams(location.search);
   const redirectUrl = queryParams.get("redirect");
-  const intent = queryParams.get("intent");
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
@@ -41,8 +40,6 @@ export default function LoginPage({ onLogin = () => {} }) {
       onLogin(data.user?.role || 'admin');
       
       toast.success("Welcome back!");
-      
-      const isUserAdmin = data.user?.role === 'admin' || data.user?.membership_role === 'admin';
 
       if (redirectUrl) {
         navigate(redirectUrl, { replace: true });

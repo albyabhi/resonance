@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from '../components/AuthContext';
 import { useCompetition } from './CompetitionContext';
 
 const RealtimeContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useRealtime = () => useContext(RealtimeContext);
 
 export const RealtimeProvider = ({ children }) => {
-  const { token, isAuthReady } = useAuth();
   const { competition } = useCompetition();
   const [lastUpdate, setLastUpdate] = useState(null);
   const [latestEvent, setLatestEvent] = useState(null);

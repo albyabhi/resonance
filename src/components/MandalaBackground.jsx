@@ -1,4 +1,5 @@
 import React from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 
 const getPolygonPoints = (sides, radius, cx = 200, cy = 200) => {

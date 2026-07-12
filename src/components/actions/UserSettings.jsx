@@ -7,7 +7,7 @@ import { User, Mail, Lock, Camera, Shield, CheckCircle } from "lucide-react";
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function UserSettings() {
-  const { user, token, setUserData } = useAuth();
+  const { user, setUserData } = useAuth();
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [password, setPassword] = useState("");

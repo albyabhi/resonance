@@ -112,12 +112,12 @@ export default function ParticipantRegister() {
       if (target) {
         const alreadyReg = myRegistrations.some(r => (r.event_id?._id || r.event_id) === shareEventId);
         if (!alreadyReg) {
-          toast((t) => (
+          toast(
             <span className="flex items-center gap-2 font-medium">
               <Info className="h-5 w-5 text-indigo-500 shrink-0" />
               You were redirected to register for: <b>{target.name}</b>
             </span>
-          ), { duration: 4000 });
+          , { duration: 4000 });
           
           setTimeout(() => {
             const el = document.getElementById(`event-card-${shareEventId}`);
@@ -292,15 +292,6 @@ export default function ParticipantRegister() {
     if (!selectedEvent) return false;
     return selectedEvent.max_per_group && eventTeams.length >= selectedEvent.max_per_group;
   }, [selectedEvent, eventTeams]);
-
-  // Accent styling based on competition type / group label
-  const customAccentColor = useMemo(() => {
-    const type = competition?.type?.toLowerCase();
-    if (type === "school_houses") return "from-amber-500 via-rose-500 to-indigo-600";
-    if (type === "sports_meet") return "from-emerald-500 via-teal-500 to-blue-600";
-    if (type === "college_departments") return "from-purple-500 via-indigo-500 to-blue-600";
-    return "from-indigo-500 via-purple-500 to-pink-500";
-  }, [competition]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

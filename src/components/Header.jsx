@@ -10,13 +10,11 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function Header({
   onMenuClick = () => {},
-  theme = "light",
-  setTheme = () => {},
   sidebarOpen = true,
   onToggleSidebar = () => {},
 }) {
   const auth = useAuth();
-  const { user, role, token, isAuthReady, competition, login } = auth || { user: null, role: "guest", token: null, isAuthReady: false, competition: null, login: () => {} };
+  const { role, token, isAuthReady, competition, login } = auth || { role: "guest", token: null, isAuthReady: false, competition: null, login: () => {} };
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
@@ -91,7 +89,6 @@ function Header({
   }, [token, role, isAuthReady]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const displayName = user?.name || "Guest";
 
   const handleMarkAsRead = async (id) => {
     await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, {

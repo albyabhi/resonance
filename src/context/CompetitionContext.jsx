@@ -3,6 +3,7 @@ import { useAuth } from '../components/AuthContext';
 
 const CompetitionContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCompetition = () => useContext(CompetitionContext);
 
 export const CompetitionProvider = ({ children }) => {

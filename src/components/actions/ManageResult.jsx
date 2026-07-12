@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const ManageResult = () => {
   const { hasAnyRole } = usePermission();
   const { token, user, competition } = useAuth(); // expects user.house?._id for scoped submissions
-  const { groupLabel = "House", groupLabelPlural = "Houses" } = useCompetition() || {};
+  const { groupLabel = "House" } = useCompetition() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,7 +28,6 @@ const ManageResult = () => {
   const [placements, setPlacements] = useState({}); // {1: team_id, 2: team_id, ...}
 
   // Server results snapshot and lock set
-  const [serverResults, setServerResults] = useState([]); // [{position, team_id, status}]
   const [lockedPositions, setLockedPositions] = useState(new Set()); // positions not editable
 
   // Readiness flags to avoid flicker/races
@@ -78,7 +77,6 @@ const ManageResult = () => {
       setTeams([]);
       setRoundNo("");
       setPlacements({});
-      setServerResults([]);
       setLockedPositions(new Set());
       setTeamsLoaded(false);
 
@@ -117,16 +115,6 @@ const ManageResult = () => {
             ? baseTeams.filter((t) => String(t.houseId) === String(coordinatorHouseId))
             : baseTeams;
 
-        const withMembers = await Promise.all(
-          scoped.map(async (t) => {
-            try {
-              const members = t.members;
-              return { ...t, members: members || [] };
-            } catch {
-              return { ...t, members: [] };
-            }
-          })
-        );
         if (cancelled) return;
         setTeams(scoped);
         setTeamsLoaded(true);
@@ -146,7 +134,6 @@ const ManageResult = () => {
   const loadResultsForRound = async (evtId, rnd) => {
     const response = await apiCall(`/api/results?event_id=${evtId}&round_no=${rnd}`);
     const results = response.results || response.data || [];
-    setServerResults(results || []);
     const serverMap = {};
     const locks = new Set();
     (results || []).forEach((r) => {
@@ -168,9 +155,8 @@ const ManageResult = () => {
       if (!eventId || !roundNo || !teamsLoaded) return;
       try {
         await loadResultsForRound(eventId, parseInt(roundNo, 10));
-      } catch (e) {
+      } catch {
         if (!cancelled) {
-          setServerResults([]);
           setLockedPositions(new Set());
         }
       }
@@ -197,8 +183,6 @@ const ManageResult = () => {
       );
     });
   }, [teams, query]);
-
-  const positions = [1, 2, 3, 4, 5];
 
   const setPlacement = (position, teamId) => {
     if (lockedPositions.has(position)) return; // locked by server
@@ -264,11 +248,6 @@ const ManageResult = () => {
       setLoading(false);
     }
   };
-
-  const selectedEvent = useMemo(
-    () => (events || []).find((e) => (e._id || e.event_id) === eventId) || null,
-    [events, eventId]
-  );
 
   return (
     <div className="rounded-xl shadow-sm p-4 border" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
