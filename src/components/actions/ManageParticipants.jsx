@@ -22,7 +22,9 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
   AlertDialogAction, AlertDialogCancel,
 } from "../ui/alert-dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, XCircle, ArrowLeftCircle } from "lucide-react";
+import { Badge } from "../ui/badge";
+import { getParticipantStatusMeta } from "../../utils/participantStatus";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -42,7 +44,11 @@ function ManageParticipants() {
 
   const [filterGroup, setFilterGroup] = useState("");
   const [filterClass, setFilterClass] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [statusChangeTarget, setStatusChangeTarget] = useState(null);
+  const [statusChangeValue, setStatusChangeValue] = useState("");
+  const [statusChangeReason, setStatusChangeReason] = useState("");
 
   const [selectedIds, setSelectedIds] = useState([]);
 
@@ -87,6 +93,7 @@ function ManageParticipants() {
       if (competition?._id) url += `competition_id=${competition._id}&`;
       if (filterGroup) url += `group_id=${filterGroup}&`;
       if (filterClass) url += `class=${encodeURIComponent(filterClass)}&`;
+      if (filterStatus) url += `status=${filterStatus}&`;
       if (search) url += `search=${encodeURIComponent(search)}&`;
       const { participants } = await apiCall(url);
       setParticipants(participants || []);
@@ -100,7 +107,7 @@ function ManageParticipants() {
 
   useEffect(() => {
     if (token && activeTab === "all") fetchParticipants();
-  }, [token, activeTab, filterGroup, filterClass, search]);
+  }, [token, activeTab, filterGroup, filterClass, filterStatus, search]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -135,6 +142,26 @@ function ManageParticipants() {
       group_id: stu.group_id?._id || stu.group_id,
     });
     setActiveTab("update");
+  };
+
+  const handleStatusChange = async () => {
+    if (!statusChangeTarget || !statusChangeValue) return;
+    setLoading(true);
+    setError("");
+    try {
+      await apiCall(`/api/participants/${statusChangeTarget._id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: statusChangeValue, reason: statusChangeReason }),
+      });
+      setStatusChangeTarget(null);
+      setStatusChangeValue("");
+      setStatusChangeReason("");
+      fetchParticipants();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditSave = async (e) => {
@@ -286,6 +313,21 @@ function ManageParticipants() {
                 <Label htmlFor="filter-class" className="sr-only">Filter by class</Label>
                 <Input id="filter-class" type="text" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} placeholder="Filter by class" />
               </div>
+              <div className="w-40">
+                <Label htmlFor="filter-status" className="sr-only">Filter by status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger id="filter-status">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                    <SelectItem value="disqualified">Disqualified</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="w-48">
                 <Label htmlFor="search" className="sr-only">Search participants</Label>
                 <Input id="search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
@@ -302,7 +344,12 @@ function ManageParticipants() {
                 <li key={stu._id} className="rounded-xl border border-border p-3 shadow-sm bg-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium break-words text-card-foreground">{stu.name}</p>
+                      <p className="text-sm font-medium break-words text-card-foreground">
+                        {stu.name}
+                        <Badge variant={getParticipantStatusMeta(stu.status).badge} className="ml-2 text-[10px]">
+                          {getParticipantStatusMeta(stu.status).label}
+                        </Badge>
+                      </p>
                       <p className="text-xs text-muted-foreground">Class: <span className="font-medium text-card-foreground">{stu.class}</span></p>
                       <p className="text-xs text-muted-foreground">{groupLabel}: <span className="font-medium text-card-foreground">{getGroupName(stu.group_id?._id || stu.group_id)}</span></p>
                       <p className="text-[11px] mt-1 text-muted-foreground">ID: {stu.unique_id}</p>
@@ -319,6 +366,9 @@ function ManageParticipants() {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditStart(stu)}>
                       Edit
                     </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => { setStatusChangeTarget(stu); setStatusChangeValue(""); setStatusChangeReason(""); }}>
+                      Status
+                    </Button>
                     <Button variant="destructive" size="sm" className="flex-1" onClick={() => setDeleteTarget({ type: "single", id: stu._id })}>
                       Delete
                     </Button>
@@ -334,6 +384,7 @@ function ManageParticipants() {
                   <TableRow>
                     <TableHead className="w-10" />
                     <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>{groupLabel}</TableHead>
                     <TableHead>Participant ID</TableHead>
@@ -351,13 +402,21 @@ function ManageParticipants() {
                         />
                       </TableCell>
                       <TableCell className="text-card-foreground">{stu.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={getParticipantStatusMeta(stu.status).badge}>
+                          {getParticipantStatusMeta(stu.status).label}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-card-foreground">{stu.class}</TableCell>
                       <TableCell className="text-card-foreground">{getGroupName(stu.group_id?._id || stu.group_id)}</TableCell>
                       <TableCell className="text-card-foreground">{stu.unique_id}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => handleEditStart(stu)} title="Edit">
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setStatusChangeTarget(stu); setStatusChangeValue(""); setStatusChangeReason(""); }} title="Change Status">
+                            <AlertTriangle className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => setDeleteTarget({ type: "single", id: stu._id })} title="Delete">
                             <Trash2 className="h-4 w-4" />
@@ -496,6 +555,43 @@ function ManageParticipants() {
           </section>
         )}
       </div>
+
+      <AlertDialog open={!!statusChangeTarget} onOpenChange={(open) => { if (!open) { setStatusChangeTarget(null); setStatusChangeValue(""); setStatusChangeReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Participant Status</AlertDialogTitle>
+            <AlertDialogDescription>
+              Change status for <strong>{statusChangeTarget?.name}</strong> (current: {getParticipantStatusMeta(statusChangeTarget?.status).label}).
+              {statusChangeValue && (statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && " Reason is required for this change."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <Select value={statusChangeValue} onValueChange={setStatusChangeValue}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select new status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                <SelectItem value="disqualified">Disqualified</SelectItem>
+              </SelectContent>
+            </Select>
+            {(statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && (
+              <div>
+                <Label htmlFor="status-reason">Reason *</Label>
+                <Input id="status-reason" type="text" value={statusChangeReason} onChange={(e) => setStatusChangeReason(e.target.value)} placeholder="Reason for status change" />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel onClick={() => { setStatusChangeTarget(null); setStatusChangeValue(""); setStatusChangeReason(""); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={!statusChangeValue || ((statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && !statusChangeReason.trim())} onClick={handleStatusChange} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Change Status
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>

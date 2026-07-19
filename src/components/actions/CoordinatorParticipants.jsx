@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
-import { Calendar, Users, X, Trash2, UserMinus, ChevronRight, Search, Loader2 } from "lucide-react";
+import { Calendar, Users, X, Trash2, UserMinus, ChevronRight, Search, Loader2, AlertTriangle, ArrowLeftCircle } from "lucide-react";
+import { getTeamStatusMeta, getParticipantStatusMeta } from "../../utils/participantStatus";
 import toast from "react-hot-toast";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
@@ -238,10 +239,15 @@ export default function CoordinatorParticipants() {
                         >
                           <div className="mb-3 flex items-center justify-between">
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-semibold text-card-foreground">
                                   {team.name || "Individual"}
                                 </p>
+                                {team.status && team.status !== "active" && (
+                                  <Badge variant={getTeamStatusMeta(team.status).badge} className="text-[10px]">
+                                    {getTeamStatusMeta(team.status).label}
+                                  </Badge>
+                                )}
                                 {team.chest_no && (
                                   <Badge variant="outline" className="bg-accent-amber/10 text-accent-amber border-transparent text-xs px-2 py-0.5">
                                     #{team.chest_no}
@@ -278,7 +284,14 @@ export default function CoordinatorParticipants() {
                                       </AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium text-card-foreground">{m.name}</p>
+                                      <p className="truncate text-sm font-medium text-card-foreground">
+                                        {m.name}
+                                        {m.status && m.status !== "active" && (
+                                          <Badge variant={getParticipantStatusMeta(m.status).badge} className="ml-1 text-[9px]">
+                                            {getParticipantStatusMeta(m.status).label}
+                                          </Badge>
+                                        )}
+                                      </p>
                                       <p className="text-xs text-muted-foreground">
                                         {m.unique_id || m.class || ""}
                                         {m.class ? ` · ${m.class}` : ""}

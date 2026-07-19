@@ -8,10 +8,12 @@ import {
   Users, Search, Plus, X, AlertCircle,
   Edit, Trash2, Save, UserPlus, Loader2,
 } from "lucide-react";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { getParticipantStatusMeta } from "../../utils/participantStatus";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 import { Label } from "../ui/label";
 import {
@@ -400,7 +402,12 @@ export default function CaptainMyGroup() {
                 <>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-base truncate text-card-foreground">{p.name}</p>
+                      <p className="font-bold text-base truncate text-card-foreground">
+                        {p.name}
+                        <Badge variant={getParticipantStatusMeta(p.status).badge} className="ml-2 text-[10px]">
+                          {getParticipantStatusMeta(p.status).label}
+                        </Badge>
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {p.class}
                         {p.unique_id && <span> &middot; {p.unique_id}</span>}
@@ -451,6 +458,7 @@ export default function CaptainMyGroup() {
             <TableHeader>
               <TableRow className="bg-muted">
                 <TableHead className="text-xs font-bold uppercase tracking-wider">Name</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider">Status</TableHead>
                 <TableHead className="text-xs font-bold uppercase tracking-wider">Class</TableHead>
                 <TableHead className="text-xs font-bold uppercase tracking-wider hidden sm:table-cell">ID</TableHead>
                 <TableHead className="text-xs font-bold uppercase tracking-wider hidden md:table-cell">Email</TableHead>
@@ -501,6 +509,11 @@ export default function CaptainMyGroup() {
                       <TableCell>
                         <div className="font-semibold text-sm text-card-foreground">{p.name}</div>
                         {p.admission_no && <div className="text-xs text-muted-foreground">{p.admission_no}</div>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getParticipantStatusMeta(p.status).badge} className="text-[10px]">
+                          {getParticipantStatusMeta(p.status).label}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-card-foreground">{p.class}</TableCell>
                       <TableCell className="text-sm hidden sm:table-cell">
