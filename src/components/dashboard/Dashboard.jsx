@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
 import Sidebar from "./Sidebar";
@@ -69,7 +69,7 @@ export default function Dashboard({
   onCloseSidebar = () => {},
   sidebarOpen = true,
 }) {
-  const { user, role: contextRole } = useAuth();
+  const { role: contextRole } = useAuth();
   const { competition, groupLabel, groupLabelPlural } = useCompetition();
   const { hasAnyRole } = usePermission();
   const safeRoleKey = normalizeRole(contextRole);
@@ -84,16 +84,6 @@ export default function Dashboard({
   
   // Need dashboard data to check if checklist should be shown
   const { data: dashData, loading: dashLoading } = useDashboardData();
-
-  const [houseName, setHouseName] = useState(user?.house?.name || "");
-  const [houseCode, setHouseCode] = useState(user?.house?.name?.substring(0, 3).toUpperCase() || "");
-
-  useEffect(() => {
-    if (safeRoleKey === "captain" && user?.house) {
-      setHouseName(user.house.name || "");
-      setHouseCode(user.house.name?.substring(0, 3).toUpperCase() || "");
-    }
-  }, [safeRoleKey, user?.house?.name]);
 
   useEffect(() => {
     // Captain group data is now populated from auth context (user.house = captainGroup)
@@ -133,10 +123,7 @@ export default function Dashboard({
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleHouseUpdated = (group) => {
-    setHouseName(group?.name || "");
-    setHouseCode(group?.name?.substring(0, 3).toUpperCase() || "");
-  };
+  const handleHouseUpdated = () => {};
 
   const handleCloseSidebar = () => {
     setMobileOpen?.(false);
@@ -162,7 +149,9 @@ export default function Dashboard({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex flex-col items-start gap-1">
                 {competition?.logoUrl && (
-                  <img src={competition.logoUrl} alt="Competition Logo" className="h-16 w-auto object-contain mb-2" />
+                  <button type="button" onClick={() => navigate("/dashboard")} className="cursor-pointer">
+                    <img src={competition.logoUrl} alt="Competition Logo" className="h-16 w-auto object-contain mb-2" />
+                  </button>
                 )}
               </div>
             </div>

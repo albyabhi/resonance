@@ -10,9 +10,6 @@ import {
   Edit3, 
   Upload, 
   Camera, 
-  User, 
-  Phone, 
-  Shield,
   Loader2 
 } from 'lucide-react';
 
@@ -53,7 +50,7 @@ export default function SetupPage() {
     institution_name: '',
     competition_name: '',
     year: new Date().getFullYear().toString(),
-    groups: [], // Array of rich group objects: { name, logoUrl, logoPublicId, captain_name, captain_contact }
+    groups: [], // Array of group objects: { name, logoUrl, logoPublicId }
     skip_groups: true,
     flow_template_id: '',
     is_public: false,
@@ -65,9 +62,7 @@ export default function SetupPage() {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [groupFormData, setGroupFormData] = useState({
-    name: '',
-    captain_name: '',
-    captain_contact: ''
+    name: ''
   });
   const [groupLogoUrl, setGroupLogoUrl] = useState('');
   const [groupLogoPublicId, setGroupLogoPublicId] = useState('');
@@ -178,7 +173,7 @@ export default function SetupPage() {
 
   // Group Form CRUD operations
   const openAddGroup = () => {
-    setGroupFormData({ name: '', captain_name: '', captain_contact: '' });
+    setGroupFormData({ name: '' });
     setGroupLogoUrl('');
     setGroupLogoPublicId('');
     setEditingIndex(null);
@@ -188,9 +183,7 @@ export default function SetupPage() {
   const openEditGroup = (index) => {
     const group = formData.groups[index];
     setGroupFormData({
-      name: group.name,
-      captain_name: group.captain_name || '',
-      captain_contact: group.captain_contact || ''
+      name: group.name
     });
     setGroupLogoUrl(group.logoUrl || '');
     setGroupLogoPublicId(group.logoPublicId || '');
@@ -207,9 +200,7 @@ export default function SetupPage() {
     const groupObj = {
       name: groupFormData.name.trim(),
       logoUrl: groupLogoUrl || null,
-      logoPublicId: groupLogoPublicId || null,
-      captain_name: groupFormData.captain_name.trim() || null,
-      captain_contact: groupFormData.captain_contact.trim() || null
+      logoPublicId: groupLogoPublicId || null
     };
 
     const newGroups = [...formData.groups];
@@ -427,7 +418,7 @@ export default function SetupPage() {
         {/* Step 3: Groups */}
         {step === 3 && (
           <div className="space-y-6">
-            <p className="text-sm text-neutral-500 mb-2 font-medium">Initialize your {getGroupLabelPlural()} and assign captains.</p>
+            <p className="text-sm text-neutral-500 mb-2 font-medium">Initialize your {getGroupLabelPlural()}. Captains can be assigned after participants are added.</p>
             
             <div className="flex items-center space-x-2">
               <input 
@@ -465,7 +456,7 @@ export default function SetupPage() {
                           <div>
                             <p className="text-sm font-black truncate">{g.name}</p>
                             <p className="text-[10px] text-neutral-500">
-                              {g.captain_name ? `Captain: ${g.captain_name}` : "No Captain Assigned"}
+                              Captains available after participant setup
                             </p>
                           </div>
                         </div>
@@ -559,26 +550,6 @@ export default function SetupPage() {
                             className={inputClass}
                             value={groupFormData.name}
                             onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Captain's Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Alan Turing"
-                            className={inputClass}
-                            value={groupFormData.captain_name}
-                            onChange={(e) => setGroupFormData({ ...groupFormData, captain_name: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Captain's Contact</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. +91 9876543210"
-                            className={inputClass}
-                            value={groupFormData.captain_contact}
-                            onChange={(e) => setGroupFormData({ ...groupFormData, captain_contact: e.target.value })}
                           />
                         </div>
                       </div>

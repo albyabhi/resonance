@@ -180,22 +180,14 @@ export default function WelcomePage() {
                           Continue to your Competitions
                           <ArrowRight className="h-4 w-4" />
                         </a>
-                        {(user?.role === 'admin' || user?.membership_role === 'admin') && (
-                          <Link to="/setup" className="inline-flex justify-center px-6 py-3.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-all focus:outline-none w-full sm:w-auto text-center border border-slate-200 hover:bg-slate-50 rounded-lg">
-                            Create New Competition
-                          </Link>
-                        )}
-                      </>
-                    ) : (
-                      user?.role === 'admin' || user?.membership_role === 'admin' ? (
-                        <Link to="/setup" className="inline-flex justify-center rounded-lg bg-blue-600 px-6 py-3.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-all w-full sm:w-auto text-center">
+                        <Link to="/setup" className="inline-flex justify-center px-6 py-3.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-all focus:outline-none w-full sm:w-auto text-center border border-slate-200 hover:bg-slate-50 rounded-lg">
                           Create New Competition
                         </Link>
-                      ) : (
-                        <div className="text-sm font-medium text-slate-500 bg-slate-100 py-3 px-6 rounded-lg">
-                          Welcome! You haven't joined any competitions yet.
-                        </div>
-                      )
+                      </>
+                    ) : (
+                      <Link to="/setup" className="inline-flex justify-center rounded-lg bg-blue-600 px-6 py-3.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-all w-full sm:w-auto text-center">
+                        Create New Competition
+                      </Link>
                     )}
                   </div>
                 ) : (
