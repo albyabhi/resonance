@@ -83,7 +83,7 @@ export default function SetupPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [backendUrl]);
 
   const selectedType = COMPETITION_TYPES.find(t => t.id === formData.competition_type);
 
@@ -121,7 +121,7 @@ export default function SetupPage() {
       uploadFd.append("image", file);
 
       const activeToken = token || getAuthToken();
-      const response = await fetch(`${backendUrl}/api/competition/upload`, {
+      const response = await apiFetch(`${backendUrl}/api/competition/upload`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${activeToken}`

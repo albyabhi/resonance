@@ -86,7 +86,9 @@ export default function useDashboardData() {
         const eventsRes = responses[1].status === "fulfilled" ? listFrom(responses[1].value, "events") : [];
         const resultsRes = responses[2]?.status === "fulfilled" ? listFrom(responses[2].value, "results") : [];
         const schedulesRes = responses[3]?.status === "fulfilled" ? listFrom(responses[3].value, "schedules") : [];
-        const statusSummaryRes = responses[4]?.status === "fulfilled" && responses[4].value ? responses[4].value?.data || {} : {};
+        const statusSummaryRes = responses[4]?.status === "fulfilled" && responses[4].value
+          ? responses[4].value?.data ?? responses[4].value
+          : {};
         const participantStatsRes = responses[5]?.status === "fulfilled" && responses[5].value ? responses[5].value : { overall: { topPerformers: [], mostParticipations: [] }, byGroup: {} };
 
         let sysStats = null;

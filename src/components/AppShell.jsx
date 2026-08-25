@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import Header from "./Header";
+import ThemeSyncBridge from "./ThemeSyncBridge";
 import { useTheme } from "../context/ThemeContext";
 
 export default function AppShell({ onLogout = () => {}, children }) {
@@ -15,6 +16,7 @@ export default function AppShell({ onLogout = () => {}, children }) {
 
   return (
     <div className="h-screen h-[100dvh] max-h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <ThemeSyncBridge />
       <Header
         onLogout={onLogout}
         onMenuClick={handleMenuClick}

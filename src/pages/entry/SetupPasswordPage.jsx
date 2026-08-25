@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Lock, KeyRound, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { apiJson } from '../../utils/apiClient';
 
 const API = () => import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -23,8 +24,7 @@ export default function SetupPasswordPage() {
       return;
     }
 
-    fetch(`${API()}/api/auth/validate-setup/${token}`)
-      .then((r) => r.json())
+    apiJson(`${API()}/api/auth/validate-setup/${token}`)
       .then((data) => {
         if (data.valid) {
           setValid(true);
@@ -48,14 +48,10 @@ export default function SetupPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API()}/api/auth/setup-password`, {
+      const data = await apiJson(`${API()}/api/auth/setup-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to set password');
 
       toast.success(data.message || 'Password set successfully!');
       navigate('/login');

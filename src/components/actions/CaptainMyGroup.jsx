@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
@@ -32,6 +32,15 @@ export default function CaptainMyGroup() {
   const canCreateParticipants =
     participantSource === "captain" || participantSource === "hybrid";
 
+  const apiCall = useCallback(async (endpoint, options = {}) => {
+    if (!token) throw new Error("No auth token available");
+    return apiJson(`${API_BASE_URL}${endpoint}`, {
+      method: options.method || "GET",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      body: options.body,
+    });
+  }, [token]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [participants, setParticipants] = useState([]);
@@ -49,16 +58,7 @@ export default function CaptainMyGroup() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const apiCall = async (endpoint, options = {}) => {
-    if (!token) throw new Error("No auth token available");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
-      method: options.method || "GET",
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      body: options.body,
-    });
-  };
-
-  const fetchParticipants = async () => {
+  const fetchParticipants = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -72,11 +72,11 @@ export default function CaptainMyGroup() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
   useEffect(() => {
     fetchParticipants();
-  }, []);
+  }, [fetchParticipants]);
 
   const filteredParticipants = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -196,7 +196,10 @@ export default function CaptainMyGroup() {
       {!canCreateParticipants && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl text-sm flex items-center gap-3">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          Participants are managed by administrators. You can view and register them for events.
+          <div>
+            <p className="font-semibold">Participants are managed by the organizer for this competition.</p>
+            <p className="text-xs mt-0.5 opacity-80">You can view your group members and register them for events, but cannot add, edit, or delete participants.</p>
+          </div>
         </div>
       )}
 

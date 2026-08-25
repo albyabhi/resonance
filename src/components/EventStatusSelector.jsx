@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
-import { apiJson } from "../utils/apiClient";
+import { apiJson, buildUrl, API_ROUTES } from "../utils/apiClient";
 import { EVENT_STATUSES, getStatusMeta } from "../utils/eventStatus";
 import EventStatusBadge from "./EventStatusBadge";
 import toast from "react-hot-toast";
-import { X, ChevronDown } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+import { X, ChevronDown, AlertCircle } from "lucide-react";
 
 const WRITABLE_STATUSES = EVENT_STATUSES.filter(
   (s) => s.value !== "cancelled" && s.value !== "delayed"
@@ -19,8 +17,26 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
   const [selectedStatus, setSelectedStatus] = useState(event?.status || "draft");
   const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validTransitions, setValidTransitions] = useState([]);
+  const [fetchingTransitions, setFetchingTransitions] = useState(false);
 
   const currentStatus = event?.status || "draft";
+
+  // Fetch valid transitions when event status changes
+  useEffect(() => {
+    if (!event?._id || !token) return;
+    setFetchingTransitions(true);
+    apiJson(buildUrl(API_ROUTES.EVENTS.VALID_TRANSITIONS), {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      searchParams: { status: currentStatus },
+    })
+      .then((data) => {
+        setValidTransitions(data?.validNext || []);
+      })
+      .catch(() => setValidTransitions([]))
+      .finally(() => setFetchingTransitions(false));
+  }, [currentStatus, event?._id, token]);
 
   const handleChange = async () => {
     if (!selectedStatus || selectedStatus === currentStatus) {
@@ -34,12 +50,8 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
     }
     setLoading(true);
     try {
-      await apiJson(`${API_BASE_URL}/api/event/${event._id}/status`, {
+      await apiJson(buildUrl(API_ROUTES.EVENTS.STATUS(event._id)), {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status: selectedStatus, remarks: remarks || undefined }),
       });
       toast.success(`Status changed to ${getStatusMeta(selectedStatus).label}`);
@@ -52,6 +64,11 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
       setLoading(false);
     }
   };
+
+  // Filter writable statuses to only show valid transitions
+  const availableStatuses = WRITABLE_STATUSES.filter((s) =>
+    s.value === currentStatus || validTransitions.includes(s.value)
+  );
 
   return (
     <div className="relative">
@@ -85,6 +102,13 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
               Current: <EventStatusBadge status={currentStatus} />
             </div>
 
+            {validTransitions.length === 0 && currentStatus !== "cancelled" && currentStatus !== "completed" && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-xs flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>No valid transitions from current status. Event may be complete or cancelled.</span>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-medium theme-text-secondary mb-1">
                 New Status
@@ -92,10 +116,11 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
+                disabled={fetchingTransitions}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
               >
-                {WRITABLE_STATUSES.map((s) => (
+                {availableStatuses.map((s) => (
                   <option key={s.value} value={s.value} disabled={s.value === currentStatus}>
                     {s.label} {s.value === currentStatus ? "(current)" : ""}
                   </option>
@@ -134,7 +159,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
               <button
                 type="button"
                 onClick={handleChange}
-                disabled={loading || selectedStatus === currentStatus}
+                disabled={loading || selectedStatus === currentStatus || fetchingTransitions}
                 className="flex-1 px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
               >
                 {loading ? "Updating..." : "Apply"}

@@ -74,14 +74,18 @@
 
 | File | Role | Phase |
 |------|------|-------|
-| `index.html` | FOUC-prevention inline script | 5 |
+| `index.html` | FOUC-prevention inline script (mirrors `themeCore.js` decision table) | 5 |
 | `src/main.jsx` | Wraps app in `<ThemeProvider>` | 2 |
-| `src/context/ThemeContext.jsx` | React context: theme state, persistence, OS sync | 2 |
-| `src/theme.js` | JS token objects (`lightTheme`, `darkTheme`, `getMetaColor`) | 1 |
-| `src/index.css` | CSS variables (`:root` / `.dark`), utility classes | — |
+| `src/context/ThemeContext.jsx` | React context: theme state, persistence, OS sync, drift detector, transitions | 2 |
+| `src/lib/theme/themeCore.js` | **THE** decision table (`resolveThemePreference`) + `getSystemTheme` | — |
+| `src/lib/theme/safeStorage.js` | localStorage wrapper (tolerates blocked storage) | — |
+| `src/lib/theme/getThemeColor.js` | JS reads CSS tokens via `getComputedStyle` (charts/browser APIs) | — |
+| `src/index.css` | CSS variables (`:root` / `.dark`) — **single source of truth** | — |
 | `src/hooks/useMetaThemeSync.js` | Syncs `<meta name="theme-color">` with resolved theme | 4 |
-| `src/components/ThemeToggle.jsx` | UI toggle button (click = toggle, shift-click = system) | 7 |
+| `src/components/ThemeToggle.jsx` | Dropdown menu: Light / Dark / System (shift-click = System) | 7 |
+| `src/components/ThemeSyncBridge.jsx` | Mounted in AppShell; runs meta sync so it survives toggle re-renders | — |
 | `src/components/AppShell.jsx` | Root layout shell using `var(--bg)` / `var(--text)` | — |
+| `scripts/check-contrast.mjs` | Zero-dep WCAG contrast gate (`npm run check:contrast`) | — |
 
 ---
 
@@ -101,33 +105,42 @@
 
 ### 3.2 Theme Toggle
 
-1. User clicks `<ThemeToggle>` button in the header
-2. `setTheme("light")` or `setTheme("dark")` is called
-3. `ThemeContext` persists to `localStorage("theme")`
+1. User opens the Theme dropdown in the header
+2. Picks **Light**, **Dark**, or **System** (or Shift-clicks the trigger for System)
+3. `setTheme(...)` persists via `safeStorage` (localStorage, failure-tolerant)
 4. `useEffect` toggles `.dark` class on `<html>`
-5. All CSS variables switch instantly (300ms transition on `body`)
-6. `useMetaThemeSync` updates `<meta name="theme-color">` tags
+5. All CSS variables switch instantly; `.theme-transition` is applied to `<body>` for ~240ms (skipped for reduced-motion users)
+6. `ThemeSyncBridge` (mounted in `AppShell`) updates `<meta name="theme-color">` tags
 7. Browser toolbar color changes
 
 ### 3.3 System Mode
 
-- **Shift-click** on toggle → sets `theme = "system"`
+- **Pick "System"** in the dropdown (or Shift-click the toggle) → sets `theme = "system"`
 - `ThemeProvider` watches `prefers-color-scheme` via `matchMedia`
 - `resolvedTheme` automatically follows OS preference
 - If OS changes mid-session (e.g. sunset mode), app reacts live
 
+### 3.4 Guardrails (new in the hardening pass)
+
+- **Single decision table:** `src/lib/theme/themeCore.js` owns `resolveThemePreference()`. The `index.html` inline script is a verbatim mirror (header comment marks it). A **drift detector** in `ThemeContext` compares the class applied pre-paint with its own resolution on mount — if they ever disagree it self-heals and logs a warning.
+- **Storage safety:** all localStorage access goes through `safeStorage`. Blocked storage → `null` → system preference → light. The app never breaks on storage failures.
+- **Transitions:** no global `*` transition. `body` keeps a scoped `transition-colors`, and `.theme-transition` (bg/border/color, 180ms) is applied temporarily by the provider only during a theme swap. `prefers-reduced-motion` disables it.
+- **Contrast gate:** `npm run check:contrast` (zero-dep, reads tokens from `index.css`) enforces WCAG AA on core text pairs and surfaces brand/structural pairs as advisory flags.
+
 ### 3.4 Values Exposed by `useTheme()`
 
 ```js
-const { theme, setTheme, resolvedTheme, systemTheme } = useTheme();
+const { theme, setTheme, toggleTheme, resolvedTheme, systemTheme, isSystem } = useTheme();
 ```
 
 | Value | Type | Description |
 |-------|------|-------------|
 | `theme` | `"light" \| "dark" \| "system"` | User's stored preference |
 | `setTheme` | `(next) => void` | Set and persist a new preference |
+| `toggleTheme` | `() => void` | Flip the resolved theme (provider owns the logic) |
 | `resolvedTheme` | `"light" \| "dark"` | Actual active theme (never `"system"`) |
 | `systemTheme` | `"light" \| "dark"` | Current OS preference |
+| `isSystem` | `boolean` | `true` when `theme === "system"` |
 
 ---
 
@@ -137,16 +150,24 @@ const { theme, setTheme, resolvedTheme, systemTheme } = useTheme();
 
 | Variable | Light Value | Dark Value | Usage |
 |----------|-------------|------------|-------|
-| `--bg` | `#f8fafc` | `#020617` | Page background |
-| `--text` | `#0f172a` | `#f1f5f9` | Default body text |
-| `--accent` | `#4f46e5` | `#818cf8` | Brand accent (links, highlights) |
-| `--meta-color` | `#f8fafc` | `#020617` | Browser toolbar meta tag |
-| `--card` | `#ffffff` | `#0f172a` | Card / panel background |
-| `--card-fg` | `#0f172a` | `#e2e8f0` | Text on cards |
-| `--card-bdr` | `rgba(15,23,42,0.1)` | `rgba(148,163,184,0.1)` | Card border color |
-| `--surface` | `#e2e8f0` | `#1e293b` | Secondary surfaces (chart inners, inputs) |
+| `--bg` | `#F4F5F7` | `#111827` | Page background |
+| `--text` | `#0A0A0A` | `#F3F4F6` | Default body text |
+| `--accent` | `#1EA1FF` | `#60A5FA` | Brand accent (links, highlights) |
+| `--primary-strong` | `#0369A1` | `#2563EB` | Button/link text-safe accent (WCAG ≥4.5 with white text) |
+| `--meta-color` | `#F4F5F7` | `#111827` | Browser toolbar meta tag |
+| `--card` | `#ffffff` | `#1F2937` | Card / panel background |
+| `--card-fg` | `#0A0A0A` | `#F3F4F6` | Text on cards |
+| `--card-bdr` | `#E5E7EB` | `#374151` | Card border color |
+| `--surface` | `#EFF1F3` | `#374151` | Secondary surfaces (chart inners, inputs) |
+| `--surface-hover` | `#E5E7EB` | `#4B5563` | Hover state on surfaces |
+| `--surface-active` | `#D1D5DB` | `#6B7280` | Active/pressed state on surfaces |
+| `--success` | `#16A34A` | `#4ADE80` | Success status |
+| `--warning` | `#D97706` | `#FBBF24` | Warning status |
+| `--info` | `#0284C7` | `#38BDF8` | Informational status |
 
-> **3-level hierarchy (light):** `--bg` (#f8fafc) → `--surface` (#e2e8f0) → `--card` (#ffffff)
+> **3-level hierarchy (light):** `--bg` (#F4F5F7) → `--surface` (#EFF1F3) → `--card` (#FFFFFF)
+
+> **Single source of truth:** All palette values live ONLY in `src/index.css` (`:root` / `.dark`). JS reads them via `getThemeColor("--var")` (charts, meta tags). There is no JS-side token map — `src/theme.js` was removed. The `--meta-color` values mirror the static tags in `index.html`.
 
 ### 4.2 Elevation Tokens
 
@@ -448,17 +469,35 @@ Danger    → Rose    (#f43f5e / #f87171)
 ## Quick Reference Card
 
 ```
-Light bg:      #f8fafc    Dark bg:      #020617
-Light card:    #ffffff    Dark card:    #0f172a
-Light text:    #0f172a    Dark text:    #e2e8f0
-Light surface: #e2e8f0    Dark surface: #1e293b
-Light chart:   #f1f5f9    Dark chart:   rgba(30,41,59,0.5)
-Accent:        #4f46e5    Accent:       #818cf8
+Light bg:      #F4F5F7    Dark bg:      #111827
+Light card:    #FFFFFF    Dark card:    #1F2937
+Light text:    #0A0A0A    Dark text:    #F3F4F6
+Light surface: #EFF1F3    Dark surface: #374151
+Accent:        #1EA1FF    Accent:       #60A5FA
+Button accent: #0369A1    Button accent:#2563EB  (--primary-strong)
+Muted text:    #5F6E82    Muted text:   #9CA3AF
 
 Toggle:     .dark class on <html>
-Persist:    localStorage("theme")
-Context:    useTheme() → { theme, setTheme, resolvedTheme }
+Persist:    localStorage("theme") via safeStorage
+Context:    useTheme() → { theme, setTheme, toggleTheme, resolvedTheme, isSystem }
+Source of truth: CSS tokens in index.css (JS reads via getThemeColor)
+Drift:      index.html inline script must mirror themeCore.js
+Gate:       npm run check:contrast
 
 Light strategy: Shadows + borders + solid colors
 Dark strategy:  Borders + glow + transparency
 ```
+
+## System-Theme Test Matrix (manual QA)
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | `theme = system`, OS light → flip OS to dark | UI switches to dark **live** |
+| 2 | `theme = system`, OS dark → flip OS to light | UI switches to light **live** |
+| 3 | `theme = dark` (forced), OS flips | UI **does not** change |
+| 4 | Pick Light/Dark/System → hard reload | Choice persists (no flash of wrong theme) |
+| 5 | localStorage blocked (devtools/private) | App boots, follows OS, no crash |
+| 6 | `prefers-reduced-motion: reduce` + toggle | No transition animation |
+| 7 | `npm run check:contrast` | Exit 0; advisory flags reviewed |
+| 8 | DevTools: dump `localStorage.theme` as garbage | Falls back to system preference |
+| 9 | Toggle → reload → Shift-click (System) | Menu checkmark follows stored value |

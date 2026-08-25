@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Lock, KeyRound, ArrowRight } from 'lucide-react';
+import { apiJson } from '../../utils/apiClient';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -14,15 +15,10 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/reset-password`, {
+      const data = await apiJson(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/reset-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password })
       });
-      
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.message || 'Reset failed');
       
       toast.success(data.message || 'Password successfully reset!');
       navigate('/login');

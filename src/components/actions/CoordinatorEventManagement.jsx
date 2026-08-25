@@ -15,6 +15,7 @@ import {
   Save,
   Edit3,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
@@ -51,6 +52,16 @@ export default function CoordinatorEventManagement() {
   const [autoPrefix, setAutoPrefix] = useState("");
   const [editingChest, setEditingChest] = useState(null);
   const [editValue, setEditValue] = useState("");
+
+  // Compute events needing chest numbers (status = judging or result_pending without chest numbers)
+  const eventsNeedingChestNumbers = useMemo(() => {
+    return events.filter((evt) => {
+      const status = evt.status;
+      if (!["judging", "result_pending"].includes(status)) return false;
+      const hasChestConfig = evt.chest_prefix?.trim().length > 0;
+      return !hasChestConfig;
+    });
+  }, [events]);
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token");
@@ -232,6 +243,21 @@ export default function CoordinatorEventManagement() {
       {error && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {eventsNeedingChestNumbers.length > 0 && (
+        <div className="rounded-lg border border-accent-amber/20 bg-accent-amber/10 px-4 py-3 text-sm flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-accent-amber mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-accent-amber mb-1">Chest Numbers Required</p>
+            <p className="text-xs text-accent-amber/80">
+              {eventsNeedingChestNumbers.length} event{eventsNeedingChestNumbers.length !== 1 ? "s" : ""} in "judging" or "result_pending" status need chest numbers before judging can proceed.
+            </p>
+            <p className="text-xs text-accent-amber/70 mt-1">
+              Click an event below to assign chest numbers in the detail panel.
+            </p>
+          </div>
         </div>
       )}
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Mail, KeyRound, ArrowRight, Trophy } from 'lucide-react';
+import { apiJson } from '../../utils/apiClient';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -13,15 +14,10 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/forgot-password`, {
+      const data = await apiJson(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/forgot-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.message || 'Request failed');
       
       toast.success(data.message || 'Reset link sent to your email.');
       navigate('/login');

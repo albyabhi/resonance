@@ -33,10 +33,17 @@
     <!-- ── Phase 5 – SSR-correctness (SPA equivalent) ──────────── -->
     <!-- Apply the persisted theme BEFORE React hydrates so the user
          never sees a flash of the wrong colour.  This inline script
-         runs synchronously and is tiny (~200 bytes). -->
+         runs synchronously and is tiny (~200 bytes).
+
+         ⚠ SYNC: implements the SAME decision table as
+         src/lib/theme/themeCore.js (resolveThemePreference).
+         If you change the rules there, change them here too. -->
     <script>
       (function () {
-        var stored = localStorage.getItem('theme');
+        var stored = null;
+        try {
+          stored = localStorage.getItem('theme');
+        } catch (e) { /* storage blocked — fall through to system */ }
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         var dark = stored === 'dark' || (stored !== 'light' && prefersDark);
 

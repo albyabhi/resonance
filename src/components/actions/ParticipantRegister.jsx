@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
@@ -34,6 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from "../ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "../ui/collapsible";
+import EventStatusBadge from "../EventStatusBadge";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -59,10 +60,17 @@ export default function ParticipantRegister() {
   const [eventTeams, setEventTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
 
+  // Invite teammates state
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviting, setInviting] = useState(false);
+
   const queryParams = new URLSearchParams(window.location.search);
   const shareEventId = queryParams.get("eventId");
 
-  const apiCall = async (endpoint, options = {}) => {
+  // Withdraw state
+  const [withdrawingId, setWithdrawingId] = useState(null);
+
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No authorization token found");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
@@ -72,9 +80,9 @@ export default function ParticipantRegister() {
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
-  };
+  }, [token]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -103,11 +111,11 @@ export default function ParticipantRegister() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [competition, user, apiCall]);
 
   useEffect(() => {
     if (token) fetchData();
-  }, [token, lastUpdate]);
+  }, [token, lastUpdate, fetchData]);
 
   useEffect(() => {
     if (events.length > 0 && shareEventId) {
@@ -118,7 +126,7 @@ export default function ParticipantRegister() {
           toast(
             <span className="flex items-center gap-2 font-medium">
               <Info className="h-5 w-5 text-accent-blue shrink-0" />
-              You were redirected to register for: <b>{target.name}</b>
+              You were redirected to register for: <b>{target.title || target.name}</b>
             </span>
           , { duration: 4000 });
 
@@ -139,14 +147,14 @@ export default function ParticipantRegister() {
             openTeamModal(target);
           }
         } else {
-          toast.success(`You are already registered for ${target.name}!`, { icon: <CheckCircle className="h-5 w-5 text-accent-green" /> });
+          toast.success(`You are already registered for ${target.title || target.name}!`, { icon: <CheckCircle className="h-5 w-5 text-accent-green" /> });
           setActiveTab("my-events");
         }
       }
     }
-  }, [events, shareEventId, myRegistrations]);
+  }, [events, shareEventId, myRegistrations, handleIndividualParticipate, openTeamModal]);
 
-  const fetchEventTeams = async (event) => {
+  const fetchEventTeams = useCallback(async (event) => {
     const eventId = event._id || event.event_id;
     try {
       setLoadingTeams(true);
@@ -161,11 +169,11 @@ export default function ParticipantRegister() {
     } finally {
       setLoadingTeams(false);
     }
-  };
+  }, [user, apiCall]);
 
-  const handleIndividualParticipate = async (event) => {
+  const handleIndividualParticipate = useCallback(async (event) => {
     const eventId = event._id || event.event_id;
-    const loadingToast = toast.loading(`Registering you for ${event.name}...`);
+    const loadingToast = toast.loading(`Registering you for ${event.title || event.name}...`);
     try {
       const resp = await apiCall("/api/team/participate", {
         method: "POST",
@@ -173,7 +181,7 @@ export default function ParticipantRegister() {
       });
       if (resp.success) {
         toast.dismiss(loadingToast);
-        toast.success(`Successfully registered for ${event.name}!`, { icon: <Trophy className="h-5 w-5 text-accent-amber" /> });
+        toast.success(`Successfully registered for ${event.title || event.name}!`, { icon: <Trophy className="h-5 w-5 text-accent-amber" /> });
         fetchData();
       } else {
         throw new Error(resp.error || "Failed to participate");
@@ -182,22 +190,24 @@ export default function ParticipantRegister() {
       toast.dismiss(loadingToast);
       toast.error(err.message || "Registration failed");
     }
-  };
+  }, [apiCall, fetchData]);
 
-  const openTeamModal = (event) => {
+  const openTeamModal = useCallback((event) => {
     setSelectedEvent(event);
     setModalTab("create");
     setTeamName("");
     setSelectedMemberIds([]);
     setTeamSearch("");
+    setInviteEmails("");
     fetchEventTeams(event);
-  };
+  }, [fetchEventTeams]);
 
   const closeTeamModal = () => {
     setSelectedEvent(null);
     setTeamName("");
     setSelectedMemberIds([]);
     setEventTeams([]);
+    setInviteEmails("");
   };
 
   const toggleMemberSelection = (id) => {
@@ -236,7 +246,7 @@ export default function ParticipantRegister() {
       });
 
       if (resp.success) {
-        toast.success(`Team "${teamName}" registered successfully for ${selectedEvent.name}!`, { icon: <PartyPopper className="h-5 w-5 text-accent-green" /> });
+        toast.success(`Team "${teamName}" registered successfully for ${selectedEvent.title || selectedEvent.name}!`, { icon: <PartyPopper className="h-5 w-5 text-accent-green" /> });
         closeTeamModal();
         fetchData();
       } else {
@@ -246,6 +256,65 @@ export default function ParticipantRegister() {
       toast.error(err.message || "Failed to submit team registration");
     } finally {
       setSubmittingTeam(false);
+    }
+  };
+
+  const handleInviteTeammates = async (e) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+    const emails = inviteEmails.split(",").map(e => e.trim()).filter(e => e);
+    if (emails.length === 0) {
+      toast.error("Please enter at least one email address");
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter(e => !emailRegex.test(e));
+    if (invalidEmails.length > 0) {
+      toast.error(`Invalid email format: ${invalidEmails.join(", ")}`);
+      return;
+    }
+
+    setInviting(true);
+    try {
+      const eventId = selectedEvent._id || selectedEvent.event_id;
+      const resp = await apiCall("/api/team/invite", {
+        method: "POST",
+        body: { event_id: eventId, emails }
+      });
+
+      if (resp.success) {
+        toast.success(`Invitations sent to ${emails.length} teammate(s)!`);
+        setInviteEmails("");
+        fetchEventTeams(selectedEvent);
+      } else {
+        throw new Error(resp.error || "Failed to send invitations");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to send invitations");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleWithdraw = async (teamId, eventName) => {
+    if (!window.confirm(`Are you sure you want to withdraw from "${eventName}"? This action cannot be undone.`)) return;
+    setWithdrawingId(teamId);
+    try {
+      const resp = await apiCall(`/api/team/${teamId}/withdraw`, {
+        method: "POST"
+      });
+      if (resp.success) {
+        toast.success(`Successfully withdrew from ${eventName}`);
+        fetchData();
+      } else {
+        throw new Error(resp.error || "Failed to withdraw");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to withdraw");
+    } finally {
+      setWithdrawingId(null);
     }
   };
 
@@ -289,6 +358,25 @@ export default function ParticipantRegister() {
     if (!selectedEvent) return false;
     return selectedEvent.max_per_group && eventTeams.length >= selectedEvent.max_per_group;
   }, [selectedEvent, eventTeams]);
+
+  // Check if event has reached max per group capacity (for individual events too)
+  const getGroupRegistrationCount = (event) => {
+    if (!event.max_per_group) return 0;
+    const eventId = event._id || event.event_id;
+    const team = myRegistrations.find(r => (r.event_id?._id || r.event_id) === eventId);
+    // For individual events, each registration counts as 1
+    if (event.event_type === "individual") {
+      return team ? 1 : 0;
+    }
+    // For team events, count teams from this group
+    return eventTeams.length;
+  };
+
+  const isEventFullForGroup = (event) => {
+    if (!event.max_per_group) return false;
+    const count = getGroupRegistrationCount(event);
+    return count >= event.max_per_group;
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -342,9 +430,12 @@ export default function ParticipantRegister() {
                   >
                     <CardHeader>
                       <div className="flex justify-between items-start gap-4">
-                        <Badge variant="outline" className="text-xs font-black uppercase tracking-widest">
-                          {e.category || "General"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs font-black uppercase tracking-widest">
+                            {e.category || "General"}
+                          </Badge>
+                          <EventStatusBadge status={e.status} size="sm" />
+                        </div>
 
                         <div className="flex items-center gap-2">
                           {e.registration_mode && (
@@ -364,11 +455,21 @@ export default function ParticipantRegister() {
                               Registered
                             </Badge>
                           )}
+                          {e.max_per_group && !registered && isEventFullForGroup(e) && (
+                            <Badge variant="destructive" className="text-xs font-black uppercase tracking-wider">
+                              <Lock className="h-3 w-3 mr-1" /> Full
+                            </Badge>
+                          )}
+                          {e.max_per_group && !registered && !isEventFullForGroup(e) && (
+                            <Badge variant="outline" className="bg-accent-blue/10 text-accent-blue border-accent-blue/30 text-xs font-black">
+                              <Users className="h-3 w-3 mr-1" /> {getGroupRegistrationCount(e)}/{e.max_per_group}
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
                       <CardTitle className="text-xl mt-4 leading-snug">
-                        {e.name}
+                        {e.title || e.name}
                       </CardTitle>
 
                       <CardDescription className="line-clamp-3 min-h-[60px] leading-relaxed">
@@ -476,6 +577,14 @@ export default function ParticipantRegister() {
                           >
                             <CheckCircle className="h-4 w-4 mr-2" /> Selected
                           </Button>
+                        ) : isEventFullForGroup(e) ? (
+                          <Button
+                            disabled
+                            variant="outline"
+                            className="w-full bg-destructive/10 text-destructive border-destructive/30 cursor-not-allowed"
+                          >
+                            <Lock className="h-4 w-4 mr-2" /> Group Limit Reached
+                          </Button>
                         ) : e.event_type === "individual" ? (
                           <Button onClick={() => handleIndividualParticipate(e)} className="w-full">
                             Participate Instantly
@@ -529,7 +638,7 @@ export default function ParticipantRegister() {
                             Confirmed Entry
                           </Badge>
                           <CardTitle className="text-xl mt-3">
-                            {evt.name || "Unnamed Event"}
+                            {evt.title || evt.name || "Unnamed Event"}
                           </CardTitle>
                           {reg.name && (
                             <CardDescription className="mt-1">
@@ -579,6 +688,28 @@ export default function ParticipantRegister() {
                           </div>
                         </div>
                       )}
+
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleWithdraw(teamId, evt.title || evt.name || "this event")}
+                          disabled={withdrawingId === teamId}
+                          className="w-full gap-2"
+                        >
+                          {withdrawingId === teamId ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Withdrawing...
+                            </>
+                          ) : (
+                            <>
+                              <User className="h-4 w-4" />
+                              Withdraw from Event
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -595,7 +726,7 @@ export default function ParticipantRegister() {
               Team Management
             </Badge>
             <DialogTitle className="text-xl">
-              {selectedEvent?.name}
+              {selectedEvent?.title || selectedEvent?.name}
             </DialogTitle>
             <DialogDescription className="mt-1">
               Obeying limits: squad requires <span className="font-bold text-foreground">{selectedEvent?.min_team_size} to {selectedEvent?.max_team_size} members</span>.
@@ -603,9 +734,10 @@ export default function ParticipantRegister() {
           </DialogHeader>
 
           <Tabs value={modalTab} onValueChange={setModalTab} className="flex-1 flex flex-col">
-            <TabsList className="grid grid-cols-2">
+            <TabsList className="grid grid-cols-3">
               <TabsTrigger value="create">Create a New Team</TabsTrigger>
-              <TabsTrigger value="join">Join an Existing Team ({eventTeams.length})</TabsTrigger>
+              <TabsTrigger value="join">Join Existing Team ({eventTeams.length})</TabsTrigger>
+              <TabsTrigger value="invite">Invite Teammates</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-y-auto min-h-0">
@@ -770,6 +902,58 @@ export default function ParticipantRegister() {
                     </div>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="invite" className="space-y-4 mt-4">
+                <div className="p-4 bg-accent-blue/5 border border-accent-blue/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-accent-blue shrink-0 mt-0.5" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-card-foreground mb-1">Invite Teammates by Email</p>
+                      <p>Enter email addresses of participants you'd like to invite to join your team. They'll receive an invitation link to register and join your team for this event.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleInviteTeammates} className="space-y-4">
+                  <div>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Teammate Email Addresses <span className="text-red-400">*</span>
+                    </Label>
+                    <textarea
+                      value={inviteEmails}
+                      onChange={(e) => setInviteEmails(e.target.value)}
+                      placeholder="teammate1@example.com, teammate2@example.com, teammate3@example.com"
+                      className="mt-1.5 w-full min-h-[100px] p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-accent-blue"
+                      rows={4}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">Separate multiple emails with commas. Invited users must have accounts in this competition.</p>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={inviting || !inviteEmails.trim()}
+                    className="w-full"
+                  >
+                    {inviting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Sending Invitations...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Send Invitations
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold">Note:</span> Invitations are sent via email. Recipients must already have participant accounts in this competition. If they don't have accounts, ask them to sign up first or have your {groupLabel.toLowerCase()} captain add them.
+                  </p>
+                </div>
               </TabsContent>
             </div>
           </Tabs>

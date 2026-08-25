@@ -16,6 +16,7 @@ import {
   X,
   RotateCcw,
   Play,
+  Hourglass,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useMobileMode } from "../utils/useMobileMode";
@@ -63,9 +64,24 @@ const JudgeDashboard = () => {
   const [scoreMax, setScoreMax] = useState(100);
   const [scoreInput, setScoreInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
+
+  // Real-time score validation
+  const isScoreValid = useMemo(() => {
+    const val = parseFloat(scoreInput);
+    if (scoreInput === "" || isNaN(parseFloat(scoreInput))) return false;
+    return val >= 0 && val <= scoreMax;
+  }, [scoreInput, scoreMax]);
   const [error, setError] = useState("");
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [ranking, setRanking] = useState([]);
+
+  const [organizers, setOrganizers] = useState([]);
+  const [assignMode, setAssignMode] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [assigningTeam, setAssigningTeam] = useState(null);
+  const [chestPrefix, setChestPrefix] = useState("");
+  const [startNumber, setStartNumber] = useState(1);
+  const [chestDrafts, setChestDrafts] = useState({});
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -88,9 +104,21 @@ const JudgeDashboard = () => {
     }
   }, [apiCall]);
 
+  const loadOrganizers = useCallback(async () => {
+    try {
+      const { data } = await apiCall("/api/judge/organizers");
+      setOrganizers(data || []);
+    } catch (err) {
+      console.error("Failed to load organizers:", err);
+    }
+  }, [apiCall]);
+
   useEffect(() => {
-    if (token) loadAssignments();
-  }, [token, loadAssignments]);
+    if (token) {
+      loadAssignments();
+      loadOrganizers();
+    }
+  }, [token, loadAssignments, loadOrganizers]);
 
   const loadSessionInfo = useCallback(async (eventId, roundNo) => {
     try {
@@ -114,6 +142,71 @@ const JudgeDashboard = () => {
     }
   }, [apiCall]);
 
+  const unassignedParticipants = useMemo(
+    () => (sessionMeta?.participants || []).filter((p) => !p.chest_no),
+    [sessionMeta]
+  );
+
+  const participantLabel = (p) => {
+    if (p.team_name) return p.team_name;
+    return `T${String(p.team_id).slice(-4).toUpperCase()}`;
+  };
+
+  const resetAssignState = () => {
+    setAssignMode(false);
+    setAssigning(false);
+    setAssigningTeam(null);
+    setChestPrefix("");
+    setStartNumber(1);
+    setChestDrafts({});
+  };
+
+  const handleJudgeBulkAssign = async () => {
+    const eventId = selectedEventId || sessionMeta?.event?._id;
+    if (!eventId || unassignedParticipants.length === 0) return;
+    try {
+      setAssigning(true);
+      setError("");
+      const resp = await apiCall("/api/team/bulk-chest", {
+        method: "POST",
+        body: JSON.stringify({
+          event_id: eventId,
+          prefix: chestPrefix.trim(),
+          start_number: startNumber,
+        }),
+      });
+      toast.success(`Assigned chest numbers to ${resp.data?.total ?? unassignedParticipants.length} team(s)`);
+      await loadSessionInfo(eventId, selectedRound);
+    } catch (err) {
+      setError(err.message || "Failed to auto-assign chest numbers");
+      toast.error(err.message || "Failed to auto-assign chest numbers");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleJudgeAssignSingle = async (teamId) => {
+    const chest_no = (chestDrafts[teamId] || "").trim();
+    const eventId = selectedEventId || sessionMeta?.event?._id;
+    if (!chest_no || !eventId) return;
+    try {
+      setAssigningTeam(teamId);
+      setError("");
+      await apiCall(`/api/team/${teamId}/chest`, {
+        method: "PATCH",
+        body: JSON.stringify({ chest_no }),
+      });
+      toast.success("Chest number assigned");
+      setChestDrafts((prev) => ({ ...prev, [teamId]: "" }));
+      await loadSessionInfo(eventId, selectedRound);
+    } catch (err) {
+      setError(err.message || "Failed to assign chest number");
+      toast.error(err.message || "Failed to assign chest number");
+    } finally {
+      setAssigningTeam(null);
+    }
+  };
+
   const handleEventChange = (value) => {
     const id = value;
     setSelectedEventId(id);
@@ -121,6 +214,7 @@ const JudgeDashboard = () => {
     setSession(null);
     setSessionMeta(null);
     setRanking([]);
+    resetAssignState();
     setViewState(VIEW.LOADING);
     if (id) {
       loadSessionInfo(id, 1);
@@ -136,6 +230,7 @@ const JudgeDashboard = () => {
     setSessionMeta(null);
     setRanking([]);
     setError("");
+    resetAssignState();
     setViewState(VIEW.LOADING);
     if (selectedEventId) {
       loadSessionInfo(selectedEventId, round);
@@ -330,7 +425,17 @@ const JudgeDashboard = () => {
 
   const handleAbandonSession = async () => {
     if (!selectedEventId || !session) return;
-    if (!window.confirm("Abandon current session? All progress will be lost.")) return;
+    const scoredSoFar = session.participants?.filter((p) => p.status === "scored").length || 0;
+    const total = session.participants?.length || 0;
+    const confirmMsg = `Abandon current session for "${sessionMeta?.event?.title || sessionMeta?.event?.name || "this event"}" (Round ${selectedRound})?
+
+Progress: ${scoredSoFar} of ${total} participants scored.
+⚠️ ALL SCORES AND NOTES WILL BE PERMANENTLY DELETED.
+This action cannot be undone.
+
+Type "ABANDON" to confirm:`;
+    const userInput = window.prompt(confirmMsg);
+    if (userInput !== "ABANDON") return;
     try {
       await apiCall(`/api/judge/session/${selectedEventId}?round_no=${selectedRound}`, {
         method: "DELETE",
@@ -381,7 +486,7 @@ const JudgeDashboard = () => {
                   <SelectItem value="">Select an event</SelectItem>
                   {(assignments || []).map((a) => (
                     <SelectItem key={a._id} value={a.event_id?._id || a.event_id}>
-                      {a.event_id?.name || "Unknown Event"}
+                      {a.event_id?.title || a.event_id?.name || "Unknown Event"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -401,9 +506,30 @@ const JudgeDashboard = () => {
           {assignments.length === 0 && (
             <div className="text-center py-8">
               <ClipboardList className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No events assigned to you yet. Contact an organizer to get assigned.
+              <p className="text-sm text-muted-foreground mb-4">
+                No events assigned to you yet.
               </p>
+              {organizers.length > 0 && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg text-left max-w-xs mx-auto">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Contact an organizer:</p>
+                  <ul className="space-y-1 text-sm">
+                    {organizers.map((org) => (
+                      <li key={org._id} className="flex items-center gap-2">
+                        <span className="font-medium">{org.name}</span>
+                        <span className="text-muted-foreground">({org.role})</span>
+                        {org.email && (
+                          <a href={`mailto:${org.email}`} className="text-primary underline text-xs">
+                            {org.email}
+                          </a>
+                        )}
+                        {org.phone && (
+                          <span className="text-muted-foreground text-xs">{org.phone}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -419,7 +545,7 @@ const JudgeDashboard = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{evt.name || "Event"}</CardTitle>
+          <CardTitle>{evt.title || evt.name || "Event"}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {evt.category} &middot; {evt.event_type} &middot; Round {selectedRound}
           </p>
@@ -432,7 +558,10 @@ const JudgeDashboard = () => {
             </div>
           )}
 
-          <div className="mb-4">
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+            <p className="text-sm font-medium text-card-foreground mb-1">
+              {evt.title || evt.name || "Event"} &middot; {evt.category} &middot; {evt.event_type}
+            </p>
             <Label className="mb-1 block">Round</Label>
             <Select value={String(selectedRound)} onValueChange={handleRoundChange}>
               <SelectTrigger className={`max-w-[200px] ${isMobile ? "min-h-[48px] text-base" : ""}`}>
@@ -471,9 +600,147 @@ const JudgeDashboard = () => {
           </div>
 
           {!sessionMeta?.all_have_chests && (
-            <div className="bg-accent-amber/10 border border-accent-amber/20 text-accent-amber rounded-lg px-3 py-2 mb-4 text-sm flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>Waiting for chest numbers. An event coordinator must assign chest numbers before judging can begin.</span>
+            <div className="bg-accent-amber/10 border border-accent-amber/20 text-accent-amber rounded-lg px-3 py-3 mb-4 text-sm">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {assignMode
+                      ? "Assign chest numbers to continue"
+                      : "Waiting for chest numbers. An event coordinator must assign chest numbers before judging can begin."}
+                  </p>
+                  <p className="mt-0.5 text-xs text-accent-amber/80">
+                    {sessionMeta?.teams_without_chest || 0} team(s) still need chest numbers.
+                  </p>
+                </div>
+              </div>
+
+              {!assignMode ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAssignMode(true)}
+                    className="gap-1.5 font-bold border-accent-amber/40 text-accent-amber hover:bg-accent-amber/20"
+                  >
+                    <Hash className="h-3.5 w-3.5" /> Assign Myself
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1.5 text-muted-foreground hover:text-card-foreground"
+                    onClick={() => toast("Waiting for the coordinator. You can assign them yourself anytime.")}
+                  >
+                    <Hourglass className="h-3.5 w-3.5" /> Wait for Coordinator
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-lg border border-border bg-card p-3 space-y-2">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="w-20">
+                      <Label className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">Start #</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={startNumber}
+                        onChange={(e) => setStartNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        disabled={assigning}
+                        className={isMobile ? "min-h-[48px]" : ""}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <Label className="mb-1 block text-xs uppercase tracking-wider text-muted-foreground">Prefix</Label>
+                      <Input
+                        type="text"
+                        value={chestPrefix}
+                        onChange={(e) => setChestPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                        placeholder={evt.chest_prefix || "e.g. GD"}
+                        maxLength={8}
+                        disabled={assigning}
+                        className={`font-mono ${isMobile ? "min-h-[48px] text-base" : ""}`}
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleJudgeBulkAssign}
+                      disabled={assigning || unassignedParticipants.length === 0}
+                      className="gap-1.5 bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
+                    >
+                      {assigning ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      {assigning ? "Assigning..." : `Auto-Assign (${unassignedParticipants.length})`}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setAssignMode(false)}
+                      disabled={assigning}
+                      className="gap-1.5 text-muted-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" /> Wait for Coordinator
+                    </Button>
+                  </div>
+
+                  {unassignedParticipants.length > 0 && (
+                    <div className="space-y-2 pt-1">
+                      {unassignedParticipants.map((p) => (
+                        <div
+                          key={String(p.team_id)}
+                          className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted px-2 py-2"
+                        >
+                          <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-card-foreground">
+                              {participantLabel(p)}
+                            </p>
+                            {p.group_name && !evt.enable_blind_judging && (
+                              <p className="truncate text-xs text-muted-foreground">{p.group_name}</p>
+                            )}
+                          </div>
+                          <Input
+                            type="text"
+                            value={chestDrafts[String(p.team_id)] || ""}
+                            onChange={(e) =>
+                              setChestDrafts((prev) => ({
+                                ...prev,
+                                [String(p.team_id)]: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""),
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleJudgeAssignSingle(String(p.team_id));
+                            }}
+                            placeholder={chestPrefix ? `${chestPrefix}-?` : "Chest #"}
+                            maxLength={20}
+                            disabled={assigning}
+                            autoFocus={!isMobile && unassignedParticipants.length <= 1}
+                            className={`w-28 font-mono ${isMobile ? "min-h-[48px] text-base" : ""}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleJudgeAssignSingle(String(p.team_id))}
+                            disabled={assigning || !(chestDrafts[String(p.team_id)] || "").trim()}
+                            className="text-accent-green hover:bg-accent-green/10"
+                          >
+                            {assigningTeam === String(p.team_id) ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    You can only fill missing chest numbers — existing ones are managed by the coordinator.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -576,7 +843,7 @@ const JudgeDashboard = () => {
           <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
             <div>
               <CardTitle>
-                {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
+                {sessionMeta?.event?.title || sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 {scoredCount} of {totalCount} scored
@@ -640,14 +907,36 @@ const JudgeDashboard = () => {
                 min={0}
                 max={scoreMax}
                 value={scoreInput}
-                onChange={(e) => setScoreInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || val === "-") {
+                    setScoreInput(val);
+                    return;
+                  }
+                  const num = parseFloat(val);
+                  if (!isNaN(num) && num >= 0 && num <= scoreMax) {
+                    setScoreInput(val);
+                  }
+                }}
                 onKeyDown={(e) => { if (e.key === "Enter") handleScoreAction("score"); }}
                 className={`w-full border-2 text-center font-mono font-bold focus:ring-accent-amber ${
                   isMobile ? "min-h-[56px] text-2xl" : "py-3 text-xl"
+                } ${
+                  scoreInput !== "" && !isScoreValid ? "border-destructive focus:ring-destructive" : "border-2 focus:ring-accent-amber"
                 }`}
                 placeholder={`0 \u2013 ${scoreMax}`}
                 autoFocus
+                aria-invalid={scoreInput !== "" && !isScoreValid}
+                aria-describedby={scoreInput !== "" && !isScoreValid ? "score-error" : undefined}
               />
+              {!isScoreValid && scoreInput !== "" && (
+                <p id="score-error" className="mt-1 text-sm text-destructive" role="alert">
+                  Score must be between 0 and {scoreMax}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Valid range: 0 to {scoreMax}{isScored ? " (current score will be updated)" : ""}
+              </p>
             </div>
 
             <div className="mb-4">
@@ -675,15 +964,15 @@ const JudgeDashboard = () => {
 
               <Button
                 onClick={() => handleScoreAction("score")}
-                disabled={sessionActionLoading}
+                disabled={sessionActionLoading || !isScoreValid}
                 className={`flex-1 gap-1.5 font-bold text-white ${
                   isMobile ? "min-h-[48px] text-base" : ""
-                } ${isScored ? "bg-accent-amber hover:bg-accent-amber/90" : "bg-accent-amber hover:bg-accent-amber/90"}`}
+                } ${isScored ? "bg-accent-amber hover:bg-accent-amber/90" : "bg-accent-amber hover:bg-accent-amber/90"} ${!isScoreValid ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {sessionActionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>{isScored ? "Update Score" : "Save & Next"} <ChevronRight className="h-4 w-4" /></>
+                  <>Save Score <ChevronRight className="h-4 w-4" /></>
                 )}
               </Button>
 
@@ -752,7 +1041,7 @@ const JudgeDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
+            {sessionMeta?.event?.title || sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Ranking Preview &middot; {ranking.length} participant(s)
@@ -851,12 +1140,42 @@ const JudgeDashboard = () => {
             Session Submitted
           </h2>
           <p className="text-sm mb-6 text-muted-foreground">
-            {sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound} &middot; All scores recorded
+            {sessionMeta?.event?.title || sessionMeta?.event?.name || "Event"} &middot; Round {selectedRound} &middot; All scores recorded
           </p>
           <p className="text-sm mb-6 text-muted-foreground">
             {ranking.length} participant(s) scored. Scores are now with the organizer for review.
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
+            <Button
+              onClick={() => setViewState(VIEW.JUDGING)}
+              className="bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
+            >
+              <ChevronLeft className="h-4 w-4" /> Back to Edit
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedEventId || !session) return;
+                if (!window.confirm("Reopen session? This will abandon the current submission and allow you to re-judge from scratch.")) return;
+                try {
+                  await apiCall(`/api/judge/session/${selectedEventId}?round_no=${selectedRound}`, {
+                    method: "DELETE",
+                  });
+                  setSession(null);
+                  setSessionMeta(null);
+                  setRanking([]);
+                  setError("");
+                  setViewState(VIEW.IDLE);
+                  toast.success("Session reopened. You can now start a new judging session.");
+                  loadAssignments();
+                } catch (err) {
+                  setError(err.message);
+                  toast.error(err.message);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-white font-bold"
+            >
+              Reopen Session (Reset)
+            </Button>
             <Button
               onClick={() => {
                 setSelectedEventId("");
@@ -866,7 +1185,7 @@ const JudgeDashboard = () => {
                 setError("");
                 setViewState(VIEW.IDLE);
               }}
-              className="bg-accent-amber hover:bg-accent-amber/90 text-white font-bold"
+              className="bg-muted hover:bg-muted/80 text-white font-bold"
             >
               Back to Dashboard
             </Button>
@@ -882,8 +1201,5 @@ const JudgeDashboard = () => {
       </Card>
     );
   }
-
-  return null;
 };
-
 export default JudgeDashboard;

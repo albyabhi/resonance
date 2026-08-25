@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
@@ -44,7 +44,9 @@ const ManageResult = () => {
   const coordinatorHouseId =
     user?.house?._id || user?.house?.id || user?.house || null;
 
-  const apiCall = async (endpoint, options = {}) => {
+  const competitionId = useMemo(() => competition?._id || competition?.id || competition?.competition_id, [competition]);
+
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
@@ -54,25 +56,25 @@ const ManageResult = () => {
       },
       body: options.body,
     });
-  };
+  }, [token]);
+
+  const loadEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const compQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+      const { events } = await apiCall(`/api/event${compQuery}`);
+      setEvents(events || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [competitionId, apiCall]);
 
   useEffect(() => {
-    const loadEvents = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const competitionId = competition?._id || competition?.id || competition?.competition_id;
-        const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
-        const { events } = await apiCall(`/api/event${competitionQuery}`);
-        setEvents(events || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (token) loadEvents();
-  }, [token]);
+  }, [token, loadEvents]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,9 +132,9 @@ const ManageResult = () => {
     return () => {
       cancelled = true;
     };
-  }, [eventId, coordinatorHouseId, hasAnyRole]);
+  }, [eventId, coordinatorHouseId, hasAnyRole, apiCall]);
 
-  const loadResultsForRound = async (evtId, rnd) => {
+  const loadResultsForRound = useCallback(async (evtId, rnd) => {
     const response = await apiCall(`/api/results?event_id=${evtId}&round_no=${rnd}`);
     const results = response.results || response.data || [];
     const serverMap = {};
@@ -146,7 +148,7 @@ const ManageResult = () => {
     });
     setPlacements((prev) => ({ ...serverMap, ...prev }));
     setLockedPositions(locks);
-  };
+  }, [apiCall]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +166,7 @@ const ManageResult = () => {
     return () => {
       cancelled = true;
     };
-  }, [eventId, roundNo, teamsLoaded]);
+  }, [eventId, roundNo, teamsLoaded, loadResultsForRound]);
 
   const filteredTeams = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -276,7 +278,7 @@ const ManageResult = () => {
                   const id = e._id || e.event_id;
                   return (
                     <SelectItem key={id} value={id}>
-                      {e.name} • {e.event_type} • {e.mode}
+                      {e.title || e.name} • {e.event_type} • {e.mode}
                     </SelectItem>
                   );
                 })}

@@ -3,6 +3,7 @@ import { useAuth } from "./AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { User, KeyRound, Lock, ArrowRight, Trophy } from "lucide-react";
+import { apiJson } from "../utils/apiClient";
 
 export default function LoginPage({ onLogin = () => {} }) {
   const [email, setEmail] = useState("");
@@ -23,18 +24,10 @@ export default function LoginPage({ onLogin = () => {} }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/login`, {
+      const data = await apiJson(`${backendUrl}/api/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "omit",
         body: JSON.stringify({ email, password }),
       });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Login failed");
-      }
 
       login(data.user, data.access_token, data.refresh_token, data.competition);
       onLogin(data.user?.role || 'admin');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
@@ -38,52 +38,54 @@ export default function CoordinatorParticipants() {
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: "", description: "", onConfirm: null });
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
-
-  useEffect(() => {
-    if (!token) return;
-    const loadEvents = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const competitionId = competition?._id || competition?.id || competition?.competition_id;
-        const query = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
-        const { events: evts } = await apiCall(`/api/event${query}`);
-        setEvents(evts || []);
-        if ((evts || []).length > 0) {
-          setSelectedEventId(evts[0]._id || evts[0].event_id);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadEvents();
   }, [token]);
 
-  useEffect(() => {
-    if (!selectedEventId) return;
-    const loadTeams = async () => {
-      try {
-        setTeamsLoading(true);
-        const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
-        setTeams(data || []);
-      } catch {
-        setTeams([]);
-      } finally {
-        setTeamsLoading(false);
+  const loadEvents = useCallback(async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      setError("");
+      const competitionId = competition?._id || competition?.id || competition?.competition_id;
+      const query = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
+      const { events: evts } = await apiCall(`/api/event${query}`);
+      setEvents(evts || []);
+      if ((evts || []).length > 0) {
+        setSelectedEventId(evts[0]._id || evts[0].event_id);
       }
-    };
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [competition, token, apiCall]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  const loadTeams = useCallback(async () => {
+    if (!selectedEventId) return;
+    try {
+      setTeamsLoading(true);
+      const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
+      setTeams(data || []);
+    } catch {
+      setTeams([]);
+    } finally {
+      setTeamsLoading(false);
+    }
+  }, [selectedEventId, apiCall]);
+
+  useEffect(() => {
     loadTeams();
-  }, [selectedEventId, token]);
+  }, [loadTeams]);
 
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return events;

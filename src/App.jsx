@@ -27,6 +27,7 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController();
+    // eslint-disable-next-line no-restricted-syntax
     fetch(`${import.meta.env.VITE_BACKEND_URL}/wake`, {
       method: 'GET',
       credentials: 'include',

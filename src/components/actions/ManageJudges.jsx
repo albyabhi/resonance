@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import { UserCheck, UserX, Loader2 } from "lucide-react";
@@ -18,16 +18,16 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
   const [error, setError] = useState("");
   const eventId = event?._id || event?.event_id;
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -42,11 +42,11 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId, apiCall]);
 
   useEffect(() => {
     if (token && eventId) loadData();
-  }, [token, eventId]);
+  }, [token, eventId, loadData]);
 
   const assignedJudgeIds = new Set(
     assignments.map((a) => String(a.judge_id?._id || a.judge_id))

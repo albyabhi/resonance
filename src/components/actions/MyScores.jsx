@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import { Trash2, RotateCcw } from "lucide-react";
@@ -23,16 +23,16 @@ const MyScores = () => {
   const [error, setError] = useState("");
   const [sheets, setSheets] = useState([]);
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
-  const loadSheets = async () => {
+  const loadSheets = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -43,11 +43,11 @@ const MyScores = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
   useEffect(() => {
     if (token) loadSheets();
-  }, [token]);
+  }, [token, loadSheets]);
 
   const deleteSheet = async (id) => {
     if (!window.confirm("Delete this score sheet permanently?")) return;
@@ -112,7 +112,7 @@ const MyScores = () => {
               <TableBody>
                 {sheets.map((s) => (
                   <TableRow key={s._id}>
-                    <TableCell>{s.event_id?.name || "\u2014"}</TableCell>
+                    <TableCell>{s.event_id?.title || s.event_id?.name || "\u2014"}</TableCell>
                     <TableCell>
                       {s.chest_no || s.team_id?.chest_no || "\u2014"}
                     </TableCell>

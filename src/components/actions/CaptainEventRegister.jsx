@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
@@ -16,6 +16,7 @@ import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
+import EventStatusBadge from "../EventStatusBadge";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -24,14 +25,14 @@ export default function CaptainEventRegister() {
   const { groupLabel } = useCompetition();
   const { isMobile } = useMobileMode();
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,7 +48,7 @@ export default function CaptainEventRegister() {
   const [participantSearch, setParticipantSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -72,11 +73,11 @@ export default function CaptainEventRegister() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [competition, apiCall]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const registrationsByEvent = useMemo(() => {
     const map = {};
@@ -280,9 +281,12 @@ export default function CaptainEventRegister() {
                 >
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start gap-4">
-                      <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
-                        {e.category || "General"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">
+                          {e.category || "General"}
+                        </Badge>
+                        <EventStatusBadge status={e.status} size="sm" />
+                      </div>
 
                       <div className="flex items-center gap-1.5">
                         {e.registration_mode && (
@@ -300,7 +304,7 @@ export default function CaptainEventRegister() {
                     </div>
 
                     <h3 className="font-extrabold text-xl text-card-foreground mt-4 leading-snug">
-                      {e.name}
+                      {e.title || e.name}
                     </h3>
 
                     <p className="text-sm text-muted-foreground mt-2.5 line-clamp-3 min-h-[60px] leading-relaxed">
@@ -394,7 +398,7 @@ export default function CaptainEventRegister() {
                           Confirmed Entry
                         </Badge>
                         <h3 className="font-extrabold text-xl text-card-foreground mt-3">
-                          {evt.name || "Unnamed Event"}
+                          {evt.title || evt.name || "Unnamed Event"}
                         </h3>
                         {reg.name && (
                           <div className="text-xs font-bold mt-1 text-muted-foreground">
@@ -433,12 +437,14 @@ export default function CaptainEventRegister() {
       <Dialog open={!!selectedEvent} onOpenChange={(open) => { if (!open) closeRegistrationModal(); }}>
         <DialogContent className={`${isMobile ? "max-h-[85vh]" : "max-w-2xl max-h-[90vh]"} overflow-y-auto`}>
           <DialogHeader>
-            <DialogTitle>{selectedEvent?.name}</DialogTitle>
+            <DialogTitle>{selectedEvent?.title || selectedEvent?.name}</DialogTitle>
             <DialogDescription>
-              {groupInfo?.name} &middot;{" "}
-              {selectedEvent?.event_type === "individual"
-                ? "Individual event — select one participant"
-                : `Team event — select ${selectedEvent?.min_team_size || 1}-${selectedEvent?.max_team_size || 1} members`}
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant={selectedEvent?.event_type === "individual" ? "secondary" : "outline"} className="text-xs font-black uppercase tracking-wider">
+                  {selectedEvent?.event_type === "individual" ? "Individual Event" : "Team Event"}
+                </Badge>
+                <span className="text-muted-foreground">for {groupInfo?.name}</span>
+              </div>
             </DialogDescription>
           </DialogHeader>
 

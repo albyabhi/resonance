@@ -8,7 +8,7 @@ import { useAuth } from "../AuthContext";
 import DashboardVisuals from "./DashboardVisuals";
 import { FadeIn } from "../AnimateReveal";
 import { Button } from "../ui/button";
-import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays, Users, UserPlus, Calendar, Hash, ClipboardList, CheckCircle } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import useDashboardData from "../../hooks/useDashboardData";
 import OnboardingChecklist from "./OnboardingChecklist";
@@ -39,24 +39,20 @@ import ScoringHub from "../actions/ScoringHub";
 
 const actionComponents = {
   "Manage Users": ManageUsers,
-  "Manage Groups": ManageHouse,
   "Manage Houses": ManageHouse,
   "Manage Events": ManageEvents,
   "Manage Competition": ManageCompetition,
-  "Scoring": ScoringHub,
+  "Result Submissions": ScoringHub,
   "Activity Logs": ActivityLogs,
   "Manage Participants": ManageParticipants,
-  "My Teams": ManageParticipants,
   "My Events": ParticipantRegister,
   "Event Registration": CaptainEventRegister,
   "Events": CaptainEventRegister,
-  "My Group": CaptainMyGroup,
+  "My House": CaptainMyGroup,
   "My Details": CaptainMyDetails,
-  "Manage Group Logo": EditHouse,
   "Manage House Logo": EditHouse,
   "Export Report": ExportReport,
   "Judge Dashboard": JudgeDashboard,
-  "My Assignments": JudgeDashboard,
   "My Scores": MyScores,
   "Manage Venues": ManageVenue,
   "Event Participants": CoordinatorParticipants,
@@ -172,7 +168,9 @@ export default function Dashboard({
                     const slugObj = userActions.find((a) => {
                       const dynamicLabel = a.label
                         .replace('House', groupLabel || 'House')
-                        .replace('Houses', groupLabelPlural || 'Houses');
+                        .replace('Houses', groupLabelPlural || 'Houses')
+                        .replace('Group', groupLabel || 'Group')
+                        .replace('Groups', groupLabelPlural || 'Groups');
                       return dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction;
                     });
                     
@@ -263,6 +261,104 @@ export default function Dashboard({
                 <CalendarDays className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Events</span>
               </button>
+            )}
+
+            {/* Role-specific quick actions */}
+            {safeRoleKey === "super_admin" && (
+              <>
+                <button onClick={() => handleActionClick("Manage Users")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Users className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Users</span>
+                </button>
+                <button onClick={() => handleActionClick("Manage Houses")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <UserPlus className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{groupLabelPlural || "Groups"}</span>
+                </button>
+              </>
+            )}
+            {safeRoleKey === "organizer" && (
+              <>
+                <button onClick={() => handleActionClick("Manage Events")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Calendar className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Events</span>
+                </button>
+                <button onClick={() => handleActionClick("Manage Participants")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Users className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Participants</span>
+                </button>
+              </>
+            )}
+            {safeRoleKey === "event_coordinator" && (
+              <>
+                <button onClick={() => handleActionClick("Manage Events")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Calendar className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">My Events</span>
+                </button>
+                <button onClick={() => handleActionClick("Assign Chest Numbers")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Hash className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Chest #</span>
+                </button>
+              </>
+            )}
+            {safeRoleKey === "judge" && (
+              <>
+                <button onClick={() => handleActionClick("Judge Dashboard")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <ClipboardList className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Judging</span>
+                </button>
+                <button onClick={() => handleActionClick("My Scores")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">My Scores</span>
+                </button>
+              </>
+            )}
+            {safeRoleKey === "house_captain" && (
+              <>
+                <button onClick={() => handleActionClick("Events")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Calendar className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Events</span>
+                </button>
+                <button onClick={() => handleActionClick("My House")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Users className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">My {groupLabel || "Group"}</span>
+                </button>
+              </>
+            )}
+            {safeRoleKey === "participant" && (
+              <>
+                <button onClick={() => handleActionClick("Event Registration")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <UserPlus className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">Register</span>
+                </button>
+                <button onClick={() => handleActionClick("My Events")}
+                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                  style={{ color: "var(--muted-foreground)" }}>
+                  <Calendar className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">My Events</span>
+                </button>
+              </>
             )}
           </div>
         </div>

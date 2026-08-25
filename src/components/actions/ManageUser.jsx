@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { FadeIn } from "../AnimateReveal";
 import { UserPlus, Users, Edit3, Trash2, Search, Copy, ExternalLink } from "lucide-react";
@@ -21,11 +21,12 @@ const BASE_ROLE_OPTIONS = [
   { value: "organizer", label: "Organizer" },
   { value: "event_coordinator", label: "Event Coordinator" },
   { value: "judge", label: "Judge" },
+  { value: "house_captain", label: "Captain" },
 ];
 
 const ManageUser = () => {
   const { token } = useAuth();
-  const { competition, groupLabel } = useCompetition();
+  const { competition, groupLabel, groupLabelPlural } = useCompetition();
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
   const [houses, setHouses] = useState([]);
@@ -41,29 +42,34 @@ const ManageUser = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState(null);
+  const [selectedCaptainParticipant, setSelectedCaptainParticipant] = useState(null);
+  const [groupParticipants, setGroupParticipants] = useState([]);
+  const [filteredGroupParticipants, setFilteredGroupParticipants] = useState([]);
+  const [participantSearchQuery, setParticipantSearchQuery] = useState("");
+  const [fetchingGroupParticipants, setFetchingGroupParticipants] = useState(false);
 
   const roleOptions = BASE_ROLE_OPTIONS;
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
-  const fetchHouses = async () => {
+  const fetchHouses = useCallback(async () => {
     try {
       if (!competition?._id) return;
       const resp = await apiCall(`/api/competition/${competition._id}/groups`);
-      setHouses(Array.isArray(resp.groups) ? resp.groups : []);
+      setHouses(Array.isArray(resp) ? resp : []);
     } catch (err) {
       console.error("Failed to fetch houses:", err);
     }
-  };
+  }, [competition, apiCall]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -75,20 +81,57 @@ const ManageUser = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
   useEffect(() => {
     if (token) {
       fetchUsers();
       fetchHouses();
     }
-  }, [token, competition?._id]);
+  }, [token, competition?._id, fetchUsers, fetchHouses]);
 
   useEffect(() => {
     if (houses.length === 0) {
       setFormData((prev) => ({ ...prev, house: "" }));
     }
   }, [houses.length]);
+
+  const fetchGroupParticipants = useCallback(async (groupId) => {
+    if (!groupId || !isCaptainRole(formData.role) || !competition?._id) return;
+    setFetchingGroupParticipants(true);
+    try {
+      const resp = await apiCall(`/api/competition/${competition._id}/groups/${groupId}/participants`);
+      const participants = Array.isArray(resp) ? resp : [];
+      setGroupParticipants(participants);
+      setFilteredGroupParticipants(participants);
+    } catch (err) {
+      console.error("Failed to fetch group participants:", err);
+    } finally {
+      setFetchingGroupParticipants(false);
+    }
+  }, [apiCall, formData.role, competition]);
+
+  useEffect(() => {
+    if (formData.house && isCaptainRole(formData.role)) {
+      fetchGroupParticipants(formData.house);
+    } else {
+      setGroupParticipants([]);
+      setFilteredGroupParticipants([]);
+      setSelectedCaptainParticipant(null);
+      setParticipantSearchQuery("");
+    }
+  }, [formData.house, formData.role, fetchGroupParticipants]);
+
+  useEffect(() => {
+    const q = participantSearchQuery.toLowerCase().trim();
+    if (!q) {
+      setFilteredGroupParticipants(groupParticipants);
+    } else {
+      setFilteredGroupParticipants(groupParticipants.filter((p) =>
+        p.name.toLowerCase().includes(q)
+      ));
+    }
+  }, [participantSearchQuery, groupParticipants]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -111,6 +154,9 @@ const ManageUser = () => {
 
       if (!editingUserId && formData.password) body.password = formData.password;
       if (formData.house) body.house = formData.house;
+      if (isCaptainRole(formData.role) && selectedCaptainParticipant) {
+        body.captain_participant_id = selectedCaptainParticipant._id;
+      }
 
       const resp = await apiCall(endpoint, {
         method,
@@ -119,6 +165,10 @@ const ManageUser = () => {
 
       setFormData({ name: "", username: "", password: "", role: "participant", house: "" });
       setEditingUserId(null);
+      setSelectedCaptainParticipant(null);
+      setGroupParticipants([]);
+      setFilteredGroupParticipants([]);
+      setParticipantSearchQuery("");
 
       if (!editingUserId && resp.credentials) {
         setCredentials(resp.credentials);
@@ -132,6 +182,21 @@ const ManageUser = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleParticipantSelect = (participant) => {
+    setSelectedCaptainParticipant(participant);
+    setFormData((prev) => ({
+      ...prev,
+      name: participant.name,
+      username: participant.email || prev.username,
+    }));
+  };
+
+  const clearParticipantSelection = () => {
+    setSelectedCaptainParticipant(null);
+    setParticipantSearchQuery("");
+    // Keep form data - admin can manually edit
   };
 
   const handleEdit = (user) => {
@@ -182,6 +247,8 @@ const ManageUser = () => {
     const found = BASE_ROLE_OPTIONS.find((r) => r.value === role);
     return found ? found.label : role;
   };
+
+  const isCaptainRole = (role) => role === "house_captain";
 
   return (
     <FadeIn>
@@ -302,19 +369,135 @@ const ManageUser = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="house">{groupLabel || "Group"}</Label>
-                    <Select name="house" value={formData.house} onValueChange={(value) => setFormData({...formData, house: value})}>
-                      <SelectTrigger id="house">
-                        <SelectValue placeholder={`Select ${groupLabel || "Group"}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {houses.map((h) => (
-                          <SelectItem key={h._id} value={h._id}>{h.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {isCaptainRole(formData.role) && (
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                        Captain Setup
+                      </Label>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        {/* Left: Group Dropdown */}
+                        <div className="space-y-2">
+                          <Label htmlFor="house">{groupLabel || "Group"}</Label>
+                          <Select
+                            name="house"
+                            value={formData.house}
+                            onValueChange={(value) => setFormData({ ...formData, house: value })}
+                          >
+                            <SelectTrigger id="house">
+                              <SelectValue
+                                placeholder={
+                                  houses.length === 0
+                                    ? `No ${groupLabelPlural || "Groups"} available`
+                                    : `Select ${groupLabel || "Group"}`
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {houses.length === 0 ? (
+                                <SelectItem disabled value="">
+                                  No {groupLabelPlural || "Groups"} available. Create one first.
+                                </SelectItem>
+                              ) : (
+                                houses.map((h) => (
+                                  <SelectItem key={h._id} value={h._id}>
+                                    {h.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Right: Participant Selector */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Select Participant</Label>
+                            <span className="text-xs text-muted-foreground">(Optional)</span>
+                          </div>
+                          <div className="border rounded-lg bg-background">
+                            <div className="p-2 border-b">
+                              <Input
+                                type="text"
+                                placeholder="Search by name..."
+                                value={participantSearchQuery}
+                                onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                              {fetchingGroupParticipants ? (
+                                <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                              ) : filteredGroupParticipants.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  {groupParticipants.length === 0
+                                    ? `No participants in this ${groupLabel?.toLowerCase()}. `
+                                    : "No matching participants."}
+                                  {groupParticipants.length === 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="mt-2"
+                                      onClick={() => {}}
+                                    >
+                                      Add participants first
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                filteredGroupParticipants.map((p) => (
+                                  <button
+                                    key={p._id}
+                                    type="button"
+                                    onClick={() => handleParticipantSelect(p)}
+                                    className={`w-full text-left p-3 hover:bg-accent-blue/5 border-b last:border-0 transition-colors ${
+                                      selectedCaptainParticipant?._id === p._id
+                                        ? "bg-accent-blue/10 text-accent-blue"
+                                        : ""
+                                    }`}
+                                  >
+                                    <div className="font-medium">{p.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {p.unique_id && `${p.unique_id} • `}{p.class}
+                                      {p.email && ` • ${p.email}`}
+                                    </div>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                            {selectedCaptainParticipant && (
+                              <div className="p-2 border-t flex justify-between items-center bg-muted/50">
+                                <span className="text-sm font-medium text-accent-green">
+                                  Selected: {selectedCaptainParticipant.name}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={clearParticipantSelection}
+                                >
+                                  × Clear
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isCaptainRole(formData.role) && selectedCaptainParticipant && (
+                    <div className="space-y-2">
+                      <Label>Captain Participant</Label>
+                      <div className="p-3 rounded-lg border border-border bg-muted">
+                        <div className="font-medium text-foreground">{selectedCaptainParticipant.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectedCaptainParticipant.unique_id && `ID: ${selectedCaptainParticipant.unique_id} • `}Class: {selectedCaptainParticipant.class}
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedCaptainParticipant(null)} className="mt-2">
+                          Change
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-3 pt-2">
                   <Button type="submit" disabled={loading}>

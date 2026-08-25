@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
@@ -39,12 +39,6 @@ const EVENT_TYPES = [
   { value: "team", label: "Team" },
 ];
 
-const PARTICIPANT_TYPES = [
-  { value: "individual", label: "Individual" },
-  { value: "pair", label: "Pair" },
-  { value: "group", label: "Group" },
-];
-
 import { STATUS_OPTIONS as STATUS_OPTIONS_FULL } from "../../utils/eventStatus";
 const STATUS_OPTIONS = STATUS_OPTIONS_FULL;
 
@@ -58,6 +52,12 @@ const REGISTRATION_MODES = [
   { value: "hybrid", label: "Hybrid" },
   { value: "captain", label: "Captain Only" },
   { value: "participant", label: "Participant Only" },
+];
+
+const CREATION_STATUS_OPTIONS = [
+  { value: "draft", label: "Draft" },
+  { value: "registration_open", label: "Registration Open" },
+  { value: "registration_closed", label: "Registration Closed" },
 ];
 
 const DEFAULT_EVENT_FORM = {
@@ -74,7 +74,6 @@ const DEFAULT_EVENT_FORM = {
   max_self_registrations: null,
   mode: "onstage",
   event_type: "individual",
-  participant_type: "individual",
   gender_filter: "all",
   age_group: { min: "", max: "" },
   max_per_group: 1,
@@ -147,7 +146,7 @@ const ManageEvents = () => {
 
   const [coordinators, setCoordinators] = useState([]);
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
@@ -157,9 +156,9 @@ const ManageEvents = () => {
       },
       body: options.body || undefined,
     });
-  };
+  }, [token]);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -189,11 +188,11 @@ const ManageEvents = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [competition, apiCall]);
 
   useEffect(() => {
     if (token) fetchAll();
-  }, [token, lastUpdate]);
+  }, [token, lastUpdate, fetchAll]);
 
   useEffect(() => {
     if (!token) return;
@@ -206,7 +205,7 @@ const ManageEvents = () => {
       }
     };
     fetchCoordinators();
-  }, [token]);
+  }, [token, apiCall]);
 
   const resetForms = () => {
     setEventForm({ ...DEFAULT_EVENT_FORM });
@@ -256,7 +255,6 @@ const ManageEvents = () => {
         max_self_registrations: event.max_self_registrations ?? null,
         mode: event.mode || "onstage",
         event_type: event.event_type || "individual",
-        participant_type: event.participant_type || "individual",
         gender_filter: event.gender_filter || "all",
         age_group: event.age_group ? { min: event.age_group.min ?? "", max: event.age_group.max ?? "" } : { min: "", max: "" },
         max_per_group: event.max_per_group ?? 1,
@@ -317,6 +315,74 @@ const ManageEvents = () => {
     }
   };
 
+  const changeStatus = async (eventId, newStatus) => {
+    try {
+      setLoading(true);
+      setError("");
+      await apiCall(`/api/event/${eventId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setEvents((prev) => prev.map((e) => {
+        if ((e._id || e.event_id) === eventId) {
+          return { ...e, status: newStatus };
+        }
+        return e;
+      }));
+      toast.success(`Status changed to ${newStatus.replace(/_/g, " ")}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const delayEvent = async (eventId) => {
+    try {
+      setLoading(true);
+      setError("");
+      const remarks = window.prompt("Reason for delay (optional):") || "";
+      await apiCall(`/api/event/${eventId}/delay`, {
+        method: "POST",
+        body: JSON.stringify({ remarks }),
+      });
+      setEvents((prev) => prev.map((e) => {
+        if ((e._id || e.event_id) === eventId) {
+          return { ...e, status: "delayed", previous_status: e.status };
+        }
+        return e;
+      }));
+      toast.success("Event delayed");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resumeEvent = async (eventId) => {
+    try {
+      setLoading(true);
+      setError("");
+      const remarks = window.prompt("Reason for resuming (optional):") || "";
+      await apiCall(`/api/event/${eventId}/resume`, {
+        method: "POST",
+        body: JSON.stringify({ remarks }),
+      });
+      setEvents((prev) => prev.map((e) => {
+        if ((e._id || e.event_id) === eventId) {
+          return { ...e, status: e.previous_status || "draft", previous_status: null };
+        }
+        return e;
+      }));
+      toast.success("Event resumed");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEventChange = (field, value) => {
     setEventForm((prev) => {
       const numericFields = new Set([
@@ -339,9 +405,17 @@ const ManageEvents = () => {
         next[field] = value;
       }
 
-      if (field === "event_type" && value === "individual") {
-        next.min_team_size = 1;
-        next.max_team_size = 1;
+      if (field === "event_type") {
+        if (value === "individual") {
+          next.min_team_size = 1;
+          next.max_team_size = 1;
+        } else if (
+          (!next.min_team_size || next.min_team_size <= 1) &&
+          (!next.max_team_size || next.max_team_size <= 1)
+        ) {
+          next.min_team_size = 1;
+          next.max_team_size = 10;
+        }
       }
 
       if (field === "min_team_size") {
@@ -524,7 +598,6 @@ const ManageEvents = () => {
         max_self_registrations: eventForm.max_self_registrations ? Number(eventForm.max_self_registrations) : null,
         mode: eventForm.mode,
         event_type: eventForm.event_type,
-        participant_type: eventForm.participant_type,
         gender_filter: eventForm.gender_filter,
         age_group: ageGroupPayload,
         rounds: sanitizedEventForm.rounds,
@@ -779,6 +852,38 @@ const ManageEvents = () => {
                             <Button variant="outline" size="sm" onClick={() => setSharingEvent(e)} className="flex-1 flex items-center justify-center gap-1">
                               <Share2 className="h-4 w-4 text-accent-amber" /> Share
                             </Button>
+                            {(() => {
+                              const s = e.status || "draft";
+                              if (s === "draft") {
+                                return (
+                                  <Button variant="default" size="sm" onClick={() => changeStatus(id, "registration_open")} className="flex-1">
+                                    Open Registration
+                                  </Button>
+                                );
+                              }
+                              if (s === "registration_open") {
+                                return (
+                                  <Button variant="secondary" size="sm" onClick={() => changeStatus(id, "registration_closed")} className="flex-1">
+                                    Close Registration
+                                  </Button>
+                                );
+                              }
+                              if (s !== "delayed" && s !== "cancelled") {
+                                return (
+                                  <Button variant="outline" size="sm" onClick={() => delayEvent(id)}>
+                                    Delay
+                                  </Button>
+                                );
+                              }
+                              if (s === "delayed") {
+                                return (
+                                  <Button variant="default" size="sm" onClick={() => resumeEvent(id)}>
+                                    Resume
+                                  </Button>
+                                );
+                              }
+                              return null;
+                            })()}
                             <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(id)} className="flex-1">
                               Delete
                             </Button>
@@ -852,7 +957,7 @@ const ManageEvents = () => {
                             <TableCell className="font-semibold text-card-foreground">{e.max_per_group}</TableCell>
                             <TableCell className="font-semibold text-card-foreground">{usage.totalTeams}</TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <Button variant="outline" size="sm" onClick={() => startEdit(e)}>Edit</Button>
                                 <Button variant="outline" size="sm" onClick={() => setManagingJudges(e)} className="flex items-center gap-1">
                                   <UserCheck className="h-3.5 w-3.5 text-accent-amber" /> Judges
@@ -860,6 +965,38 @@ const ManageEvents = () => {
                                 <Button variant="outline" size="sm" onClick={() => setSharingEvent(e)} className="flex items-center gap-1">
                                   <Share2 className="h-3.5 w-3.5 text-accent-amber" /> Share
                                 </Button>
+                                {(() => {
+                                  const s = e.status || "draft";
+                                  if (s === "draft") {
+                                    return (
+                                      <Button variant="default" size="sm" onClick={() => changeStatus(id, "registration_open")}>
+                                        Open Registration
+                                      </Button>
+                                    );
+                                  }
+                                  if (s === "registration_open") {
+                                    return (
+                                      <Button variant="secondary" size="sm" onClick={() => changeStatus(id, "registration_closed")}>
+                                        Close Registration
+                                      </Button>
+                                    );
+                                  }
+                                  if (s !== "delayed" && s !== "cancelled") {
+                                    return (
+                                      <Button variant="outline" size="sm" onClick={() => delayEvent(id)}>
+                                        Delay
+                                      </Button>
+                                    );
+                                  }
+                                  if (s === "delayed") {
+                                    return (
+                                      <Button variant="default" size="sm" onClick={() => resumeEvent(id)}>
+                                        Resume
+                                      </Button>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                                 <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(id)}>Delete</Button>
                               </div>
                             </TableCell>
@@ -892,9 +1029,9 @@ const ManageEvents = () => {
                         </div>
                         <div>
                           <Label className="text-muted-foreground mb-2 block">Status</Label>
-                          <div className="flex items-center gap-2">
-                            <EventStatusBadge status={eventForm.status || "draft"} size="lg" />
-                            {editingEventId && (
+                          {editingEventId ? (
+                            <div className="flex items-center gap-2">
+                              <EventStatusBadge status={eventForm.status || "draft"} size="lg" />
                               <EventStatusSelector
                                 event={{ _id: editingEventId, status: eventForm.status }}
                                 onStatusChanged={() => {
@@ -907,10 +1044,21 @@ const ManageEvents = () => {
                                   fetchEvent();
                                 }}
                               />
-                            )}
-                          </div>
-                          {!editingEventId && (
-                            <p className="mt-1 text-xs text-muted-foreground">New events start as Draft. Change status after creation.</p>
+                            </div>
+                          ) : (
+                            <>
+                              <Select value={eventForm.status || "draft"} onValueChange={(v) => handleEventChange("status", v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select starting status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CREATION_STATUS_OPTIONS.map((s) => (
+                                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="mt-1 text-xs text-muted-foreground">Draft by default — you may pick a different starting status.</p>
+                            </>
                           )}
                         </div>
                         <div>
@@ -994,19 +1142,6 @@ const ManageEvents = () => {
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-muted-foreground mb-2 block">Participant Type</Label>
-                              <Select value={eventForm.participant_type} onValueChange={(v) => handleEventChange("participant_type", v)}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {PARTICIPANT_TYPES.map((t) => (
-                                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
                               <Label className="text-muted-foreground mb-2 block">Gender</Label>
                               <Select value={eventForm.gender_filter} onValueChange={(v) => handleEventChange("gender_filter", v)}>
                                 <SelectTrigger>
@@ -1038,31 +1173,37 @@ const ManageEvents = () => {
                                 value={eventForm.registration_closes_at || ""}
                                 onChange={(e) => setEventForm((prev) => ({ ...prev, registration_closes_at: e.target.value }))} />
                             </div>
+                            {eventForm.event_type === "team" && (
+                              <>
+                                <div>
+                                  <Label className="text-muted-foreground mb-2 block">Min Members per Team</Label>
+                                  <Input type="number" min={1}
+                                    value={eventForm.min_team_size ?? ""}
+                                    onChange={(e) => handleEventChange("min_team_size", e.target.value)}
+                                    className={fieldErrors.min_team_size ? "border-destructive" : ""} />
+                                  {fieldErrors.min_team_size && <p className="mt-1 text-xs text-destructive-foreground">{fieldErrors.min_team_size}</p>}
+                                </div>
+                                <div>
+                                  <Label className="text-muted-foreground mb-2 block">Max Members per Team</Label>
+                                  <Input type="number" min={1}
+                                    value={eventForm.max_team_size ?? ""}
+                                    onChange={(e) => handleEventChange("max_team_size", e.target.value)}
+                                    className={fieldErrors.max_team_size ? "border-destructive" : ""} />
+                                  {fieldErrors.max_team_size && <p className="mt-1 text-xs text-destructive-foreground">{fieldErrors.max_team_size}</p>}
+                                </div>
+                              </>
+                            )}
                             <div>
-                              <Label className="text-muted-foreground mb-2 block">Max per {groupLabel.toLowerCase()}</Label>
-                              <Input type="number" min={0}
+                              <Label className="text-muted-foreground mb-2 block">
+                                {eventForm.event_type === "team"
+                                  ? `Max Teams per ${groupLabel.toLowerCase()}`
+                                  : `Max Participants per ${groupLabel.toLowerCase()}`}
+                              </Label>
+                              <Input type="number" min={1}
                                 value={eventForm.max_per_group === 0 ? 0 : eventForm.max_per_group ?? ""}
                                 onChange={(e) => handleEventChange("max_per_group", e.target.value)}
                                 className={fieldErrors.max_per_group ? "border-destructive" : ""} />
                               {fieldErrors.max_per_group && <p className="mt-1 text-xs text-destructive-foreground">{fieldErrors.max_per_group}</p>}
-                            </div>
-                            <div>
-                              <Label className="text-muted-foreground mb-2 block">Min Participants</Label>
-                              <Input type="number" min={0}
-                                disabled={eventForm.event_type === "individual"}
-                                value={eventForm.event_type === "individual" ? 1 : eventForm.min_team_size ?? ""}
-                                onChange={(e) => handleEventChange("min_team_size", e.target.value)}
-                                className={`${fieldErrors.min_team_size ? "border-destructive" : ""} ${eventForm.event_type === "individual" ? "opacity-50" : ""}`} />
-                              {fieldErrors.min_team_size && <p className="mt-1 text-xs text-destructive-foreground">{fieldErrors.min_team_size}</p>}
-                            </div>
-                            <div>
-                              <Label className="text-muted-foreground mb-2 block">Max Participants</Label>
-                              <Input type="number" min={0}
-                                disabled={eventForm.event_type === "individual"}
-                                value={eventForm.event_type === "individual" ? 1 : eventForm.max_team_size ?? ""}
-                                onChange={(e) => handleEventChange("max_team_size", e.target.value)}
-                                className={`${fieldErrors.max_team_size ? "border-destructive" : ""} ${eventForm.event_type === "individual" ? "opacity-50" : ""}`} />
-                              {fieldErrors.max_team_size && <p className="mt-1 text-xs text-destructive-foreground">{fieldErrors.max_team_size}</p>}
                             </div>
                             <div>
                               <Label className="text-muted-foreground mb-2 block">Age Group (Min)</Label>
@@ -1079,6 +1220,11 @@ const ManageEvents = () => {
                                 placeholder="Max age" />
                             </div>
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            {eventForm.event_type === "team"
+                              ? `Each entry is one team. Every member must meet the gender and age rules, and each ${groupLabel.toLowerCase()} can register up to the maximum teams allowed.`
+                              : `Each entry is a single participant who must meet the gender and age rules. Each ${groupLabel.toLowerCase()} can register up to the maximum participants allowed.`}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1285,6 +1431,7 @@ const ManageEvents = () => {
             const downloadQR = async () => {
               const loadToast = toast.loading("Generating QR Code...");
               try {
+                // eslint-disable-next-line no-restricted-syntax
                 const response = await fetch(qrUrl);
                 const blob = await response.blob();
                 const blobUrl = window.URL.createObjectURL(blob);

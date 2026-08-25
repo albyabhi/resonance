@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
-import { apiJson } from "../../utils/apiClient";
+import { apiJson, API_ROUTES, buildUrl } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
 import { useCompetition } from "../../context/CompetitionContext";
 import ImportParticipants from "./ImportParticipants";
@@ -25,8 +25,6 @@ import {
 import { Pencil, Trash2, AlertTriangle, XCircle, ArrowLeftCircle } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { getParticipantStatusMeta } from "../../utils/participantStatus";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function ManageParticipants() {
   const { token } = useAuth();
@@ -56,9 +54,9 @@ function ManageParticipants() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(`${buildUrl(endpoint)}`, {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
@@ -66,7 +64,7 @@ function ManageParticipants() {
       },
       body: options.body || undefined,
     });
-  };
+  }, [token]);
 
   useEffect(() => {
     const load = async () => {
@@ -74,7 +72,7 @@ function ManageParticipants() {
       setLoading(true);
       setError("");
       try {
-        const groupsResp = await apiCall(`/api/competition/${competition._id}/groups`);
+        const groupsResp = await apiCall(API_ROUTES.COMPETITIONS.GROUPS(competition._id));
         setGroups(Array.isArray(groupsResp) ? groupsResp : groupsResp.groups || []);
       } catch (err) {
         setError(err.message);
@@ -83,18 +81,19 @@ function ManageParticipants() {
       }
     };
     load();
-  }, [token, competition?._id]);
+  }, [token, competition?._id, apiCall]);
 
-  const fetchParticipants = async () => {
+  const fetchParticipants = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      let url = "/api/participants?";
-      if (competition?._id) url += `competition_id=${competition._id}&`;
-      if (filterGroup) url += `group_id=${filterGroup}&`;
-      if (filterClass) url += `class=${encodeURIComponent(filterClass)}&`;
-      if (filterStatus) url += `status=${filterStatus}&`;
-      if (search) url += `search=${encodeURIComponent(search)}&`;
+      const url = API_ROUTES.PARTICIPANTS.LIST({
+        competition_id: competition?._id,
+        group_id: filterGroup,
+        class: filterClass,
+        status: filterStatus,
+        search,
+      });
       const { participants } = await apiCall(url);
       setParticipants(participants || []);
       setSelectedIds([]);
@@ -103,11 +102,11 @@ function ManageParticipants() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [competition?._id, filterGroup, filterClass, filterStatus, search, apiCall]);
 
   useEffect(() => {
     if (token && activeTab === "all") fetchParticipants();
-  }, [token, activeTab, filterGroup, filterClass, filterStatus, search]);
+  }, [token, activeTab, filterGroup, filterClass, filterStatus, search, fetchParticipants]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -122,7 +121,7 @@ function ManageParticipants() {
     setError("");
     setLoading(true);
     try {
-      const { participant } = await apiCall("/api/participants", {
+      const { participant } = await apiCall(API_ROUTES.PARTICIPANTS.CREATE, {
         method: "POST",
         body: JSON.stringify(addForm),
       });
@@ -149,7 +148,7 @@ function ManageParticipants() {
     setLoading(true);
     setError("");
     try {
-      await apiCall(`/api/participants/${statusChangeTarget._id}/status`, {
+      await apiCall(API_ROUTES.PARTICIPANTS.STATUS(statusChangeTarget._id), {
         method: "PATCH",
         body: JSON.stringify({ status: statusChangeValue, reason: statusChangeReason }),
       });
@@ -169,7 +168,7 @@ function ManageParticipants() {
     setLoading(true);
     setError("");
     try {
-      await apiCall(`/api/participants/${editingParticipant._id}`, {
+      await apiCall(API_ROUTES.PARTICIPANTS.UPDATE(editingParticipant._id), {
         method: "PUT",
         body: JSON.stringify(editingParticipant),
       });
@@ -187,7 +186,7 @@ function ManageParticipants() {
     setLoading(true);
     setError("");
     try {
-      await apiCall(`/api/participants/${id}`, { method: "DELETE" });
+      await apiCall(API_ROUTES.PARTICIPANTS.DELETE(id), { method: "DELETE" });
       setParticipants((prev) => prev.filter((s) => s._id !== id));
     } catch (err) {
       setError(err.message);
@@ -200,7 +199,7 @@ function ManageParticipants() {
     setLoading(true);
     setError("");
     try {
-      await apiCall("/api/participants/bulk/remove", {
+      await apiCall(API_ROUTES.PARTICIPANTS.BULK_DELETE, {
         method: "DELETE",
         body: JSON.stringify({ ids: selectedIds }),
       });

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import toast from 'react-hot-toast';
 import { UserCheck, KeyRound, ArrowRight } from 'lucide-react';
+import { apiJson } from '../../utils/apiClient';
 
 export default function InvitePage() {
   const { token } = useParams();
@@ -16,14 +17,10 @@ export default function InvitePage() {
     setLoading(true);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/invite/accept`, {
+      const data = await apiJson(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/invite/accept`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password })
       });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to accept invite');
       
       toast.success('Invite accepted!');
       

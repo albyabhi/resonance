@@ -76,7 +76,11 @@ export default function Sidebar({
     const actions = getUserActions(roleKey);
     return actions.map(action => ({
       ...action,
-      label: action.label.replace("House", groupLabel).replace("Houses", groupLabelPlural)
+      label: action.label
+        .replace("House", groupLabel)
+        .replace("Houses", groupLabelPlural)
+        .replace("Group", groupLabel)
+        .replace("Groups", groupLabelPlural)
     }));
   }, [roleKey, groupLabel, groupLabelPlural]);
 

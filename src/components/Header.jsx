@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, ChevronDown, Trophy } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import { apiFetch } from "../utils/apiClient";
+import { api, API_ROUTES } from "../utils/apiClient";
 import Logo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function Header({
   onMenuClick = () => {},
@@ -39,12 +37,7 @@ function Header({
   useEffect(() => {
     if (showCompSwitcher && token && role !== "guest") {
       setLoadingComps(true);
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-      apiFetch(`${backendUrl}/api/competition/my`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch");
-          return res.json();
-        })
+      api.get(API_ROUTES.COMPETITIONS.MY)
         .then((data) => {
           const list = data?.adminCompetitions || data || [];
           setCompList(Array.isArray(list) ? list : []);
@@ -55,13 +48,8 @@ function Header({
   }, [showCompSwitcher, token, role]);
 
   const handleSwitchCompetition = async (compId) => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
     try {
-      const res = await apiFetch(`${backendUrl}/api/auth/competition/select`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ competition_id: compId }),
-      });
+      const res = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, { competition_id: compId });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to switch");
       login(data.user, data.access_token, data.refresh_token, data.competition);
@@ -74,14 +62,7 @@ function Header({
 
   useEffect(() => {
     if (token && role !== "guest" && isAuthReady) {
-      apiFetch(`${API_BASE_URL}/api/notifications`, { _token: token })
-        .then((res) => {
-          if (!res.ok) {
-            if (res.status === 401 || res.status === 403) return { notifications: [] };
-            throw new Error("API error");
-          }
-          return res.json();
-        })
+      api.get(API_ROUTES.NOTIFICATIONS.LIST({}))
         .then((data) => setNotifications(data?.notifications || []))
         .catch(console.error);
     }
@@ -90,9 +71,7 @@ function Header({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAsRead = async (id) => {
-    await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
-      method: "PUT",
-    });
+    await api.put(API_ROUTES.NOTIFICATIONS.MARK_READ(id));
     setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
   };
 
@@ -117,11 +96,12 @@ function Header({
             </span>
           </button>
 
-          {role !== "guest" && competition && (
+          {role !== "guest" && (competition || ["super_admin", "organizer", "event_coordinator", "judge", "house_captain"].includes(role)) && (
             <div className="relative ml-2" ref={compDropdownRef}>
               <Button variant="ghost" size="sm" onClick={() => setShowCompSwitcher(!showCompSwitcher)}
                 className="gap-1 text-xs font-medium">
                 <Trophy className="h-3.5 w-3.5" />
+                {!competition && <span className="font-bold">Select</span>}
                 <ChevronDown className="h-3 w-3" />
               </Button>
 

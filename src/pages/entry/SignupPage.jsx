@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import toast from 'react-hot-toast';
 import { User, Mail, KeyRound, ArrowRight, Trophy } from 'lucide-react';
+import { apiJson } from '../../utils/apiClient';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -16,15 +17,10 @@ export default function SignupPage() {
     setLoading(true);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/signup`, {
+      const data = await apiJson(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/auth/signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.message || 'Signup failed');
       
       login(data.user, data.access_token, data.refresh_token, data.competition);
       const role = data.user?.role || "participant";

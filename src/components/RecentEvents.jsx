@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../components/AuthContext";
 import { apiFetch } from "../utils/apiClient";
 import { FadeIn } from "./AnimateReveal";
@@ -21,6 +21,8 @@ const statusConfig = (status) => {
   }
 };
 
+const WINNER_STATUSES = new Set(["approved", "published", "locked"]);
+
 function RecentEvents() {
   const { token, isAuthReady, competition } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,9 @@ function RecentEvents() {
   const [eventTeams, setEventTeams] = useState([]);
   const [activeTab, setActiveTab] = useState("winners");
 
-  const apiCall = async (endpoint, options = {}) => {
+  const competitionId = useMemo(() => competition?._id || competition?.id || competition?.competition_id, [competition]);
+
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -45,7 +49,24 @@ function RecentEvents() {
     const res = await apiFetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
     if (!res.ok) throw new Error("API call failed");
     return res.json();
-  };
+  }, []);
+
+  const eventStatus = useCallback((id) => {
+    const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0));
+    return sched[0]?.status || "upcoming";
+  }, [schedulesByEvent]);
+
+  const fullItems = useMemo(() => {
+    return (events || [])
+      .map((e) => {
+        const id = e._id || e.event_id;
+        const status = eventStatus(id);
+        return { key: id, name: e.title || e.name, mode: e.mode, type: e.event_type, status };
+      })
+      .filter((it) => (category === "all" ? true : it.status === category));
+  }, [events, category, eventStatus]);
+
+  const list = useMemo(() => (showAll ? fullItems : fullItems.slice(0, 6)), [fullItems, showAll]);
 
   useEffect(() => {
     const load = async () => {
@@ -54,7 +75,6 @@ function RecentEvents() {
         setLoading(true);
         setError("");
 
-        const competitionId = competition?._id || competition?.id || competition?.competition_id;
         const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
 
         const { events: evts } = await apiCall(`/api/event${competitionQuery}`);
@@ -90,24 +110,7 @@ function RecentEvents() {
       }
     };
     load();
-  }, [token, isAuthReady]);
-
-  const eventStatus = (id) => {
-    const sched = (schedulesByEvent[id] || []).slice().sort((a, b) => (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0));
-    return sched[0]?.status || "upcoming";
-  };
-
-  const fullItems = useMemo(() => {
-    return (events || [])
-      .map((e) => {
-        const id = e._id || e.event_id;
-        const status = eventStatus(id);
-        return { key: id, name: e.name, mode: e.mode, type: e.event_type, status };
-      })
-      .filter((it) => (category === "all" ? true : it.status === category));
-  }, [events, schedulesByEvent, category]);
-
-  const list = useMemo(() => (showAll ? fullItems : fullItems.slice(0, 6)), [fullItems, showAll]);
+  }, [token, isAuthReady, competitionId, apiCall]);
 
   const openDetails = async (eventId) => {
     try {
@@ -142,8 +145,6 @@ function RecentEvents() {
     setEventSchedules([]);
     setEventTeams([]);
   };
-
-  const WINNER_STATUSES = new Set(["approved", "published", "locked"]);
 
   const winnersView = useMemo(() => {
     if (!openId) return [];
@@ -240,7 +241,7 @@ function RecentEvents() {
           <FadeIn className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border shadow-2xl" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <header className="flex items-center justify-between border-b p-6" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
               <div className="space-y-1">
-                <h4 className="text-2xl font-semibold text-gray-900 dark:text-white">{eventDetail?.name || "Event details"}</h4>
+                <h4 className="text-2xl font-semibold text-gray-900 dark:text-white">{eventDetail?.title || eventDetail?.name || "Event details"}</h4>
                 <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {eventDetail?.mode}</span>
                   <span className="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />

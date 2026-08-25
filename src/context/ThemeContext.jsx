@@ -1,28 +1,24 @@
 // ─────────────────────────────────────────────────────────────
-// Phase 2 – ThemeProvider (replaces next-themes for Vite/React)
+// ThemeProvider — drop-in replacement for next-themes (Vite/React)
 // ─────────────────────────────────────────────────────────────
 // Wraps the entire app.  Provides `theme`, `setTheme`,
-// `resolvedTheme`, and `systemTheme` to any descendant.
+// `toggleTheme`, `resolvedTheme`, `systemTheme`, and `isSystem`
+// to any descendant.
 //
 // attribute="class"  →  adds/removes the `dark` class on <html>
 // defaultTheme="system" →  respects prefers-color-scheme on first visit
 // enableSystem        →  watches the OS media query in real time
 // enableColorScheme   →  injects <meta name="color-scheme"> automatically
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  THEME_STORAGE_KEY,
+  resolveThemePreference,
+  getSystemTheme,
+} from "../lib/theme/themeCore";
+import { safeStorageGet, safeStorageSet } from "../lib/theme/safeStorage";
 
 const ThemeContext = createContext(undefined);
-
-const STORAGE_KEY = "theme";
-
-/**
- * Read the system preference once.
- * @returns {"light"|"dark"}
- */
-function getSystemTheme() {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
 
 /**
  * ThemeProvider – drop-in replacement for next-themes' ThemeProvider
@@ -32,6 +28,7 @@ function getSystemTheme() {
  *  - defaultTheme     "light" | "dark" | "system" (default "system")
  *  - enableSystem     boolean (default true)
  *  - enableColorScheme boolean (default true)
+ *  - enableSync       boolean (default true) - sync theme across tabs via storage event
  */
 export function ThemeProvider({
   children,
@@ -39,23 +36,37 @@ export function ThemeProvider({
   defaultTheme = "system",
   enableSystem = true,
   enableColorScheme = true,
+  enableSync = true,
 }) {
   // Persisted preference ("light" | "dark" | "system")
   const [theme, setThemeState] = useState(() => {
     if (typeof window === "undefined") return defaultTheme;
-    return localStorage.getItem(STORAGE_KEY) || defaultTheme;
+    const stored = safeStorageGet(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark" || stored === "system") {
+      return stored;
+    }
+    return defaultTheme;
   });
 
   const [systemTheme, setSystemTheme] = useState(getSystemTheme);
 
   // resolvedTheme collapses "system" → actual light/dark
-  const resolvedTheme = theme === "system" ? systemTheme : theme;
+  // (single decision table lives in themeCore.js)
+  const resolvedTheme = resolveThemePreference(theme, systemTheme === "dark");
 
   // ── Persist & apply ────────────────────────────────────────
   const setTheme = useCallback((next) => {
     setThemeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    safeStorageSet(THEME_STORAGE_KEY, next);
   }, []);
+
+  // Toggle the concrete theme. When in "system" mode this
+  // flips the resolved theme and opts the user out of system.
+  const toggleTheme = useCallback(() => {
+    const next = resolvedTheme === "dark" ? "light" : "dark";
+    setThemeState(next);
+    safeStorageSet(THEME_STORAGE_KEY, next);
+  }, [resolvedTheme]);
 
   // Apply `dark` class (or data-theme attribute) on <html>
   useEffect(() => {
@@ -66,6 +77,63 @@ export function ThemeProvider({
       root.setAttribute(attribute, resolvedTheme);
     }
   }, [resolvedTheme, attribute]);
+
+  // Cross-tab sync: listen for storage events from other tabs
+  useEffect(() => {
+    if (!enableSync) return;
+    const handleStorageChange = (e) => {
+      if (e.key === THEME_STORAGE_KEY && e.newValue !== e.oldValue) {
+        const newTheme = e.newValue;
+        if (newTheme === "light" || newTheme === "dark" || newTheme === "system") {
+          setThemeState(newTheme);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [enableSync]);
+
+  // Drift detector — the FOUC-prevention script in index.html
+  // mirrors the decision table in themeCore.js. If the two ever
+  // disagree (logic drift), fix the class and warn in dev.
+  useEffect(() => {
+    const root = document.documentElement;
+    const applied = root.classList.contains("dark");
+    if (applied !== (resolvedTheme === "dark")) {
+      if (attribute === "class") {
+        root.classList.toggle("dark", resolvedTheme === "dark");
+      } else {
+        root.setAttribute(attribute, resolvedTheme);
+      }
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[ThemeContext] Drift detected: index.html inline script applied a " +
+            "different theme than ThemeContext. Self-healed. Check that the " +
+            "inline script matches src/lib/theme/themeCore.js."
+        );
+      }
+    }
+  }, [resolvedTheme, attribute]);
+
+  // Opt-in transition: temporarily enable `.theme-transition` on
+  // <body> while the palette swaps, then remove it. Respects
+  // prefers-reduced-motion via the CSS media guard.
+  const isFirstRun = useRef(true);
+  useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+    const body = document.body;
+    body.classList.add("theme-transition");
+    const timer = setTimeout(() => {
+      body.classList.remove("theme-transition");
+    }, 240);
+    return () => {
+      clearTimeout(timer);
+      body.classList.remove("theme-transition");
+    };
+  }, [resolvedTheme]);
 
   // Inject/update <meta name="color-scheme">
   useEffect(() => {
@@ -88,14 +156,16 @@ export function ThemeProvider({
     return () => mql.removeEventListener("change", handler);
   }, [enableSystem]);
 
-  // ── Suppress hydration warning on <html> ───────────────────
-  // In a Vite SPA there is no real hydration mismatch, but we
-  // set the attribute as early as possible via an inline script
-  // in index.html (see Phase 3 / Phase 5).
-
   const value = useMemo(
-    () => ({ theme, setTheme, resolvedTheme, systemTheme }),
-    [theme, setTheme, resolvedTheme, systemTheme],
+    () => ({
+      theme,
+      setTheme,
+      toggleTheme,
+      resolvedTheme,
+      systemTheme,
+      isSystem: theme === "system",
+    }),
+    [theme, setTheme, toggleTheme, resolvedTheme, systemTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

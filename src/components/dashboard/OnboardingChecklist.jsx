@@ -8,6 +8,7 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax
     const dismissed = localStorage.getItem('onboarding_dismissed');
     if (dismissed === 'true') {
       setIsDismissed(true);

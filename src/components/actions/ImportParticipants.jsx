@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { Label } from "../ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "../ui/tooltip";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -24,7 +25,7 @@ const TARGET_FIELDS = [
 
 const STEPS = ["Upload", "Map Columns", "Validate", "Preview", "Import", "Summary"];
 
-export default function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
+function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
   const { token } = useAuth();
 
   const [step, setStep] = useState(0);
@@ -466,18 +467,27 @@ export default function ImportParticipants({ groups, groupLabel = "Group", onDon
                       </TableCell>
                       <TableCell>
                         {isDuplicate ? (
-                          <Select
-                            value={rowDecisions[row.index] || "skip"}
-                            onValueChange={(v) => handleDecisionChange(row.index, v)}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="skip">Skip</SelectItem>
-                              <SelectItem value="update">Update</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Select
+                                value={rowDecisions[row.index] || "skip"}
+                                onValueChange={(v) => handleDecisionChange(row.index, v)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="skip">Skip</SelectItem>
+                                  <SelectItem value="update">Update</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" align="center">
+                              <p className="text-sm max-w-xs">
+                                Update existing participant with new data (keeps existing password)
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
                         ) : isError ? (
                           <span className="text-xs text-muted-foreground">Auto-skipped</span>
                         ) : (
@@ -617,5 +627,14 @@ export default function ImportParticipants({ groups, groupLabel = "Group", onDon
         </Card>
       )}
     </div>
+);
+}
+function ImportParticipantsWithTooltip(props) {
+  return (
+    <TooltipProvider>
+      <ImportParticipants {...props} />
+    </TooltipProvider>
   );
 }
+ImportParticipantsWithTooltip.displayName = "ImportParticipantsWithTooltip";
+export default ImportParticipantsWithTooltip;

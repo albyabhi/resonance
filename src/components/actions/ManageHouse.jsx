@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
-import { apiJson } from "../../utils/apiClient";
+import { apiJson, apiFetch } from "../../utils/apiClient";
 import { FadeIn } from "../AnimateReveal";
 import { 
   Users, 
@@ -60,7 +60,7 @@ const ManageHouse = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -69,9 +69,9 @@ const ManageHouse = () => {
         ...(options.headers || {}) 
       }
     });
-  };
+  }, [token]);
 
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     if (!competition?._id) return;
     try { 
       setLoading(true); 
@@ -84,26 +84,15 @@ const ManageHouse = () => {
     finally { 
       setLoading(false); 
     }
-  };
+  }, [competition, apiCall]);
 
   useEffect(() => { 
     if (token && competition?._id) {
       fetchGroups(); 
     }
-  }, [token, competition?._id]);
+  }, [token, competition?._id, fetchGroups]);
 
-  useEffect(() => {
-    if (editingGroupId) {
-      fetchGroupParticipants(editingGroupId);
-    } else {
-      setParticipants([]);
-      setCaptainParticipant(null);
-      setParticipantSearch("");
-      setShowParticipantPicker(false);
-    }
-  }, [editingGroupId]);
-
-  const fetchGroupParticipants = async (groupId) => {
+  const fetchGroupParticipants = useCallback(async (groupId) => {
     if (!competition?._id) return;
     try {
       setParticipantsLoading(true);
@@ -130,7 +119,18 @@ const ManageHouse = () => {
     } finally {
       setParticipantsLoading(false);
     }
-  };
+  }, [competition, apiCall, groups]);
+
+  useEffect(() => {
+    if (editingGroupId) {
+      fetchGroupParticipants(editingGroupId);
+    } else {
+      setParticipants([]);
+      setCaptainParticipant(null);
+      setParticipantSearch("");
+      setShowParticipantPicker(false);
+    }
+  }, [editingGroupId, fetchGroupParticipants]);
 
   const uploadLogoFile = async (file) => {
     if (!file) return;
@@ -150,7 +150,7 @@ const ManageHouse = () => {
       const uploadFd = new FormData();
       uploadFd.append("image", file);
 
-      const response = await fetch(`${API_BASE_URL}/api/competition/upload`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/competition/upload`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCompetition } from "../../context/CompetitionContext";
 import { FadeIn } from "../AnimateReveal";
-import { Settings, Shield, Globe, Lock, AlertCircle, Copy, Check } from "lucide-react";
+import { Settings, Shield, Globe, Lock, AlertCircle, Copy, Check, Eye, RefreshCw, Trophy } from "lucide-react";
 import { apiJson } from "../../utils/apiClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -22,6 +23,7 @@ const competitionTypes = [
 
 export default function ManageCompetition() {
   const { competition, setCompetition } = useCompetition();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -29,6 +31,7 @@ export default function ManageCompetition() {
     year: "",
     is_public: false,
     participant_source: "import",
+    captain_as_participant: true,
     type: "school_houses",
     group_label: "",
     logo: null,
@@ -38,6 +41,7 @@ export default function ManageCompetition() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (competition) {
@@ -47,6 +51,7 @@ export default function ManageCompetition() {
         year: competition.year || "",
         is_public: competition.is_public || false,
         participant_source: competition.participant_source || "import",
+        captain_as_participant: competition.captain_as_participant !== false,
         type: competition.type || "school_houses",
         group_label: competition.group_label || ""
       });
@@ -68,6 +73,7 @@ export default function ManageCompetition() {
       fd.append('year', formData.year);
       fd.append('is_public', formData.is_public);
       fd.append('participant_source', formData.participant_source);
+      fd.append('captain_as_participant', formData.captain_as_participant);
       fd.append('type', formData.type);
       if (formData.type === "custom") {
         fd.append('group_label', formData.group_label);
@@ -97,12 +103,47 @@ export default function ManageCompetition() {
     }
   };
 
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setError("");
+    setSuccess("");
+    try {
+      if (!competition?._id) throw new Error("No active competition");
+
+      const response = await apiJson(`${API_BASE_URL}/api/competition/${competition._id}/regenerate-slug`, {
+        method: "POST",
+      });
+
+      if (response && response.slug) {
+        setFormData((prev) => ({ ...prev, slug: response.slug }));
+        setCompetition({ ...competition, slug: response.slug });
+        setSuccess("Public link regenerated! Share the new URL.");
+      } else {
+        throw new Error("Failed to regenerate link");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to regenerate link");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   if (!competition) {
     return (
-      <div className="p-10 text-center">
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          No Active Competition Found
-        </p>
+      <div className="p-10">
+        <div className="card-premium max-w-md mx-auto p-8 text-center space-y-4">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+            <Trophy className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-card-foreground">No Active Competition</h3>
+          <p className="text-sm text-muted-foreground">
+            Select a competition workspace from the header switcher or the home page to manage its
+            settings, share its public link, and update visibility.
+          </p>
+          <Button type="button" onClick={() => navigate("/")} className="text-xs font-black uppercase tracking-wider">
+            Choose Workspace
+          </Button>
+        </div>
       </div>
     );
   }
@@ -149,24 +190,55 @@ export default function ManageCompetition() {
           <CardContent className="space-y-6">
             <div className="p-4 bg-muted border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-1">Share Public URL</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Share Public URL</p>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                    formData.is_public
+                      ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                      : "text-muted-foreground border-border bg-background"
+                  }`}>
+                    {formData.is_public ? "Public" : "Private"}
+                  </span>
+                </div>
                 <p className="text-xs font-bold text-card-foreground truncate">
-                  {window.location.origin}/view/{competition.slug}
+                  {window.location.origin}/view/{formData.slug}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/view/${competition.slug}`);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span className="text-xs font-bold uppercase tracking-wider">{copied ? "Copied!" : "Copy Link"}</span>
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/view/${formData.slug}`, "_blank", "noopener,noreferrer")}
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Preview</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={regenerating}
+                  onClick={handleRegenerate}
+                  title="Generate a new random link (old link stops working)"
+                >
+                  <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
+                  <span className="text-xs font-bold uppercase tracking-wider">{regenerating ? "Regenerating..." : "Regenerate"}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/view/${formData.slug}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span className="text-xs font-bold uppercase tracking-wider">{copied ? "Copied!" : "Copy Link"}</span>
+                </Button>
+              </div>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-6">
@@ -319,6 +391,19 @@ export default function ManageCompetition() {
                     </Button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.captain_as_participant}
+                    onChange={(e) => setFormData({ ...formData, captain_as_participant: e.target.checked })}
+                    className="h-4 w-4 rounded border-border text-accent-blue focus:ring-accent-blue"
+                  />
+                  <span className="text-xs font-medium text-card-foreground">Captain can also participate in events</span>
+                </Label>
+                <p className="text-xs text-muted-foreground ml-6">When enabled, captains will have a participant record and can register themselves for events.</p>
               </div>
 
               <div className="pt-8">

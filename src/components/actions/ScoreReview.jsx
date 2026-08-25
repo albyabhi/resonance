@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
-import { apiJson } from "../../utils/apiClient";
-import { Loader2, AlertCircle, CheckCircle, ChevronDown, ChevronRight, Undo2 } from "lucide-react";
+import { apiJson, buildUrl } from "../../utils/apiClient";
+import { Loader2, AlertCircle, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Undo2, Info, Rocket } from "lucide-react";
 import toast from "react-hot-toast";
 import usePermission from "../../hooks/usePermission";
 import { useRealtime } from "../../context/RealtimeContext";
@@ -12,8 +12,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 import { Label } from "../ui/label";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "../ui/alert-dialog";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "../ui/tooltip";
 
 const statusBadgeProps = (status) => {
   const map = {
@@ -43,6 +42,8 @@ const ScoreReview = () => {
   const [allResults, setAllResults] = useState([]);
   const [teams, setTeams] = useState([]);
   const [aggregating, setAggregating] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [judges, setJudges] = useState(null);
   const [expandedTeams, setExpandedTeams] = useState({});
   const canApprove = hasAnyRole("organizer", "super_admin");
   const [confirm, setConfirm] = useState({ open: false, title: "", description: "", onConfirm: null });
@@ -51,29 +52,23 @@ const ScoreReview = () => {
     setConfirm({ open: true, title, description, onConfirm });
   };
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
+    return apiJson(buildUrl(endpoint), {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
   const loadEligibleEvents = useCallback(async () => {
     if (!token) return;
     try {
       setLoading(true);
-      const [judgingRes, pendingRes, publishedRes] = await Promise.all([
-        apiCall("/api/event?status=judging"),
-        apiCall("/api/event?status=result_pending"),
-        apiCall("/api/event?status=published"),
-      ]);
-      const allEvents = [
-        ...(judgingRes.events || []),
-        ...(pendingRes.events || []),
-        ...(publishedRes.events || []),
-      ];
+      setError("");
+      // Single request; backend accepts comma-separated statuses.
+      const res = await apiCall("/api/event?status=judging,result_pending,published");
+      const allEvents = res.events || res.data || [];
       setEvents(allEvents);
       if (allEvents.length > 0 && !selectedEventId) {
         setSelectedEventId(allEvents[0]._id);
@@ -83,9 +78,9 @@ const ScoreReview = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, selectedEventId]);
+  }, [token, selectedEventId, apiCall]);
 
-  const loadScoreReport = async (eventId, round) => {
+  const loadScoreReport = useCallback(async (eventId, round) => {
     try {
       setLoading(true);
       setError("");
@@ -93,15 +88,17 @@ const ScoreReview = () => {
       const res = await apiCall(`/api/judge/scores/event/${eventId}${query}`);
       setReport(res.data || []);
       setEventInfo(res.event || null);
+      setJudges(res.judges || null);
     } catch (err) {
       setError(err.message);
       setReport([]);
+      setJudges(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
-  const loadResults = async (eventId, round) => {
+  const loadResults = useCallback(async (eventId, round) => {
     try {
       setLoading(true);
       setError("");
@@ -114,9 +111,9 @@ const ScoreReview = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
-  const loadTeams = async (eventId) => {
+  const loadTeams = useCallback(async (eventId) => {
     try {
       const tResp = await apiCall(`/api/team?event_id=${eventId}`);
       const mapped = (tResp.data || []).map((t) => ({
@@ -129,7 +126,7 @@ const ScoreReview = () => {
     } catch {
       setTeams([]);
     }
-  };
+  }, [apiCall]);
 
   useEffect(() => {
     loadEligibleEvents();
@@ -151,7 +148,7 @@ const ScoreReview = () => {
         loadTeams(evt._id);
       }
     }
-  }, [selectedEventId, events]);
+  }, [selectedEventId, events, loadScoreReport, loadResults, loadTeams]);
 
   useEffect(() => {
     if (!selectedEventId || !selectedRound || !eventInfo) return;
@@ -161,7 +158,7 @@ const ScoreReview = () => {
       loadResults(selectedEventId, selectedRound);
       loadTeams(selectedEventId);
     }
-  }, [selectedRound, lastUpdate]);
+  }, [selectedEventId, selectedRound, eventInfo, loadResults, loadScoreReport, loadTeams, lastUpdate]);
 
   const handleEventChange = (id) => {
     setSelectedEventId(id);
@@ -188,7 +185,9 @@ const ScoreReview = () => {
     }
   };
 
-  const handleApprove = async () => {
+  // Stage 1 of confirmation: average judge sheets into draft results.
+  // Points do NOT move yet — approval is an internal confirmation only.
+  const handleConfirmScores = async () => {
     if (!selectedEventId || !selectedRound) {
       toast.error("Select an event and round first");
       return;
@@ -196,22 +195,14 @@ const ScoreReview = () => {
     try {
       setAggregating(true);
       setError("");
-      await apiCall("/api/judge/aggregate", {
+      const res = await apiCall("/api/judge/aggregate", {
         method: "POST",
         body: JSON.stringify({
           event_id: selectedEventId,
           round_no: parseInt(selectedRound, 10),
         }),
       });
-
-      await apiCall("/api/results/approve", {
-        method: "POST",
-        body: JSON.stringify({
-          event_id: selectedEventId,
-          round_no: parseInt(selectedRound, 10),
-        }),
-      });
-
+      toast.success(res?.data?.message || "Draft results created from judge scores");
       setEventInfo((prev) => prev ? { ...prev, status: "result_pending" } : null);
       setReport([]);
       loadEligibleEvents();
@@ -219,12 +210,53 @@ const ScoreReview = () => {
         await loadResults(selectedEventId, selectedRound);
         loadTeams(selectedEventId);
       }
-      toast.success("Scores approved and leaderboard updated");
     } catch (err) {
       setError(err.message);
       toast.error(err.message);
     } finally {
       setAggregating(false);
+    }
+  };
+
+  // One-click staff confirm & push: aggregate → approve → publish →
+  // event moves to `published` and points go live on overall standings.
+  const handleFinalize = async (force = false) => {
+    if (!selectedEventId || !selectedRound) {
+      toast.error("Select an event and round first");
+      return;
+    }
+    try {
+      setFinalizing(true);
+      setError("");
+      const res = await apiCall("/api/results/finalize", {
+        method: "POST",
+        body: JSON.stringify({
+          event_id: selectedEventId,
+          round_no: parseInt(selectedRound, 10),
+          force,
+        }),
+      });
+      toast.success(res?.data?.message || "Results finalized — points published to overall standings");
+      loadEligibleEvents();
+      if (selectedEventId && selectedRound) {
+        await loadResults(selectedEventId, selectedRound);
+        loadTeams(selectedEventId);
+      }
+    } catch (err) {
+      const missing = err?.payload?.missing_judges;
+      if (err?.status === 409 && Array.isArray(missing) && missing.length > 0) {
+        const names = missing.map((j) => j.name).join(", ");
+        showConfirm(
+          "Missing Judge Submissions",
+          `${missing.length} assigned judge(s) have not submitted scores: ${names}. Finalize anyway with the current submissions?`,
+          () => handleFinalize(true)
+        );
+      } else {
+        setError(err.message);
+        toast.error(err.message);
+      }
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -296,7 +328,7 @@ const ScoreReview = () => {
         method: "POST",
         body: JSON.stringify({ event_id: selectedEventId, round_no: parseInt(selectedRound, 10) }),
       });
-      toast.success("All results approved and leaderboard updated");
+      toast.success("All results approved. Points go live once published.");
       if (selectedEventId && selectedRound) {
         loadResults(selectedEventId, selectedRound);
       }
@@ -464,23 +496,71 @@ const ScoreReview = () => {
   const hasApproved = allResults.some((r) => r.status === "approved");
   const hasPublished = allResults.some((r) => r.status === "published");
 
-  const canRevertAny = allResults.some((r) =>
+const canRevertAny = allResults.some((r) =>
     ["approved", "published"].includes(r.status)
   );
 
-  return (
-    <Card className="rounded-lg">
-      <CardContent className="p-5">
-        <div className="mb-4">
-          <CardTitle className="text-lg">Score Review &amp; Approvals</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Review scores, approve results, or revert actions for events with judging activity
-          </p>
-        </div>
+  // Flow indicator for Approve → Publish → Lock progression
+  const flowSteps = [
+    { id: "draft", label: "Draft", desc: "Initial state", color: "text-muted-foreground" },
+    { id: "submitted", label: "Submitted", desc: "Judge submitted scores", color: "text-accent-amber" },
+    { id: "approved", label: "Approved", desc: "Internal confirmation — no points yet", color: "text-emerald-600" },
+    { id: "published", label: "Published", desc: "Public — points live on overall standings", color: "text-blue-600" },
+    { id: "locked", label: "Locked", desc: "Final, cannot change", color: "text-purple-600" },
+  ];
 
-        {error && (
-          <div className="bg-destructive/10 border border-destructive text-destructive-foreground px-3 py-2 rounded-lg mb-3">{error}</div>
-        )}
+  return (
+    <TooltipProvider>
+      <Card className="rounded-lg">
+        <CardContent className="p-5">
+          <div className="mb-4">
+            <CardTitle className="text-lg">Judge Submissions</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Judge score sheets submitted for your events. Confirm placements, then approve &amp; publish points to the overall standings.
+            </p>
+          </div>
+
+          {/* Flow Indicator */}
+          <div className="mb-4 p-3 rounded-lg bg-muted/30">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Approval Flow</p>
+            <div className="flex items-center justify-between">
+              {flowSteps.map((step, index) => (
+                <React.Fragment key={step.id}>
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
+                      ${index < flowSteps.length - 1 ? 'flex-1' : ''}
+                    `}
+                      style={{
+                        borderColor: index < flowSteps.length - 1 ? "var(--border-divider)" : "transparent",
+                        color: step.color,
+                        backgroundColor: "var(--card)",
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+                    <span className={`text-[10px] font-medium mt-1 truncate w-24 text-center ${step.color}`}>
+                      {step.label}
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 mt-1 cursor-help opacity-60" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p className="text-sm">{step.desc}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {index < flowSteps.length - 1 && (
+                    <div className="flex-1 h-0.5 bg-border mx-1" />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive text-destructive-foreground px-3 py-2 rounded-lg mb-3">{error}</div>
+          )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <div>
@@ -499,7 +579,7 @@ const ScoreReview = () => {
               </SelectContent>
             </Select>
             {events.length === 0 && !loading && (
-              <p className="text-xs mt-1 text-muted-foreground">No events currently in judging or pending approval</p>
+              <p className="text-xs mt-1 text-muted-foreground">No events currently in judging, pending approval, or published</p>
             )}
           </div>
           <div>
@@ -520,14 +600,55 @@ const ScoreReview = () => {
               Refresh
             </Button>
             {currentEvent?.status === "judging" && canApprove && hasSubmittedScores && (
-              <Button
-                onClick={() => showConfirm("Approve Scores", "Approve all submitted scores? This will create results and update the leaderboard.", handleApprove)}
-                disabled={aggregating}
-                className="bg-accent-amber text-white hover:bg-accent-amber/90 disabled:opacity-50"
-              >
-                {aggregating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Approve
-              </Button>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => showConfirm("Confirm Scores", "Create draft results from all submitted judge scores? You can review placements before approving and publishing.", handleConfirmScores)}
+                      disabled={aggregating || finalizing}
+                      className="bg-accent-amber text-white hover:bg-accent-amber/90 disabled:opacity-50"
+                    >
+                      {aggregating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Confirm Scores
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    <p className="text-sm">Average judge sheets into draft results. No points move yet.</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => showConfirm("Confirm & Publish Everything", "Run the full chain: aggregate → approve → publish. Points go live on the overall standings immediately.", () => handleFinalize(false))}
+                      disabled={aggregating || finalizing}
+                      className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {finalizing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      <Rocket className="h-4 w-4 mr-1" /> Confirm &amp; Publish Everything
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center">
+                    <p className="text-sm">One click: aggregate, approve, publish, mark event published. Points go live now.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            {currentEvent && ["result_pending", "published"].includes(currentEvent.status) && canApprove && hasSubmittedScores && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => showConfirm("Confirm & Publish Everything", "Aggregate latest judge scores, approve, publish, and move the event to published. Points go live on the overall standings.", () => handleFinalize(false))}
+                    disabled={aggregating || finalizing}
+                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {finalizing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    <Rocket className="h-4 w-4 mr-1" /> Confirm &amp; Publish Everything
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="center">
+                  <p className="text-sm">Refresh drafts from latest scores, approve, publish — points go live.</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -547,6 +668,33 @@ const ScoreReview = () => {
                 {report.filter((g) => g.score_count > 0).length}
               </p>
               <p className="text-xs text-muted-foreground">Ready to Approve</p>
+            </div>
+          </div>
+        )}
+
+        {/* Judge submission completeness — staff confirm with full information */}
+        {currentEvent?.status === "judging" && judges && (
+          <div
+            className={`mb-4 px-3 py-2 rounded-lg border flex items-start gap-2 ${
+              judges.all_submitted
+                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40"
+                : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40"
+            }`}
+          >
+            {judges.all_submitted ? (
+              <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-accent-amber shrink-0" />
+            )}
+            <div className="text-sm">
+              <p className="font-medium text-card-foreground">
+                Judges submitted: {judges.submitted_count}/{judges.assigned_count}
+              </p>
+              {!judges.all_submitted && judges.missing?.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Waiting on: {judges.missing.map((j) => j.name).join(", ")}. You can still confirm with the current submissions, but averages may change.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -721,74 +869,123 @@ const ScoreReview = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                               {["draft", "submitted"].includes(status) && (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleApproveResult(r._id, r.position)}
-                                    disabled={!canApprove}
-                                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => showConfirm("Reject Result", `Reject position ${r.position}?`, () => handleRejectResult(r._id, r.position))}
-                                    disabled={!canApprove}
-                                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
-                                  >
-                                    Reject
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleApproveResult(r._id, r.position)}
+                                        disabled={!canApprove}
+                                        className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                                      >
+                                        Approve
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Approve this result as an internal confirmation. Points go live on the standings when published.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => showConfirm("Reject Result", `Reject position ${r.position}?`, () => handleRejectResult(r._id, r.position))}
+                                        disabled={!canApprove}
+                                        className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                                      >
+                                        Reject
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Reject this result. Score will be sent back to judge for revision.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </>
                               )}
                               {status === "approved" && (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handlePublishResult(r._id, r.position)}
-                                    disabled={!canApprove}
-                                    className="text-blue-700 border-blue-200 hover:bg-blue-50"
-                                  >
-                                    Publish
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? Points will be removed from the leaderboard.`, () => handleRevert(r._id, r.position, status))}
-                                    disabled={!canApprove}
-                                    className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
-                                  >
-                                    <Undo2 className="h-3 w-3" /> Revert
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePublishResult(r._id, r.position)}
+                                        disabled={!canApprove}
+                                        className="text-blue-700 border-blue-200 hover:bg-blue-50"
+                                      >
+                                        Publish
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Publish this result. It will become visible on the public scoreboard.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? No points have gone live yet.`, () => handleRevert(r._id, r.position, status))}
+                                        disabled={!canApprove}
+                                        className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
+                                      >
+                                        <Undo2 className="h-3 w-3" /> Revert
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Revert to draft. No points were live yet.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </>
                               )}
                               {status === "published" && (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => showConfirm("Lock Result", `Lock position ${r.position}? This cannot be undone.`, () => handleLockResult(r._id, r.position))}
-                                    disabled={!canApprove}
-                                    className="text-purple-700 border-purple-200 hover:bg-purple-50"
-                                  >
-                                    Lock
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? This will remove points from the leaderboard.`, () => handleRevert(r._id, r.position, status))}
-                                    disabled={!canApprove}
-                                    className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
-                                  >
-                                    <Undo2 className="h-3 w-3" /> Revert
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => showConfirm("Lock Result", `Lock position ${r.position}? This cannot be undone.`, () => handleLockResult(r._id, r.position))}
+                                        disabled={!canApprove}
+                                        className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                                      >
+                                        Lock
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Lock this result permanently. This action cannot be undone.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? Published points will be removed from the overall standings.`, () => handleRevert(r._id, r.position, status))}
+                                        disabled={!canApprove}
+                                        className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
+                                      >
+                                        <Undo2 className="h-3 w-3" /> Revert
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center">
+                                      <p className="text-sm">Revert to draft. Points will be removed from the overall standings.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </>
                               )}
                               {status === "locked" && (
-                                <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">
-                                  Locked
-                                </Badge>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">
+                                      Locked
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" align="center">
+                                    <p className="text-sm">This result is locked and cannot be modified.</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                           </TableCell>
@@ -801,50 +998,102 @@ const ScoreReview = () => {
 
               {allResults.length > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 flex-wrap border-t border-border">
+                  {(hasDraftOrSubmitted || hasApproved) && canApprove && currentEvent?.status !== "completed" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => showConfirm("Confirm & Publish Everything", "Refresh drafts from latest judge scores, approve, publish all, and mark the event published. Points go live on the overall standings immediately.", () => handleFinalize(false))}
+                          disabled={finalizing}
+                          className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {finalizing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-1" />}
+                          Confirm &amp; Publish Everything
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p className="text-sm">Full chain in one click: aggregate → approve → publish → event published.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {hasDraftOrSubmitted && (
                     <>
-                      <Button
-                        onClick={() => showConfirm("Approve All", "Approve all pending results for this round?", handleApproveAll)}
-                        className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                        disabled={!canApprove}
-                      >
-                        Approve All
-                      </Button>
-                      <Button
-                        onClick={() => showConfirm("Reject All", "Reject all pending results for this round?", handleRejectAll)}
-                        variant="destructive"
-                        disabled={!canApprove}
-                      >
-                        Reject All
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => showConfirm("Approve All", "Approve all pending results for this round?", handleApproveAll)}
+                            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                            disabled={!canApprove}
+                          >
+                            Approve All
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="center">
+                          <p className="text-sm">Approve all pending results. Points go live once results are published.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => showConfirm("Reject All", "Reject all pending results for this round?", handleRejectAll)}
+                            variant="destructive"
+                            disabled={!canApprove}
+                          >
+                            Reject All
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="center">
+                          <p className="text-sm">Reject all pending results. Scores sent back to judges for revision.</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </>
                   )}
                   {canRevertAny && (
-                    <Button
-                      onClick={() => showConfirm("Revert All", "Revert all approved/published results to draft for this round?", handleRevertAll)}
-                      className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
-                      disabled={!canApprove}
-                    >
-                      Revert All
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => showConfirm("Revert All", "Revert all approved/published results to draft for this round?", handleRevertAll)}
+                          className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                          disabled={!canApprove}
+                        >
+                          Revert All
+                        </Button>
+                      </TooltipTrigger>
+                        <TooltipContent side="top" align="center">
+                          <p className="text-sm">Revert all approved/published results to draft. Published points are removed from the overall standings.</p>
+                        </TooltipContent>
+                    </Tooltip>
                   )}
                   {hasApproved && (
-                    <Button
-                      onClick={() => showConfirm("Publish All", "Publish all approved results for this round?", handlePublishAll)}
-                      className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                      disabled={!canApprove}
-                    >
-                      Publish All Approved
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => showConfirm("Publish All", "Publish all approved results for this round?", handlePublishAll)}
+                          className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                          disabled={!canApprove}
+                        >
+                          Publish All Approved
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p className="text-sm">Publish all approved results. They will become visible on the public scoreboard.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                   {hasPublished && (
-                    <Button
-                      onClick={() => showConfirm("Lock All", "Lock all published results for this round? This cannot be undone.", handleLockAll)}
-                      className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
-                      disabled={!canApprove}
-                    >
-                      Lock All Published
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => showConfirm("Lock All", "Lock all published results for this round? This cannot be undone.", handleLockAll)}
+                          className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                          disabled={!canApprove}
+                        >
+                          Lock All Published
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p className="text-sm">Lock all published results permanently. This action cannot be undone.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               )}
@@ -931,6 +1180,8 @@ const ScoreReview = () => {
         </AlertDialog>
       </CardContent>
     </Card>
+);
+    </TooltipProvider>
   );
 };
 

@@ -2,6 +2,7 @@ import {
   Users,
   Bell,
   ClipboardList,
+  ClipboardCheck,
   CheckCircle,
   UserPlus,
   Calendar,
@@ -14,7 +15,7 @@ import {
   PenTool,
   Upload,
   Hash,
-  Trophy,
+  Users as UsersIcon,
 } from "lucide-react";
 
 export const roleConfig = {
@@ -22,11 +23,11 @@ export const roleConfig = {
     title: "Super Admin",
     actions: [
       { label: "Manage Users", icon: Shield },
-      { label: "Manage Groups", icon: UserPlus },
+      { label: "Manage Houses", icon: UsersIcon },
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
-      { label: "Scoring", icon: Trophy },
+      { label: "Result Submissions", icon: ClipboardCheck },
       { label: "Activity Logs", icon: Bell },
       { label: "Manage Venues", icon: MapPin },
       { label: "Export Report", icon: FileDown },
@@ -37,11 +38,11 @@ export const roleConfig = {
   organizer: {
     title: "Organizer",
     actions: [
-      { label: "Manage Groups", icon: UserPlus },
+      { label: "Manage Houses", icon: UsersIcon },
       { label: "Manage Events", icon: Calendar },
       { label: "Manage Competition", icon: Settings },
       { label: "Manage Participants", icon: Users },
-      { label: "Scoring", icon: Trophy },
+      { label: "Result Submissions", icon: ClipboardCheck },
       { label: "Export Report", icon: FileDown },
       { label: "Activity Logs", icon: Bell },
       { label: "Manage Venues", icon: MapPin },
@@ -56,7 +57,7 @@ export const roleConfig = {
       { label: "Event Participants", icon: Users },
       { label: "Assign Chest Numbers", icon: Hash },
       { label: "Manage Venues", icon: MapPin },
-      { label: "Scoring", icon: Trophy },
+      { label: "Result Submissions", icon: ClipboardCheck },
     ],
     modules: { standings: true, events: true, stats: true },
   },
@@ -74,8 +75,8 @@ export const roleConfig = {
     title: "House Captain",
     actions: [
       { label: "Events", icon: Calendar },
-      { label: "My Group", icon: Users },
-      { label: "Manage Group Logo", icon: Image },
+      { label: "My House", icon: Users },
+      { label: "Manage House Logo", icon: Image },
     ],
     modules: { standings: true, events: true, stats: true },
   },

@@ -136,4 +136,6 @@ export function getStatusMeta(status) {
 
 export const CAN_MANAGE_STATUS = ["super_admin", "organizer", "event_coordinator"];
 
+export const LIVE_STATUSES = ["ongoing", "judging"];
+
 export const SCOREBOARD_STATUSES = ["completed", "published", "locked"];

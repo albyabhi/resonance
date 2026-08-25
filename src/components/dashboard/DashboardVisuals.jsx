@@ -8,6 +8,7 @@ import { apiJson } from "../../utils/apiClient";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { LIVE_STATUSES } from "../../utils/eventStatus";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -52,7 +53,8 @@ const normalizeScoreboard = (scoreboard = []) =>
     }))
     .sort((a, b) => getScoreboardPoints(b) - getScoreboardPoints(a));
 
-const eventName = (event) => event?.name || event?.event_id?.name || "Event";
+const eventName = (event) =>
+  event?.title || event?.name || event?.event_id?.title || event?.event_id?.name || "Event";
 
 const groupNameFromResult = (result) =>
   result?.team_id?.group_id?.name ||
@@ -187,7 +189,7 @@ function UpcomingEvents({ events = [], schedules = [] }) {
             <p className="mt-0.5 truncate text-xs capitalize" style={{ color: "var(--chart-axis)" }}>{event.category || "general"} - {event.event_type || "event"}</p>
           </div>
           <div className="shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium" style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}>
-            {event.status === "live" ? "Live" : shortDate(getDateValue(event.schedule || event))}
+            {LIVE_STATUSES.includes(event.status) ? "Live" : shortDate(getDateValue(event.schedule || event))}
           </div>
         </div>
       ))}
@@ -290,7 +292,7 @@ export default function DashboardVisuals() {
 
   const { scoreboard, events, results, schedules, participantStats, systemStats } = data;
   const normalizedScoreboard = normalizeScoreboard(scoreboard);
-  const liveEvents = events.filter((e) => e.status === "live");
+  const liveEvents = events.filter((e) => LIVE_STATUSES.includes(e.status));
   const completedEvents = events.filter((e) => e.status === "completed");
   const nextEvents = events.filter((e) => e.status !== "completed");
   const leader = normalizedScoreboard[0];

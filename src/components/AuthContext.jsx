@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { resetApiLogoutGuard, isTokenExpired, refreshAccessToken } from "../utils/apiClient";
+import { resetApiLogoutGuard, isTokenExpired, refreshAccessToken, apiFetch, getAuthState } from "../utils/apiClient";
 
 const AuthContext = createContext(null);
 
@@ -8,41 +8,12 @@ const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      return saved ? JSON.parse(saved).user || null : null;
-    } catch {
-      return null;
-    }
-  });
+  const initialAuth = useMemo(() => getAuthState(), []);
 
-  const [role, setRole] = useState(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      return saved ? JSON.parse(saved).role || "guest" : "guest";
-    } catch {
-      return "guest";
-    }
-  });
-
-  const [token, setToken] = useState(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      return saved ? JSON.parse(saved).token || null : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [refreshToken, setRefreshToken] = useState(() => {
-    try {
-      const saved = localStorage.getItem("auth");
-      return saved ? JSON.parse(saved).refreshToken || null : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(() => initialAuth?.user || null);
+  const [role, setRole] = useState(() => initialAuth?.role || "guest");
+  const [token, setToken] = useState(() => initialAuth?.token || null);
+  const [refreshToken, setRefreshToken] = useState(() => initialAuth?.refreshToken || null);
 
   const [loading] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -51,7 +22,54 @@ export function AuthProvider({ children }) {
   // Derived: competition comes from the user object
   const competition = useMemo(() => user?.competition || null, [user]);
 
-  const persist = (nextUser, nextRole, jwtToken, rToken) => {
+  // Auto-resolve a competition workspace for staff sessions that lack one
+  // (stale localStorage sessions from before competition context existed).
+  useEffect(() => {
+    if (!isAuthReady || !token || !user || competition) return;
+    if (["guest", "viewer", "participant"].includes(role)) return;
+
+    let cancelled = false;
+
+    const resolveWorkspace = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+        const res = await apiFetch(`${backendUrl}/api/competition/my`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const comps = data?.adminCompetitions || [];
+        if (cancelled || comps.length === 0) return;
+
+        const target =
+          comps.find((c) => (c._id || c.id) === user.last_competition_id) || comps[0];
+
+        const selRes = await apiFetch(`${backendUrl}/api/auth/competition/select`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ competition_id: target._id || target.id }),
+        });
+        if (!selRes.ok) return;
+        const selData = await selRes.json();
+        if (cancelled || !selData.competition) return;
+
+        login(
+          selData.user,
+          selData.access_token,
+          selData.refresh_token,
+          selData.competition
+        );
+      } catch {
+        // Best-effort resolution — the UI shows workspace hints when none exists
+      }
+    };
+
+    resolveWorkspace();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthReady, token, user, role, competition]);
+
+  const persist = useCallback((nextUser, nextRole, jwtToken, rToken) => {
     if (nextUser && jwtToken) {
       localStorage.setItem("auth", JSON.stringify({
         user: nextUser,
@@ -62,19 +80,18 @@ export function AuthProvider({ children }) {
     } else {
       localStorage.removeItem("auth");
     }
-  };
+  }, []);
 
   // Migrate old format (competition stored at top level) to new format (inside user)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("auth");
+      const saved = getAuthState();
       if (saved) {
-        const parsed = JSON.parse(saved);
         // Old format: competition was at root, user didn't have it
-        if (parsed.competition && parsed.user && !parsed.user.competition) {
-          parsed.user.competition = parsed.competition;
-          delete parsed.competition;
-          localStorage.setItem("auth", JSON.stringify(parsed));
+        if (saved.competition && saved.user && !saved.user.competition) {
+          saved.user.competition = saved.competition;
+          delete saved.competition;
+          localStorage.setItem("auth", JSON.stringify(saved));
         }
       }
     } catch {
@@ -85,35 +102,23 @@ export function AuthProvider({ children }) {
   // Validate stored JWT on mount — don't show dashboard with expired token
   useEffect(() => {
     const validateAuth = async () => {
-      const stored = localStorage.getItem("auth");
+      const stored = getAuthState();
       if (!stored) {
         setIsAuthReady(true);
         return;
       }
 
-      let parsed;
-      try {
-        parsed = JSON.parse(stored);
-      } catch {
-        localStorage.removeItem("auth");
-        setIsAuthReady(true);
-        return;
-      }
-
-      const storedToken = parsed.token;
+      const storedToken = stored.token;
       if (!storedToken) {
         setIsAuthReady(true);
         return;
       }
 
       if (isTokenExpired(storedToken)) {
-        const storedRefresh = parsed.refreshToken;
+        const storedRefresh = stored.refreshToken;
         if (storedRefresh) {
           try {
             const newToken = await refreshAccessToken();
-            const auth = JSON.parse(localStorage.getItem("auth") || "{}");
-            auth.token = newToken;
-            localStorage.setItem("auth", JSON.stringify(auth));
             setToken(newToken);
           } catch {
             localStorage.removeItem("auth");
@@ -155,7 +160,7 @@ export function AuthProvider({ children }) {
     persist(nextUser, nextRole, jwtToken, rToken);
   };
 
-  const logout = (options) => {
+  const logout = useCallback((options) => {
     setUser(null);
     setRole("guest");
     setToken(null);
@@ -166,7 +171,7 @@ export function AuthProvider({ children }) {
     if (!options || options.redirect !== false) {
       navigate("/", { replace: true });
     }
-  };
+  }, [navigate, persist]);
 
   const setUserHouse = (house) => {
     setUser((prev) => {
@@ -197,7 +202,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener('LOGOUT', handleGlobalLogout);
       window.removeEventListener('TOKEN_UPDATED', handleTokenUpdate);
     };
-  }, []);
+  }, [logout, setToken]);
 
   return (
     <AuthContext.Provider

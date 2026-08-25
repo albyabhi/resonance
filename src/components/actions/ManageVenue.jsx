@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import { Pencil, Trash2 } from "lucide-react";
@@ -28,16 +28,16 @@ const ManageVenue = () => {
 
   const competitionId = competition?._id || competition?.id || competition?.competition_id;
 
-  const apiCall = async (endpoint, options = {}) => {
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
-  const loadVenues = async () => {
+  const loadVenues = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -48,11 +48,11 @@ const ManageVenue = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [competitionId, apiCall]);
 
   useEffect(() => {
     if (token && competitionId) loadVenues();
-  }, [token, competitionId]);
+  }, [token, competitionId, loadVenues]);
 
   const resetForm = () => {
     setForm({ name: "", location: "", capacity: "", coordinator_id: "" });

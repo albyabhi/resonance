@@ -1,5 +1,5 @@
 // src/components/actions/AdminScoreboard.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
@@ -150,14 +150,16 @@ const AdminScoreboard = () => {
   const touchStartY = useRef(0);
   const pulling = useRef(false);
 
-  const apiCall = async (endpoint, options = {}) => {
+  const competitionId = useMemo(() => competition?._id || competition?.id || competition?.competition_id, [competition]);
+
+  const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
     return apiJson(`${API_BASE_URL}${endpoint}`, {
       method: options.method || "GET",
       headers: { "Content-Type": "application/json", ...(options.headers || {}) },
       body: options.body,
     });
-  };
+  }, [token]);
 
   // Load groups and events
   useEffect(() => {
@@ -165,7 +167,6 @@ const AdminScoreboard = () => {
       try {
         setLoading(true);
         setError("");
-        const competitionId = competition?._id || competition?.id || competition?.competition_id;
         const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
 
         const [groupsResp, eventsResp] = await Promise.all([
@@ -183,9 +184,9 @@ const AdminScoreboard = () => {
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, [token, competitionId, apiCall]);
 
-  const loadDetails = async () => {
+  const loadDetails = useCallback(async () => {
     if (!houseId) {
       setDetails({ total: 0, items: [] });
       setTeamsByEvent({});
@@ -221,12 +222,11 @@ const AdminScoreboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [houseId, apiCall]);
 
   useEffect(() => {
     loadDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [houseId]);
+  }, [houseId, loadDetails]);
 
   const groupedByEvent = useMemo(() => {
     const map = new Map();
@@ -315,7 +315,7 @@ const AdminScoreboard = () => {
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [refreshHint, houseId]);
+  }, [refreshHint, houseId, loadDetails]);
 
   const toggleEvent = (eid) => {
     setExpandedEvents((prev) => {
@@ -371,7 +371,7 @@ const AdminScoreboard = () => {
           >
             <option value="" className="bg-white dark:bg-[#0B1220]">All events</option>
             {events.map((ev) => (
-              <option key={ev._id} value={ev._id} className="bg-white dark:bg-[#0B1220]">{ev.name}</option>
+              <option key={ev._id} value={ev._id} className="bg-white dark:bg-[#0B1220]">{ev.title || ev.name}</option>
             ))}
           </select>
         </div>

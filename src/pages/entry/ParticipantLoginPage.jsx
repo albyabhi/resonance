@@ -18,6 +18,7 @@ import {
   Fingerprint,
   Shield
 } from "lucide-react";
+import { apiJson } from "../../utils/apiClient";
 
 export default function ParticipantLoginPage() {
   const navigate = useNavigate();
@@ -106,9 +107,7 @@ export default function ParticipantLoginPage() {
     const fetchEventContext = async () => {
       setLoadingEvent(true);
       try {
-        const res = await fetch(`${backendUrl}/api/public/event/${eventIdFromUrl}`);
-        if (!res.ok) throw new Error("Event or Competition details not found");
-        const data = await res.json();
+        const data = await apiJson(`${backendUrl}/api/public/event/${eventIdFromUrl}`);
         
         setEventData(data);
         if (data.competition) {
@@ -151,24 +150,15 @@ export default function ParticipantLoginPage() {
     const controller = new AbortController();
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const res = await fetch(
+        const data = await apiJson(
           `${backendUrl}/api/public/verify?slug=${encodeURIComponent(competitionSlug.trim())}`,
           { signal: controller.signal }
         );
-        if (res.ok) {
-          const data = await res.json();
-          if (data.branding) setBranding(data.branding);
-          if (data.name) setMatchedCompetitionName(data.name);
-          if (data.groups) setGroups(data.groups);
-          if (data.type) setCompType(data.type);
-          if (data.group_label) setGroupLabel(data.group_label);
-        } else {
-          setBranding(null);
-          setMatchedCompetitionName("");
-          setGroups([]);
-          setCompType("");
-          setGroupLabel("Group");
-        }
+        if (data.branding) setBranding(data.branding);
+        if (data.name) setMatchedCompetitionName(data.name);
+        if (data.groups) setGroups(data.groups);
+        if (data.type) setCompType(data.type);
+        if (data.group_label) setGroupLabel(data.group_label);
       } catch (err) {
         if (err.name !== 'AbortError') {
           setBranding(null);
@@ -195,17 +185,13 @@ export default function ParticipantLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/participant-login`, {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: pEmail.trim(),
           password: pPassword.trim()
         }),
       });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Login failed");
 
       if (data?.requires_competition_selection) {
         const eventCompetitionId = eventData?.competition?._id || eventData?.competition?.id;
@@ -237,17 +223,13 @@ export default function ParticipantLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/participant-select-competition`, {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-select-competition`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           selection_token: selectionToken,
           competition_id: competitionId
         }),
       });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Competition selection failed");
 
       finishParticipantLogin(data, `Entered ${data.competition?.name || "competition"}`);
     } catch (err) {
@@ -270,9 +252,8 @@ export default function ParticipantLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/participant-signup`, {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-signup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: pName.trim(),
           email: pEmail.trim(),
@@ -282,9 +263,6 @@ export default function ParticipantLoginPage() {
           competition_slug: competitionSlug.trim()
         }),
       });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Signup failed");
 
       finishParticipantLogin(data, `Welcome, ${data.user?.name}! Account created.`);
     } catch (err) {
@@ -351,7 +329,7 @@ export default function ParticipantLoginPage() {
             </p>
             <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
               <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
-              {eventData.event.name}
+              {eventData.event.title || eventData.event.name}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
               {eventData.event.description || "No description provided."}
@@ -581,16 +559,13 @@ export default function ParticipantLoginPage() {
                       }
                       setLoading(true);
                       try {
-                        const res = await fetch(`${backendUrl}/api/auth/participant-claim-otp`, {
+                        const data = await apiJson(`${backendUrl}/api/auth/participant-claim-otp`, {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             admission_no: claimAdmissionNo.trim(),
                             competition_slug: competitionSlug.trim()
                           }),
                         });
-                        const data = await res.json().catch(() => null);
-                        if (!res.ok) throw new Error(data?.message || "Claim lookup failed");
                         setClaimParticipantId(data.participant_id);
                         setClaimMaskedPhone(data.masked_phone || "");
                         setClaimStep("otp");
@@ -638,9 +613,8 @@ export default function ParticipantLoginPage() {
                       }
                       setLoading(true);
                       try {
-                        const res = await fetch(`${backendUrl}/api/auth/participant-claim`, {
+                        await apiJson(`${backendUrl}/api/auth/participant-claim`, {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             participant_id: claimParticipantId,
                             otp: claimOtp.trim(),
@@ -648,8 +622,6 @@ export default function ParticipantLoginPage() {
                             password: claimPassword.trim(),
                           }),
                         });
-                        const data = await res.json().catch(() => null);
-                        if (!res.ok) throw new Error(data?.message || "Claim failed");
                         toast.success("Account claimed successfully! You can now log in.");
                         setParticipantMode("login");
                         setClaimStep("admission");
