@@ -1,23 +1,13 @@
 import React, { useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useTheme } from "../../context/ThemeContext";
-
-const STATUS_COLORS = {
-  pending: "#f59e0b",
-  approved: "#10b981",
-  rejected: "#ef4444",
-};
-
-const STATUS_COLORS_DARK = {
-  pending: "#fbbf24",
-  approved: "#34d399",
-  rejected: "#f87171",
-};
+import { getThemeColor } from "../../lib/theme/getThemeColor";
 
 export default function ResultStatusChart({ results = [] }) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const colorMap = isDark ? STATUS_COLORS_DARK : STATUS_COLORS;
+  const colorMap = {
+    pending: getThemeColor("--warning"),
+    approved: getThemeColor("--success"),
+    rejected: getThemeColor("--destructive"),
+  };
 
   const chartData = useMemo(() => {
     if (!results.length) return [];
@@ -38,7 +28,7 @@ export default function ResultStatusChart({ results = [] }) {
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded-xl p-3 shadow-lg" style={{ backgroundColor: 'var(--card)', border: 'var(--border-card)' }}>
+        <div className="rounded-xl p-3 shadow-lg" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}>
           <p className="mb-1 text-xs" style={{ color: 'var(--chart-axis)' }}>{payload[0].name}</p>
           <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>{payload[0].value}</p>
         </div>
@@ -47,8 +37,8 @@ export default function ResultStatusChart({ results = [] }) {
     return null;
   };
 
-  const legendColor = isDark ? "#94a3b8" : "#64748b";
-  const strokeColor = isDark ? "#0f172a" : "#ffffff";
+  const legendColor = getThemeColor("--chart-axis");
+  const strokeColor = getThemeColor("--background");
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -65,7 +55,7 @@ export default function ResultStatusChart({ results = [] }) {
           strokeWidth={3}
         >
           {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={colorMap[entry.name] || "#94a3b8"} />
+            <Cell key={`cell-${index}`} fill={colorMap[entry.name] || getThemeColor("--chart-purple")} />
           ))}
         </Pie>
         <Tooltip content={<CustomTooltip />} />

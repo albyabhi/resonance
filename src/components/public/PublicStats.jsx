@@ -58,7 +58,7 @@ export default function PublicStats({ stats, primaryColor = "#2563EB" }) {
         {cards.map((card) => (
           <div
             key={card.key}
-            className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-xl flex items-center gap-4"
+            className="bg-card border border-border rounded-2xl p-5 shadow-xl flex items-center gap-4"
           >
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
@@ -67,8 +67,8 @@ export default function PublicStats({ stats, primaryColor = "#2563EB" }) {
               <card.icon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-3xl font-black text-white leading-none">{card.display}</div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mt-1 truncate">
+              <div className="text-3xl font-black text-foreground leading-none">{card.display}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1 truncate">
                 {card.label}
               </div>
             </div>

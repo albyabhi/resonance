@@ -112,9 +112,9 @@ export default function PublicViewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="animate-pulse flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
           <p>Loading Live Dashboard...</p>
         </div>
       </div>
@@ -131,67 +131,67 @@ export default function PublicViewPage() {
   // ─── Kiosk layout: full-screen standings HUD ──────────────────────────────────
   if (isKiosk) {
     return (
-      <div className="min-h-screen font-sans bg-neutral-950 text-neutral-100 overflow-hidden flex flex-col">
+      <div className="min-h-screen font-sans bg-background text-foreground overflow-hidden flex flex-col">
         <div className="absolute top-6 right-8 flex items-center gap-3">
           <span className="relative flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success/75 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-success"></span>
           </span>
-          <span className="text-xl text-emerald-400 font-bold tracking-widest uppercase">LIVE</span>
+          <span className="text-xl text-success font-bold tracking-widest uppercase">LIVE</span>
         </div>
 
         <div className="absolute top-6 left-8 text-left">
-          <div className="text-xs text-neutral-500 font-medium flex items-center gap-2">
+          <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
             {getLastUpdateTime() ? (
               <>
-                <Wifi className="h-3 w-3 text-emerald-400" />
+                <Wifi className="h-3 w-3 text-success" />
                 Last updated: <span className="font-mono font-bold">{getLastUpdateTime()}</span>
               </>
             ) : (
               <>
-                <WifiOff className="h-3 w-3 text-neutral-600" />
+                <WifiOff className="h-3 w-3 text-muted-foreground" />
                 Offline
               </>
             )}
           </div>
         </div>
 
-        <h1 className="text-6xl font-black text-center mt-12 mb-10 bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+        <h1 className="text-6xl font-black text-center mt-12 mb-10 bg-gradient-to-r from-primary to-primary-strong bg-clip-text text-transparent">
           {competition.name}
         </h1>
 
         <main className="flex-1 px-10 pb-10 flex flex-col gap-6">
           <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
-            <div className="col-span-8 bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col shadow-2xl shadow-blue-900/20 h-full">
-              <h2 className="font-bold mb-6 text-4xl text-neutral-300 flex items-center gap-2">
-                <svg className="w-8 h-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="col-span-8 bg-card border border-border rounded-2xl p-6 flex flex-col shadow-2xl shadow-primary/10 h-full">
+              <h2 className="font-bold mb-6 text-4xl text-foreground flex items-center gap-2">
+                <svg className="w-8 h-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 Standings
               </h2>
               <div className="flex-1 overflow-y-auto pr-2 space-y-5">
                 {standings.length === 0 ? (
-                  <div className="text-center text-neutral-500 py-12 text-2xl">No scores available yet.</div>
+                  <div className="text-center text-muted-foreground py-12 text-2xl">No scores available yet.</div>
                 ) : (
                   standings.map((group, index) => (
                     <div
                       key={group._id}
                       className={`relative overflow-hidden flex items-center justify-between p-6 rounded-xl border transition-all duration-500 ${
                         index === 0
-                          ? "bg-blue-900/20 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
-                          : "bg-neutral-800/50 border-neutral-700/50"
+                          ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                          : "bg-muted/50 border-border/50"
                       }`}
                     >
                       {index === 0 && (
-                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
                       )}
                       <div className="flex items-center gap-4 z-10">
-                        <div className="font-black text-neutral-500 text-5xl w-16">{index + 1}</div>
-                        <div className="font-bold text-white text-5xl ml-4">{group.name}</div>
+                        <div className="font-black text-muted-foreground text-5xl w-16">{index + 1}</div>
+                        <div className="font-bold text-foreground text-5xl ml-4">{group.name}</div>
                       </div>
-                      <div className="font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-neutral-400 text-7xl">
+                      <div className="font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-foreground to-muted-foreground text-7xl">
                         {group.total_score}
-                        <span className="text-neutral-500 ml-2 font-medium text-3xl">pts</span>
+                        <span className="text-muted-foreground ml-2 font-medium text-3xl">pts</span>
                       </div>
                     </div>
                   ))
@@ -200,15 +200,15 @@ export default function PublicViewPage() {
             </div>
 
             <div className="col-span-4 flex flex-col gap-6 h-full">
-              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex-none">
-                <h2 className="font-bold mb-4 text-3xl text-neutral-300">Event Progress</h2>
+              <div className="bg-card border border-border rounded-2xl p-6 flex-none">
+                <h2 className="font-bold mb-4 text-3xl text-foreground">Event Progress</h2>
                 <div className="flex justify-between items-end mb-2">
-                  <span className="font-bold text-white text-5xl">{stats.progress_percent}%</span>
-                  <span className="text-neutral-400 font-medium text-xl">
+                  <span className="font-bold text-foreground text-5xl">{stats.progress_percent}%</span>
+                  <span className="text-muted-foreground font-medium text-xl">
                     {stats.completed_events} / {stats.event_count} Events
                   </span>
                 </div>
-                <div className="w-full bg-neutral-800 rounded-full overflow-hidden h-6">
+                <div className="w-full bg-muted rounded-full overflow-hidden h-6">
                   <div
                     className="h-full rounded-full transition-all duration-1000 ease-out"
                     style={{
@@ -219,27 +219,27 @@ export default function PublicViewPage() {
                 </div>
               </div>
 
-              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex-1 flex flex-col overflow-hidden">
-                <h2 className="font-bold mb-6 text-3xl text-neutral-300 flex items-center gap-2">
-                  <svg className="w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-card border border-border rounded-2xl p-6 flex-1 flex flex-col overflow-hidden">
+                <h2 className="font-bold mb-6 text-3xl text-foreground flex items-center gap-2">
+                  <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   Recent Updates
                 </h2>
                 <div className="flex-1 overflow-y-auto pr-2 space-y-5">
                   {ticker.length === 0 ? (
-                    <div className="text-center text-neutral-500 py-6 text-xl">No recent results.</div>
+                    <div className="text-center text-muted-foreground py-6 text-xl">No recent results.</div>
                   ) : (
                     ticker.slice(0, 8).map((item) => (
-                      <div key={item._id} className="border-l-2 border-indigo-500 pl-4 py-2">
-                        <div className="text-indigo-400 font-semibold uppercase tracking-wider mb-1 text-xl">
+                      <div key={item._id} className="border-l-2 border-primary pl-4 py-2">
+                        <div className="text-primary font-semibold uppercase tracking-wider mb-1 text-xl">
                           {item.event?.title || item.event?.name || "Event"}
                         </div>
-                        <div className="text-white font-medium text-2xl leading-tight">
-                          <span className="text-neutral-400">{item.position}{item.position === 1 ? "st" : item.position === 2 ? "nd" : item.position === 3 ? "rd" : "th"} Place: </span>
+                        <div className="text-foreground font-medium text-2xl leading-tight">
+                          <span className="text-muted-foreground">{item.position}{item.position === 1 ? "st" : item.position === 2 ? "nd" : item.position === 3 ? "rd" : "th"} Place: </span>
                           {item.group?.name || "Unknown"}
                         </div>
-                        <div className="text-emerald-400 font-bold mt-1 text-xl">+{item.points} points</div>
+                        <div className="text-success font-bold mt-1 text-xl">+{item.points} points</div>
                       </div>
                     ))
                   )}
@@ -254,27 +254,27 @@ export default function PublicViewPage() {
 
   // ─── Standard showcase layout ──────────────────────────────────────────────────
   return (
-    <div className="min-h-screen font-sans bg-neutral-950 text-neutral-100">
+    <div className="min-h-screen font-sans bg-background text-foreground">
       <PublicHero competition={competition} />
 
       <div className="max-w-6xl mx-auto px-6 pb-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-neutral-500 font-medium">
+          <span className="text-xs text-muted-foreground font-medium">
             {getLastUpdateTime() ? (
               <>
-                <Wifi className="h-3 w-3 inline mr-1 text-emerald-400" />
+                <Wifi className="h-3 w-3 inline mr-1 text-success" />
                 Live &middot; Last updated: <span className="font-mono font-bold">{getLastUpdateTime()}</span>
               </>
             ) : (
               <>
-                <WifiOff className="h-3 w-3 inline mr-1 text-neutral-600" />
+                <WifiOff className="h-3 w-3 inline mr-1 text-muted-foreground" />
                 Offline &middot; Last updated: <span className="font-mono font-bold">Unknown</span>
               </>
             )}
           </span>
           <button
             onClick={handleManualRefresh}
-            className="text-xs text-neutral-400 hover:text-white font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 hover:border-neutral-600 transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted border border-border hover:border-muted-foreground/50 transition-colors"
             title="Refresh now"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -289,14 +289,14 @@ export default function PublicViewPage() {
         <PublicStandings standings={standings} groupLabel={competition.group_label} primaryColor={primaryColor} />
 
         <section>
-          <div className="flex items-center gap-3 mb-6 border-b border-neutral-800">
+          <div className="flex items-center gap-3 mb-6 border-b border-border">
             <button
               type="button"
               onClick={() => setActiveTab("results")}
               className={`px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
                 activeTab === "results"
-                  ? "text-white border-blue-500"
-                  : "text-neutral-500 border-transparent hover:text-neutral-300"
+                  ? "text-foreground border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground"
               }`}
             >
               Results by Event
@@ -306,8 +306,8 @@ export default function PublicViewPage() {
               onClick={() => setActiveTab("ticker")}
               className={`px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
                 activeTab === "ticker"
-                  ? "text-white border-blue-500"
-                  : "text-neutral-500 border-transparent hover:text-neutral-300"
+                  ? "text-foreground border-primary"
+                  : "text-muted-foreground border-transparent hover:text-foreground"
               }`}
             >
               Recent Updates
@@ -322,7 +322,7 @@ export default function PublicViewPage() {
         </section>
       </main>
 
-      <footer className="border-t border-neutral-900 py-6 text-center text-xs text-neutral-600">
+      <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
         Powered by Resonance — {competition.name} • {competition.year}
       </footer>
 

@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/dashboard/Dashboard';
 import CaptainMyDetails from './components/actions/CaptainMyDetails';
 import { useAuth } from './components/AuthContext';
-import PageTransition from './components/PageTransition';
 import WelcomePage from './pages/WelcomePage';
 import SignupPage from './pages/entry/SignupPage';
 import SetupPage from './pages/entry/SetupPage';
@@ -23,7 +21,6 @@ import usePermission from './hooks/usePermission';
 export default function App() {
   const { role, isAuthenticated, competition, loading, isAuthReady, logout } = useAuth();
   const { hasRole } = usePermission();
-  const location = useLocation();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,91 +36,75 @@ export default function App() {
   if (loading || !isAuthReady) return <div>Loading...</div>;
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        {/* Landing page at "/" */}
-        <Route path="/" element={
-          <PageTransition>
-            <WelcomePage />
-          </PageTransition>
-        } />
+    <Routes>
+      {/* Landing page at "/" */}
+      <Route path="/" element={<WelcomePage />} />
 
-        {/* Entry Flows */}
-        <Route path="/signup" element={
-          <PageTransition>
-            {isAuthenticated ? <Navigate to="/setup" replace /> : <SignupPage />}
-          </PageTransition>
-        } />
-        <Route path="/setup" element={<PageTransition><SetupPage /></PageTransition>} />
-        <Route path="/join" element={<PageTransition><JoinPage /></PageTransition>} />
-        <Route path="/invite/:token" element={<PageTransition><InvitePage /></PageTransition>} />
-        <Route path="/view/:slug" element={<PageTransition><PublicViewPage /></PageTransition>} />
-        <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
-        <Route path="/reset-password/:token" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
-        <Route path="/setup-password/:token" element={<PageTransition><SetupPasswordPage /></PageTransition>} />
-        <Route path="/participate/:eventId" element={<PageTransition><ParticipateRedirectPage /></PageTransition>} />
-        <Route path="/participant-login" element={<PageTransition><ParticipantLoginPage /></PageTransition>} />
+      {/* Entry Flows */}
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/setup" replace /> : <SignupPage />} />
+      <Route path="/setup" element={<SetupPage />} />
+      <Route path="/join" element={<JoinPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/view/:slug" element={<PublicViewPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+      <Route path="/setup-password/:token" element={<SetupPasswordPage />} />
+      <Route path="/participate/:eventId" element={<ParticipateRedirectPage />} />
+      <Route path="/participant-login" element={<ParticipantLoginPage />} />
 
-        {/* Dashboard wrapper pattern for action-based routes */}
-        <Route
-          path="/dashboard/*"
-          element={
-            <PageTransition>
-              {isAuthenticated ? (
-                (competition || hasRole("super_admin")) ? (
-                  <AppShell role={role} onLogout={logout}>
-                    {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
-                      <Dashboard
-                        role={role}
-                        mobileOpen={mobileOpen}
-                        setMobileOpen={setMobileOpen}
-                        onCloseSidebar={onCloseSidebar}
-                        sidebarOpen={sidebarOpen}
-                      />
-                    )}
-                  </AppShell>
-                ) : (
-                  <Navigate to="/setup" replace />
-                )
-              ) : (
-                <Navigate to="/login" replace />
-              )}
-            </PageTransition>
-          }
-        />
+      {/* Dashboard wrapper pattern for action-based routes */}
+      <Route
+        path="/dashboard/*"
+        element={
+          isAuthenticated ? (
+            (competition || hasRole("super_admin")) ? (
+              <AppShell role={role} onLogout={logout}>
+                {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
+                  <Dashboard
+                    role={role}
+                    mobileOpen={mobileOpen}
+                    setMobileOpen={setMobileOpen}
+                    onCloseSidebar={onCloseSidebar}
+                    sidebarOpen={sidebarOpen}
+                  />
+                )}
+              </AppShell>
+            ) : (
+              <Navigate to="/setup" replace />
+            )
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
 
-        {/* Captain My Details */}
-        <Route
-          path="/my-details"
-          element={
-            <PageTransition>
-              {isAuthenticated && hasRole('house_captain') ? (
-                <AppShell role={role} onLogout={logout}>
-                  <CaptainMyDetails />
-                </AppShell>
-              ) : (
-                <Navigate to="/" replace />
-              )}
-            </PageTransition>
-          }
-        />
+      {/* Captain My Details */}
+      <Route
+        path="/my-details"
+        element={
+          isAuthenticated && hasRole('house_captain') ? (
+            <AppShell role={role} onLogout={logout}>
+              <CaptainMyDetails />
+            </AppShell>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
 
-        <Route
-          path="/login"
-          element={
-            <PageTransition>
-              {isAuthenticated ? (
-                <Navigate to="/" replace />
-              ) : (
-                <LoginPage />
-              )}
-            </PageTransition>
-          }
-        />
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
 
-        {/* Catch-all -> "/" */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+      {/* Catch-all -> "/" */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

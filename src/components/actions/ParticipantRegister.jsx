@@ -379,7 +379,7 @@ export default function ParticipantRegister() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
 
       {error && (
         <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-sm font-semibold">

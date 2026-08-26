@@ -32,13 +32,13 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
   return (
     <div className="fixed bottom-6 right-6 z-50 w-80 rounded-xl shadow-2xl border overflow-hidden animate-in slide-in-from-bottom-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
       <div className="flex items-center justify-between p-4 border-b" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
-        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-semibold">
+        <div className="flex items-center gap-2 text-primary font-semibold">
           <AlertCircle className="w-4 h-4" />
           <span>Setup Checklist</span>
         </div>
         <button 
           onClick={handleDismiss}
-          className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -49,11 +49,11 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
           onClick={() => navigate('/dashboard/manage-users')}
           className="w-full flex items-start gap-3 text-left group"
         >
-          <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${hasCoordinator ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300 dark:border-neutral-600'}`}>
+          <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${hasCoordinator ? 'bg-success border-success text-white' : 'border-border'}`}>
             {hasCoordinator && <Check className="w-3 h-3" />}
           </div>
           <div>
-            <p className={`text-sm font-medium ${hasCoordinator ? 'line-through text-neutral-400' : 'text-neutral-700 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
+            <p className={`text-sm font-medium ${hasCoordinator ? 'line-through text-muted-foreground' : 'text-foreground group-hover:text-primary'}`}>
               Invite your first Coordinator
             </p>
           </div>
@@ -63,11 +63,11 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
           onClick={() => navigate('/dashboard/manage-events')}
           className="w-full flex items-start gap-3 text-left group"
         >
-          <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${hasEvents ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-neutral-300 dark:border-neutral-600'}`}>
+          <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${hasEvents ? 'bg-success border-success text-white' : 'border-border'}`}>
             {hasEvents && <Check className="w-3 h-3" />}
           </div>
           <div>
-            <p className={`text-sm font-medium ${hasEvents ? 'line-through text-neutral-400' : 'text-neutral-700 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
+            <p className={`text-sm font-medium ${hasEvents ? 'line-through text-muted-foreground' : 'text-foreground group-hover:text-primary'}`}>
               Create at least 3 Events
             </p>
           </div>
@@ -77,10 +77,10 @@ export default function OnboardingChecklist({ systemStats, eventsCount }) {
           onClick={() => navigate('/dashboard/manage-houses')}
           className="w-full flex items-start gap-3 text-left group"
         >
-          <div className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border border-neutral-300 dark:border-neutral-600">
+          <div className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center border border-border">
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+            <p className="text-sm font-medium text-foreground group-hover:text-primary">
               Verify Group/House logos
             </p>
           </div>

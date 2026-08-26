@@ -24,14 +24,14 @@ export default function ParticipateRedirectPage() {
   }, [token, user, eventId, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1220] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="text-center space-y-5 max-w-sm">
-        <div className="relative inline-flex p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-3xl border border-indigo-100 dark:border-indigo-900/40">
-          <Trophy className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+        <div className="relative inline-flex p-4 bg-primary/10 border border-primary/30 rounded-3xl">
+          <Trophy className="h-10 w-10 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">Accessing Event Portal...</h2>
-        <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full w-1/2 animate-infinite-loading" />
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Accessing Event Portal...</h2>
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full w-1/2 animate-infinite-loading" />
         </div>
       </div>
       <style>{`

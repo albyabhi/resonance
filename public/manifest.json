@@ -1,11 +1,11 @@
 {
-  "name": "Resonance 2025",
+  "name": "Resonance 2026",
   "short_name": "Resonance",
-  "description": "Resonance – Inter-house competition management dashboard",
+  "description": "Resonance — Inter-house competition management dashboard",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#f8fafc",
+  "background_color": "#F7F6F2",
+  "theme_color": "#F7F6F2",
   "icons": [
     {
       "src": "/src/assets/Rlogo.jpg",

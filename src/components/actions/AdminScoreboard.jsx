@@ -7,8 +7,8 @@ import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const shimmerBase = "bg-gray-100";
-const shimmerHighlight = "bg-gray-200";
+const shimmerBase = "bg-muted";
+const shimmerHighlight = "bg-muted-foreground/30";
 
 const SkeletonRow = () => (
   <tr className="animate-pulse">
@@ -85,9 +85,9 @@ const MobileRowCard = ({
             className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="" className="bg-white dark:bg-[#0B1220]">Change team</option>
+            <option value="" className="bg-popover">Change team</option>
             {(teamsByEvent[grp.event_id] || []).map((t) => (
-              <option key={t._id} value={t._id} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
+              <option key={t._id} value={t._id} className="bg-popover">{t.label}</option>
             ))}
           </select>
           <div className="flex items-center gap-2">
@@ -112,14 +112,14 @@ const MobileRowCard = ({
             <button
               type="button"
               onClick={() => onDelete()}
-              className="px-3 py-2 rounded-lg text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              className="px-3 py-2 rounded-lg text-sm bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-[0.98] transition"
             >
               Delete
             </button>
           </div>
         </div>
       ) : (
-        <div className="mt-2 text-gray-400 text-sm">—</div>
+        <div className="mt-2 text-muted-foreground text-sm">—</div>
       )}
     </div>
   );
@@ -336,7 +336,7 @@ const AdminScoreboard = () => {
       {error && (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
+          className="bg-destructive/10 border border-destructive/30 text-destructive px-3 py-2 rounded-lg mb-3"
         >
           {error}
         </div>
@@ -352,9 +352,9 @@ const AdminScoreboard = () => {
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="" className="bg-white dark:bg-[#0B1220]">Select {groupLabel.toLowerCase()}</option>
+            <option value="" className="bg-popover">Select {groupLabel.toLowerCase()}</option>
             {houses.map((h) => (
-              <option key={h._id} value={h._id} className="bg-white dark:bg-[#0B1220]">
+              <option key={h._id} value={h._id} className="bg-popover">
                 {h.name} {h.code ? `(${h.code})` : ""}
               </option>
             ))}
@@ -369,9 +369,9 @@ const AdminScoreboard = () => {
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
-            <option value="" className="bg-white dark:bg-[#0B1220]">All events</option>
+            <option value="" className="bg-popover">All events</option>
             {events.map((ev) => (
-              <option key={ev._id} value={ev._id} className="bg-white dark:bg-[#0B1220]">{ev.title || ev.name}</option>
+              <option key={ev._id} value={ev._id} className="bg-popover">{ev.title || ev.name}</option>
             ))}
           </select>
         </div>
@@ -387,7 +387,7 @@ const AdminScoreboard = () => {
           <button
             type="button"
             onClick={loadDetails}
-            className="w-full md:w-auto px-3 py-2 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700 active:scale-[0.98] transition"
+            className="w-full md:w-auto px-3 py-2 rounded-lg text-sm bg-warning text-warning-foreground hover:bg-warning/90 active:scale-[0.98] transition"
           >
             Refresh
           </button>
@@ -396,7 +396,7 @@ const AdminScoreboard = () => {
 
       {/* Pull-to-refresh hint for mobile */}
       {refreshHint && (
-        <div className="mb-2 text-center text-xs text-orange-600">Release to refresh…</div>
+        <div className="mb-2 text-center text-xs text-warning">Release to refresh…</div>
       )}
 
       {/* Responsive content container */}
@@ -489,7 +489,7 @@ const AdminScoreboard = () => {
                 groupedByEvent.map((grp) => (
                   <React.Fragment key={grp.event_id}>
                     {grp.rows.map((row, idx) => (
-                      <tr key={row.result_id} className="border-t hover:bg-indigo-500/5" style={{ borderTopColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
+                      <tr key={row.result_id} className="border-t hover:bg-primary/10" style={{ borderTopColor: 'var(--border-divider)', color: 'var(--card-fg)' }}>
                         <td className="p-3">{idx === 0 ? grp.event_name : ""}</td>
                         <td className="p-3">Round {row.round_no}</td>
                         <td className="p-3">{row.position}</td>
@@ -517,9 +517,9 @@ const AdminScoreboard = () => {
                                 className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                               >
-                                <option value="" className="bg-white dark:bg-[#0B1220]">Change team</option>
+                                <option value="" className="bg-popover">Change team</option>
                                 {(teamsByEvent[row.event_id] || []).map((t) => (
-                                  <option key={t._id} value={t._id} className="bg-white dark:bg-[#0B1220]">{t.label}</option>
+                                  <option key={t._id} value={t._id} className="bg-popover">{t.label}</option>
                                 ))}
                               </select>
                               <input
@@ -541,13 +541,13 @@ const AdminScoreboard = () => {
                               <button
                                 type="button"
                                 onClick={() => deleteRow(row)}
-                                className="px-3 py-1 rounded text-sm bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98] transition dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                                className="px-3 py-1 rounded text-sm bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-[0.98] transition"
                               >
                                 Delete
                               </button>
                             </div>
                           ) : (
-                            <span className="text-gray-400 text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">—</span>
                           )}
                         </td>
                       </tr>

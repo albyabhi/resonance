@@ -149,7 +149,7 @@ export default function ManageCompetition() {
   }
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="space-y-10">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-border">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default function ManageCompetition() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <div className="p-4 bg-muted border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+            <div className="p-4 bg-muted border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Share Public URL</p>

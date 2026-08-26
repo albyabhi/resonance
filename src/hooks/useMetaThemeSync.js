@@ -14,7 +14,7 @@
 import { useEffect } from "react";
 import { getThemeColor } from "../lib/theme/getThemeColor";
 
-const FALLBACK = { dark: "#111827", light: "#F4F5F7" };
+const FALLBACK = { dark: "#0B0C0C", light: "#F7F6F2" };
 
 /**
  * useMetaThemeSync

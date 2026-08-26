@@ -15,14 +15,14 @@ const getPolygonPoints = (sides, radius, cx = 200, cy = 200) => {
 
 export default function MandalaBackground({ currentIndex }) {
   // Base style for very thin strokes and low opacity
-  const baseStroke = "stroke-slate-400/80";
+  const baseStroke = "stroke-muted-foreground/30";
 
   const baseWidth = "0.5";
 
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none z-0">
       <svg
-        className="w-[90%] h-[90%] max-w-none text-slate-400"
+        className="w-[90%] h-[90%] max-w-none text-muted-foreground"
 
         viewBox="0 0 400 400"
         fill="none"

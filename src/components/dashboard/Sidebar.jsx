@@ -92,7 +92,7 @@ export default function Sidebar({
   }, [open, onClose]);
 
   const SidebarContent = (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--card)", borderRight: "1px solid var(--border-divider)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--sidebar)", borderRight: "1px solid var(--border-divider)" }}>
       <div className="flex-1 overflow-y-auto py-6 space-y-8">
         <section>
           {sidebarOpen && (
@@ -131,7 +131,7 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="p-4" style={{ borderTop: "1px solid var(--border-divider)", backgroundColor: "var(--background)" }}>
+      <div className="p-4" style={{ borderTop: "1px solid var(--border-divider)", backgroundColor: "var(--sidebar)" }}>
         <div className={`flex items-center ${sidebarOpen ? "mb-4 gap-3" : "justify-center mb-3"}`}>
           <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ backgroundColor: "var(--muted)" }}>
             {user?.profile_image ? (

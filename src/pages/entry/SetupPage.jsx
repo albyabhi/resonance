@@ -297,12 +297,12 @@ export default function SetupPage() {
     }
   };
 
-  const inputClass = "w-full p-3 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium text-sm";
-  const labelClass = "block text-xs font-black uppercase tracking-widest text-neutral-500 mb-1.5";
+  const inputClass = "w-full p-3 bg-input-bg border border-input rounded-xl outline-none focus:ring-2 focus:ring-ring transition-all font-medium text-sm";
+  const labelClass = "block text-xs font-black uppercase tracking-widest text-muted-foreground mb-1.5";
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex flex-col items-center justify-center p-6 text-neutral-900 dark:text-neutral-100">
-      <div className="max-w-xl w-full bg-white dark:bg-neutral-950 p-8 rounded-3xl border border-neutral-200/50 dark:border-neutral-800/50 shadow-xl transition-all duration-300">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-foreground">
+      <div className="max-w-xl w-full bg-card p-8 rounded-3xl border border-border shadow-xl transition-all duration-300">
         <h1 className="text-2xl font-bold mb-2 text-center">Setup Competition</h1>
 
         {/* Step Indicator */}
@@ -314,27 +314,27 @@ export default function SetupPage() {
                 onClick={() => s.num < step && setStep(s.num)}
                 className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
                   s.num === step
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                     : s.num < step
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 cursor-pointer'
-                    : 'bg-neutral-200 dark:bg-neutral-850 text-neutral-400'
+                    ? 'bg-primary/10 text-primary cursor-pointer'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
                 {s.num}
               </button>
               {s.num < STEPS.length && (
-                <div className={`w-8 h-0.5 ${s.num < step ? 'bg-blue-400' : 'bg-neutral-300 dark:bg-neutral-800'}`} />
+                <div className={`w-8 h-0.5 ${s.num < step ? 'bg-primary' : 'bg-muted'}`} />
               )}
             </div>
           ))}
         </div>
 
-        {error && <div className="mb-4 p-3 bg-red-100 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 rounded-xl text-xs font-bold uppercase tracking-wider">{error}</div>}
+        {error && <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-xl text-xs font-bold uppercase tracking-wider">{error}</div>}
 
         {/* Step 1: Competition Type */}
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-neutral-500 mb-2 font-medium">What kind of competition are you running?</p>
+            <p className="text-sm text-muted-foreground mb-2 font-medium">What kind of competition are you running?</p>
             <div className="grid grid-cols-2 gap-2">
               {COMPETITION_TYPES.map(type => (
                 <button
@@ -343,8 +343,8 @@ export default function SetupPage() {
                   onClick={() => setFormData({ ...formData, competition_type: type.id })}
                   className={`p-4 rounded-xl border text-sm font-bold text-left transition-all ${
                     formData.competition_type === type.id
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20'
-                      : 'border-neutral-200 dark:border-neutral-850 hover:border-neutral-400 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900/30'
+                      ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20'
+                      : 'border-border hover:border-muted hover:bg-muted/50'
                   }`}
                 >
                   {type.label}
@@ -362,7 +362,7 @@ export default function SetupPage() {
                   onChange={(e) => setFormData({ ...formData, custom_label: e.target.value })}
                 />
                 {formData.custom_label && (
-                  <p className="text-xs text-neutral-500 mt-1">Groups will be called: {formData.custom_label}s</p>
+                  <p className="text-xs text-muted-foreground mt-1">Groups will be called: {formData.custom_label}s</p>
                 )}
               </div>
             )}
@@ -372,7 +372,7 @@ export default function SetupPage() {
         {/* Step 2: Basic Info */}
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-neutral-500 mb-2 font-medium">Tell us about your institution and competition.</p>
+            <p className="text-sm text-muted-foreground mb-2 font-medium">Tell us about your institution and competition.</p>
             <div>
               <label className={labelClass}>Institution Name</label>
               <input 
@@ -408,7 +408,7 @@ export default function SetupPage() {
               <label className={labelClass}>Year</label>
               <input 
                 type="text" disabled
-                className={`${inputClass} bg-neutral-100 dark:bg-neutral-900 text-neutral-400 cursor-not-allowed`}
+                className={`${inputClass} bg-muted text-muted-foreground cursor-not-allowed`}
                 value={formData.year}
               />
             </div>
@@ -418,7 +418,7 @@ export default function SetupPage() {
         {/* Step 3: Groups */}
         {step === 3 && (
           <div className="space-y-6">
-            <p className="text-sm text-neutral-500 mb-2 font-medium">Initialize your {getGroupLabelPlural()}. Captains can be assigned after participants are added.</p>
+            <p className="text-sm text-muted-foreground mb-2 font-medium">Initialize your {getGroupLabelPlural()}. Captains can be assigned after participants are added.</p>
             
             <div className="flex items-center space-x-2">
               <input 
@@ -426,9 +426,9 @@ export default function SetupPage() {
                 id="skip"
                 checked={formData.skip_groups}
                 onChange={(e) => setFormData({ ...formData, skip_groups: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded border-neutral-300 focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 text-primary rounded border-input focus:ring-primary cursor-pointer"
               />
-              <label htmlFor="skip" className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 cursor-pointer">
+              <label htmlFor="skip" className="text-sm font-semibold text-foreground cursor-pointer">
                 Skip — add {getGroupLabelPlural().toLowerCase()} later
               </label>
             </div>
@@ -437,25 +437,25 @@ export default function SetupPage() {
               <div className="space-y-4 animate-in fade-in duration-300">
                 {/* Active Groups List */}
                 {formData.groups.length === 0 ? (
-                  <div className="py-8 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl">
-                    <p className="text-xs font-black uppercase tracking-widest text-neutral-400">No {getGroupLabelPlural()} Initialized</p>
-                    <p className="text-[10px] text-neutral-500 mt-1">Add at least 2 {getGroupLabelPlural().toLowerCase()} to continue</p>
+                  <div className="py-8 text-center border-2 border-dashed border-border rounded-2xl">
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No {getGroupLabelPlural()} Initialized</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Add at least 2 {getGroupLabelPlural().toLowerCase()} to continue</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-2.5 max-h-60 overflow-y-auto pr-1">
                     {formData.groups.map((g, i) => (
-                      <div key={i} className="flex items-center justify-between p-3.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl shadow-sm">
+                      <div key={i} className="flex items-center justify-between p-3.5 bg-muted border border-border rounded-2xl shadow-sm">
                         <div className="flex items-center gap-3">
                           {g.logoUrl ? (
-                            <img src={g.logoUrl} className="w-8 h-8 rounded-lg object-contain border dark:border-neutral-800 bg-white" alt="Group Logo" />
+                            <img src={g.logoUrl} className="w-8 h-8 rounded-lg object-contain border border-border bg-card" alt="Group Logo" />
                           ) : (
-                            <div className="w-8 h-8 rounded-lg bg-neutral-200 dark:bg-neutral-850 flex items-center justify-center font-bold text-xs text-neutral-500">
+                            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center font-bold text-xs text-muted-foreground">
                               {g.name.substring(0, 2).toUpperCase()}
                             </div>
                           )}
                           <div>
                             <p className="text-sm font-black truncate">{g.name}</p>
-                            <p className="text-[10px] text-neutral-500">
+                            <p className="text-[10px] text-muted-foreground">
                               Captains available after participant setup
                             </p>
                           </div>
@@ -464,14 +464,14 @@ export default function SetupPage() {
                           <button
                             type="button"
                             onClick={() => openEditGroup(i)}
-                            className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 hover:text-blue-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-muted hover:text-primary text-muted-foreground transition-colors"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => deleteGroup(i)}
-                            className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 hover:text-red-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-muted hover:text-destructive text-muted-foreground transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -485,14 +485,14 @@ export default function SetupPage() {
                   <button 
                     type="button"
                     onClick={openAddGroup}
-                    className="w-full py-3.5 border-2 border-dashed border-blue-500/20 hover:border-blue-500/50 bg-blue-50/20 dark:bg-blue-500/5 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full py-3.5 border-2 border-dashed border-primary/20 hover:border-primary/50 bg-primary/10 text-xs font-black uppercase tracking-widest text-primary rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <PlusCircle className="w-4 h-4" /> Add {getGroupLabel()}
                   </button>
                 ) : (
                   /* High Fidelity Drag/Paste upload and CRUD modal form */
-                  <div onPaste={handlePaste} className="p-5 border border-blue-200 dark:border-blue-900/40 bg-blue-50/[0.08] rounded-2xl space-y-4 shadow-inner animate-in slide-in-from-top-2 duration-300">
-                    <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                  <div onPaste={handlePaste} className="p-5 border border-primary/30 bg-primary/5 rounded-2xl space-y-4 shadow-inner animate-in slide-in-from-top-2 duration-300">
+                    <p className="text-xs font-black uppercase tracking-widest text-primary">
                       {editingIndex !== null ? `Edit ${getGroupLabel()} Configuration` : `Add ${getGroupLabel()} Node`}
                     </p>
 
@@ -506,24 +506,24 @@ export default function SetupPage() {
                           onDrop={handleDrop}
                           className={`group relative cursor-pointer w-full aspect-square max-w-[120px] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden transition-all duration-300
                             ${isDragOver 
-                              ? 'border-blue-500 bg-blue-500/10 scale-102 shadow-md shadow-blue-500/5' 
-                              : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-850 hover:border-blue-500/50 hover:bg-blue-500/[0.02]'
+                              ? 'border-primary bg-primary/10 scale-102 shadow-md shadow-primary/5' 
+                              : 'border-border bg-card hover:border-primary/50 hover:bg-primary/5'
                             }`}
                         >
                           {uploadingLogo ? (
-                            <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                            <Loader2 className="w-6 h-6 text-primary animate-spin" />
                           ) : groupLogoUrl ? (
                             <div className="relative w-full h-full p-2 flex items-center justify-center">
                               <img src={groupLogoUrl} className="w-full h-full object-contain p-2" alt="Logo Preview" />
-                              <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
                                 <Camera className="w-5 h-5 text-white" />
                               </div>
                             </div>
                           ) : (
                             <div className="text-center p-2 space-y-1">
-                              <Upload className="w-5 h-5 text-blue-600 dark:text-blue-400 mx-auto" />
-                              <p className="text-[8px] font-black uppercase tracking-widest text-neutral-400">Logo Zone</p>
-                              <p className="text-[7px] text-neutral-500">Paste/Drop</p>
+                              <Upload className="w-5 h-5 text-primary mx-auto" />
+                              <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Logo Zone</p>
+                              <p className="text-[7px] text-muted-foreground">Paste/Drop</p>
                             </div>
                           )}
                           <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={onLogoFileChange} />
@@ -532,7 +532,7 @@ export default function SetupPage() {
                           <button
                             type="button"
                             onClick={() => { setGroupLogoUrl(""); setGroupLogoPublicId(""); }}
-                            className="mt-1 text-[8px] font-black uppercase tracking-wider text-red-500 hover:underline"
+                            className="mt-1 text-[8px] font-black uppercase tracking-wider text-destructive hover:underline"
                           >
                             Remove Logo
                           </button>
@@ -542,7 +542,7 @@ export default function SetupPage() {
                       {/* Fields */}
                       <div className="md:col-span-8 space-y-3">
                         <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Name Designation</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Name Designation</label>
                           <input
                             type="text"
                             required
@@ -559,7 +559,7 @@ export default function SetupPage() {
                       <button
                         type="button"
                         onClick={() => setShowGroupForm(false)}
-                        className="py-2.5 px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                        className="py-2.5 px-4 rounded-xl border border-border text-xs font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted transition-colors"
                       >
                         Cancel
                       </button>
@@ -567,7 +567,7 @@ export default function SetupPage() {
                         type="button"
                         disabled={uploadingLogo}
                         onClick={saveGroup}
-                        className="py-2.5 px-5 rounded-xl bg-blue-600 text-xs font-bold uppercase tracking-wider text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        className="py-2.5 px-5 rounded-xl bg-primary text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary-strong disabled:opacity-50 transition-colors"
                       >
                         Save
                       </button>
@@ -582,7 +582,7 @@ export default function SetupPage() {
         {/* Step 4: Flow & Settings */}
         {step === 4 && (
           <div className="space-y-4">
-            <p className="text-sm text-neutral-500 mb-2 font-medium">Choose a competition flow and configure access.</p>
+            <p className="text-sm text-muted-foreground mb-2 font-medium">Choose a competition flow and configure access.</p>
             
             {templates.length > 0 && (
               <div>
@@ -605,9 +605,9 @@ export default function SetupPage() {
                 id="public"
                 checked={formData.is_public}
                 onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded border-neutral-300 focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 text-primary rounded border-input focus:ring-primary cursor-pointer"
               />
-              <label htmlFor="public" className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 cursor-pointer">
+              <label htmlFor="public" className="text-sm font-semibold text-foreground cursor-pointer">
                 Make scoreboard publicly visible
               </label>
             </div>
@@ -615,7 +615,7 @@ export default function SetupPage() {
             <div>
               <label className={labelClass}>Public URL Slug (optional)</label>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-neutral-450">/view/</span>
+                <span className="text-xs text-muted-foreground">/view/</span>
                 <input 
                   type="text"
                   placeholder={slugPreview || 'auto-generated'}
@@ -625,7 +625,7 @@ export default function SetupPage() {
                 />
               </div>
               {slugPreview && !formData.slug && (
-                <p className="text-xs text-neutral-500 mt-1">Preview: /view/{slugPreview}</p>
+                <p className="text-xs text-muted-foreground mt-1">Preview: /view/{slugPreview}</p>
               )}
             </div>
           </div>
@@ -637,7 +637,7 @@ export default function SetupPage() {
             <button 
               type="button"
               onClick={() => setStep(step - 1)}
-              className="flex-1 py-3.5 border border-neutral-300 dark:border-neutral-750 text-neutral-700 dark:text-neutral-300 font-bold uppercase tracking-wider text-xs rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-850 transition-colors cursor-pointer"
+              className="flex-1 py-3.5 border border-border text-foreground font-bold uppercase tracking-wider text-xs rounded-xl hover:bg-muted transition-colors cursor-pointer"
             >
               Back
             </button>
@@ -647,7 +647,7 @@ export default function SetupPage() {
               type="button"
               onClick={() => canAdvance() && setStep(step + 1)}
               disabled={!canAdvance()}
-              className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-xs rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 cursor-pointer"
+              className="flex-1 py-3.5 bg-primary hover:bg-primary-strong text-primary-foreground font-black uppercase tracking-[0.2em] text-xs rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 cursor-pointer"
             >
               Next
             </button>
@@ -656,7 +656,7 @@ export default function SetupPage() {
               type="button"
               onClick={handleSubmit}
               disabled={loading}
-              className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-xs rounded-xl transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 cursor-pointer"
+              className="flex-1 py-3.5 bg-primary hover:bg-primary-strong text-primary-foreground font-black uppercase tracking-[0.2em] text-xs rounded-xl transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 cursor-pointer"
             >
               {loading ? 'Creating...' : 'Create & Enter Dashboard'}
             </button>

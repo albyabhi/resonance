@@ -65,32 +65,32 @@ export default function CaptainsDirectory() {
 
   return (
     <div className="space-y-10">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-white/5">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-border">
         <div className="space-y-2">
             <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <Shield className="w-5 h-5 text-primary" />
                 <h2 className="text-3xl font-semibold tracking-tight font-heading" style={{ color: 'var(--text)' }}>
                     {groupLabel}s Directory
                 </h2>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Manage and contact your {groupLabel.toLowerCase()} leads</p>
+            <p className="text-sm text-muted-foreground">Manage and contact your {groupLabel.toLowerCase()} leads</p>
         </div>
         
         <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search personnel..." 
-                className="w-full border rounded-2xl pl-11 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                className="w-full border rounded-2xl pl-11 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
             />
         </div>
       </header>
 
       {error && (
-        <div className="card-premium p-6 bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20 flex items-center gap-4 text-rose-600 dark:text-rose-400">
+        <div className="card-premium p-6 bg-destructive/10 border border-destructive/30 flex items-center gap-4 text-destructive">
           <AlertCircle className="w-6 h-6 flex-shrink-0" />
           <p className="text-sm font-bold uppercase tracking-widest">{error}</p>
         </div>
@@ -103,7 +103,7 @@ export default function CaptainsDirectory() {
 
           return (
             <FadeIn key={item.groupId} delay={idx * 0.1}>
-              <div className="card-premium group overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500 hover:-translate-y-1" style={{ backgroundColor: 'var(--card)' }}>
+              <div className="card-premium group overflow-hidden flex flex-col h-full hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 hover:-translate-y-1" style={{ backgroundColor: 'var(--card)' }}>
                 {/* Hero Section */}
                 <div className="relative h-56 overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
                   {hasCaptain && captain?.profile_image ? (
@@ -113,24 +113,24 @@ export default function CaptainsDirectory() {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br" style={{ backgroundImage: 'linear-gradient(to bottom right, var(--surface), var(--bg))' }}>
-                       <Shield className="w-12 h-12 text-slate-200 dark:text-white/10 mb-4 transition-transform duration-500 group-hover:rotate-12" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No captain assigned</p>
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8" style={{ backgroundImage: 'linear-gradient(to bottom right, var(--surface), var(--bg))' }}>
+                       <Shield className="w-12 h-12 text-muted-foreground/10 mb-4 transition-transform duration-500 group-hover:rotate-12" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No captain assigned</p>
                     </div>
                   )}
                   
                   {/* Glass Header */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                      <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg backdrop-blur-md shadow-sm border text-slate-600 dark:text-slate-300" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
+                      <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg backdrop-blur-md shadow-sm border text-muted-foreground" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}>
                         {groupCode}
                       </span>
                       {hasCaptain && (
-                        <div className="h-8 w-8 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50 border-2 animate-pulse" style={{ borderColor: 'var(--card)' }} />
+                        <div className="h-8 w-8 rounded-full bg-success shadow-lg shadow-success/50 border-2 animate-pulse" style={{ borderColor: 'var(--card)' }} />
                       )}
                   </div>
 
                   {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t opacity-0 group-hover:opacity-100 dark:opacity-100 transition-opacity duration-500" style={{ backgroundImage: 'linear-gradient(to top, var(--card), transparent)' }} />
+                  <div className="absolute inset-0 bg-gradient-to-t opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ backgroundImage: 'linear-gradient(to top, var(--card), transparent)' }} />
                   
                   {/* Name Overlay */}
                   <div className="absolute bottom-6 left-6 right-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
@@ -144,42 +144,42 @@ export default function CaptainsDirectory() {
                   <div className="space-y-4">
                     {hasCaptain ? (
                       <div className="space-y-3">
-                         <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-indigo-500/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
-                           <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl text-indigo-600 dark:text-indigo-400 shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
-                                <Phone className="w-3.5 h-3.5" />
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Phone</p>
-                                <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{captain.phone || "---"}</p>
-                              </div>
-                           </div>
-                           <ExternalLink className="w-3 h-3 text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all" />
-                         </div>
+                         <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-primary/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                            <div className="flex items-center gap-3">
+                               <div className="p-2 rounded-xl text-primary shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
+                                 <Phone className="w-3.5 h-3.5" />
+                               </div>
+                               <div>
+                                 <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Phone</p>
+                                 <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{captain.phone || "---"}</p>
+                               </div>
+                            </div>
+                            <ExternalLink className="w-3 h-3 text-muted-foreground/50 opacity-0 group-hover/row:opacity-100 transition-all" />
+                          </div>
 
-                         <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-indigo-500/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
-                           <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl text-violet-600 dark:text-violet-400 shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
-                                <Mail className="w-3.5 h-3.5" />
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Email</p>
+                          <div className="flex items-center justify-between p-3 rounded-2xl border group/row transition-colors hover:bg-primary/5" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
+                            <div className="flex items-center gap-3">
+                               <div className="p-2 rounded-xl text-info shadow-sm" style={{ backgroundColor: 'var(--card)' }}>
+                                 <Mail className="w-3.5 h-3.5" />
+                               </div>
+                               <div>
+                                 <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-1" style={{ color: 'var(--chart-axis)' }}>Email</p>
                                  <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{captain.email || `${groupCode.toLowerCase()}@resonance.edu`}</p>
-                              </div>
-                           </div>
-                           <ExternalLink className="w-3 h-3 text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all" />
-                         </div>
-                      </div>
-                    ) : (
-                      <div className="py-10 text-center space-y-2">
-                         <Contact className="w-8 h-8 text-slate-100 dark:text-white/5 mx-auto" />
-                         <p className="text-xs font-semibold text-slate-400">No captain assigned</p>
-                      </div>
-                    )}
+                               </div>
+                            </div>
+                            <ExternalLink className="w-3 h-3 text-muted-foreground/50 opacity-0 group-hover/row:opacity-100 transition-all" />
+                          </div>
+                       </div>
+                     ) : (
+                       <div className="py-10 text-center space-y-2">
+                          <Contact className="w-8 h-8 text-muted-foreground/10 mx-auto" />
+                          <p className="text-xs font-semibold text-muted-foreground">No captain assigned</p>
+                       </div>
+                     )}
                   </div>
 
                   {hasCaptain && (
-                    <button className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 hover:text-white shadow-xl active:scale-95 group-hover:translate-y-0 translate-y-1 opacity-0 group-hover:opacity-100 duration-500" style={{ backgroundColor: 'var(--card-fg)', color: 'var(--card)' }}>
+                    <button className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-primary hover:text-primary-foreground shadow-xl active:scale-95 group-hover:translate-y-0 translate-y-1 opacity-0 group-hover:opacity-100 duration-500" style={{ backgroundColor: 'var(--card-fg)', color: 'var(--card)' }}>
                         View profile
                     </button>
                   )}

@@ -13,11 +13,11 @@ const typeLabel = (t) => (t === "team" ? "Team" : "Individual");
 const statusConfig = (status) => {
   switch (status) {
     case "live":
-      return { label: "Live", classes: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20" };
+      return { label: "Live", classes: "bg-success/10 text-success border-success/20" };
     case "completed":
-      return { label: "Completed", classes: "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 border-slate-200 dark:border-white/5" };
+      return { label: "Completed", classes: "bg-muted text-muted-foreground border-border" };
     default:
-      return { label: "Upcoming", classes: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20" };
+      return { label: "Upcoming", classes: "bg-primary/10 text-primary border-primary/20" };
   }
 };
 
@@ -161,10 +161,10 @@ function RecentEvents() {
       <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Events</h3>
+            <Calendar className="h-5 w-5 text-primary" />
+            <h3 className="text-xl font-semibold text-foreground">Events</h3>
           </div>
-          <p className="pl-7 text-sm text-gray-500 dark:text-gray-400">Upcoming, live, and completed events</p>
+          <p className="pl-7 text-sm text-muted-foreground">Upcoming, live, and completed events</p>
         </div>
 
         <div className="flex items-center gap-1 rounded-full border p-1" style={{ borderColor: 'var(--border-divider)', backgroundColor: 'var(--surface)' }}>
@@ -173,7 +173,7 @@ function RecentEvents() {
               key={c}
               onClick={() => setCategory(c)}
               className={`rounded-full px-3 py-1.5 text-xs transition-all ${
-                category === c ? "border shadow-sm font-semibold" : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
+                category === c ? "border shadow-sm font-semibold" : "text-muted-foreground hover:text-foreground"
               }`}
               style={category === c ? { backgroundColor: 'var(--card)', color: 'var(--accent)', borderColor: 'var(--border-divider)' } : {}}
             >
@@ -184,7 +184,7 @@ function RecentEvents() {
       </header>
 
       {error && (
-        <div className="mb-6 flex items-center gap-2 text-sm text-rose-500 dark:text-rose-400">
+        <div className="mb-6 flex items-center gap-2 text-sm text-destructive">
           <Filter className="h-4 w-4" />
           <span>Stream error: {error}</span>
         </div>
@@ -192,11 +192,11 @@ function RecentEvents() {
 
       <div className="flex-1 space-y-3">
         {loading ? (
-          [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse dark:bg-gray-900" />)
+          [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)
         ) : list.length === 0 ? (
           <div className="py-20 text-center">
-            <Filter className="mx-auto mb-4 h-10 w-10 text-gray-300 dark:text-gray-700" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">No events matched the current filter</p>
+            <Filter className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No events matched the current filter</p>
           </div>
         ) : (
           list.map((evt) => {
@@ -205,21 +205,21 @@ function RecentEvents() {
               <button
                 key={evt.key}
                 onClick={() => openDetails(evt.key)}
-                className="group flex w-full items-center justify-between rounded-2xl border p-4 text-left transition hover:border-indigo-500 hover:shadow-md"
+                className="group flex w-full items-center justify-between rounded-2xl border p-4 text-left transition hover:border-primary/50 hover:shadow-md"
                 style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)' }}
               >
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors group-hover:text-indigo-600" style={{ backgroundColor: 'var(--surface)', color: 'var(--chart-axis)' }}>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors group-hover:text-primary" style={{ backgroundColor: 'var(--surface)', color: 'var(--chart-axis)' }}>
                     <Layout className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-gray-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">{evt.name}</p>
-                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{modeLabel(evt.mode)} · {typeLabel(evt.type)}</p>
+                    <p className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">{evt.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{modeLabel(evt.mode)} · {typeLabel(evt.type)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`rounded-full border px-3 py-1 text-[11px] ${config.classes}`}>{config.label}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-indigo-500" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 </div>
               </button>
             );
@@ -230,32 +230,32 @@ function RecentEvents() {
       {fullItems.length > 6 && (
         <button
           onClick={() => setShowAll(!showAll)}
-          className="mt-6 w-full border-t border-gray-100 py-3 text-sm text-gray-500 transition-colors hover:text-indigo-600 dark:border-gray-800 dark:text-gray-400 dark:hover:text-indigo-400"
+          className="mt-6 w-full border-t border-border py-3 text-sm text-muted-foreground transition-colors hover:text-primary"
         >
           {showAll ? "Show fewer" : `Show all (${fullItems.length})`}
         </button>
       )}
 
       {openId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xl transition-all duration-300 sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 p-4 backdrop-blur-xl transition-all duration-300 sm:p-6">
           <FadeIn className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border shadow-2xl" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
             <header className="flex items-center justify-between border-b p-6" style={{ borderBottom: '1px solid var(--border-divider)', backgroundColor: 'var(--surface)' }}>
               <div className="space-y-1">
-                <h4 className="text-2xl font-semibold text-gray-900 dark:text-white">{eventDetail?.title || eventDetail?.name || "Event details"}</h4>
-                <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                <h4 className="text-2xl font-semibold text-foreground">{eventDetail?.title || eventDetail?.name || "Event details"}</h4>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {eventDetail?.mode}</span>
-                  <span className="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground" />
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {eventDetail?.event_type}</span>
                 </div>
               </div>
-              <button onClick={closeDetails} className="rounded-xl border p-2 transition hover:text-rose-500" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>
+              <button onClick={closeDetails} className="rounded-xl border p-2 transition hover:text-destructive" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>
                 <X className="h-6 w-6" />
               </button>
             </header>
 
             <div className="flex-1 space-y-10 overflow-y-auto p-6 overscroll-contain sm:p-8">
               {detailsLoading ? (
-                <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading event details</div>
+                <div className="py-16 text-center text-sm text-muted-foreground">Loading event details</div>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -266,28 +266,28 @@ function RecentEvents() {
                        { label: "House cap", value: eventDetail?.max_per_group, icon: Layout },
                     ].map((m, i) => (
                       <div key={i} className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
-                        <m.icon className="mb-2 h-4 w-4 text-indigo-500" />
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{m.label}</p>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{m.value}</p>
+                        <m.icon className="mb-2 h-4 w-4 text-primary" />
+                        <p className="text-xs text-muted-foreground">{m.label}</p>
+                        <p className="text-lg font-semibold text-foreground">{m.value}</p>
                       </div>
                     ))}
                   </div>
 
                   {eventDetail?.coordinator_id && (
                     <div className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}>
-                      <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Event Coordinator</p>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Event Coordinator</p>
                       <div className="flex items-center gap-3">
                         <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                          style={{ backgroundColor: '#ea580c' }}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-primary-foreground"
+                          style={{ backgroundColor: 'var(--warning)' }}
                         >
                           {(eventDetail.coordinator_id.name || "?").charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <p className="text-sm font-semibold text-foreground">
                             {eventDetail.coordinator_id.name}
                           </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                             {eventDetail.coordinator_id.email && (
                               <span className="flex items-center gap-1">
                                 <Mail className="h-3 w-3" />
@@ -307,36 +307,36 @@ function RecentEvents() {
                   )}
 
                   <section>
-                    <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                      <Clock className="h-4 w-4 text-indigo-500" /> Timeline
+                    <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Clock className="h-4 w-4 text-primary" /> Timeline
                     </h5>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {eventSchedules.map((r) => (
                         <div key={r._id} className="rounded-2xl border p-5 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
                           <div className="mb-3 flex items-start justify-between">
-                            <p className="text-xs text-gray-400 dark:text-gray-500">Round {r.round_no}</p>
-                            <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
+                            <p className="text-xs text-muted-foreground">Round {r.round_no}</p>
+                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
                               {r.status}
                             </span>
                           </div>
-                          <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">{r.venue || "Global Arena"}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(r.date).toLocaleDateString()} · {r.time || "TBD"}</p>
+                          <p className="mb-2 text-sm font-semibold text-foreground">{r.venue || "Global Arena"}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(r.date).toLocaleDateString()} · {r.time || "TBD"}</p>
                         </div>
                       ))}
                     </div>
                   </section>
 
                   <section>
-                    <div className="mb-6 flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+                    <div className="mb-6 flex items-center justify-between border-b border-border pb-4">
                       <div className="flex gap-6">
                         {["winners", "participants"].map((t) => (
                           <button
                             key={t}
                             onClick={() => setActiveTab(t)}
-                            className={`relative text-sm transition-all ${activeTab === t ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"}`}
+                            className={`relative text-sm transition-all ${activeTab === t ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                           >
                             {t}
-                            {activeTab === t && <span className="absolute -bottom-[17px] left-0 right-0 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
+                            {activeTab === t && <span className="absolute -bottom-[17px] left-0 right-0 h-1 rounded-full bg-primary" />}
                           </button>
                         ))}
                       </div>
@@ -347,11 +347,11 @@ function RecentEvents() {
                         {winnersView.length ? (
                           winnersView.map((w) => (
                             <div key={w.resultId} className="flex items-center gap-6 rounded-2xl border p-6 shadow-sm" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-                              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-semibold ${w.position === 1 ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300"}`}>
+                              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-semibold ${w.position === 1 ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>
                                 {w.position === 1 ? <Trophy className="h-6 w-6" /> : w.position}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{w.houseText}</p>
+                                <p className="text-sm font-semibold text-foreground">{w.houseText}</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {w.members.map((m) => (
                                     <span key={m._id} className="rounded-lg border px-2 py-1 text-xs" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>
@@ -363,20 +363,20 @@ function RecentEvents() {
                             </div>
                           ))
                         ) : (
-                          <p className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Awaiting official validation.</p>
+                          <p className="py-10 text-center text-sm text-muted-foreground">Awaiting official validation.</p>
                         )}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {eventTeams.map((t) => (
                           <div key={t._id} className="rounded-2xl border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
-                            <p className="mb-1 text-xs text-indigo-600 dark:text-indigo-400">{t.houseName}</p>
-                            <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">{t.chest_no ? `Chest Node #${t.chest_no}` : "Chest Node unassigned"}</p>
+                            <p className="mb-1 text-xs text-primary">{t.houseName}</p>
+                            <p className="mb-4 text-xs text-muted-foreground">{t.chest_no ? `Chest Node #${t.chest_no}` : "Chest Node unassigned"}</p>
                             <div className="space-y-2">
                               {t.members.map((m) => (
-                                <div key={m._id} className="flex items-center justify-between border-b border-gray-100 py-2 text-xs text-gray-600 last:border-0 dark:border-gray-800 dark:text-gray-400">
+                                <div key={m._id} className="flex items-center justify-between border-b border-border py-2 text-xs text-muted-foreground last:border-0">
                                   <span>{m.name}</span>
-                                  <span className="text-xs text-gray-400 dark:text-gray-500">{m.class}</span>
+                                  <span className="text-xs text-muted-foreground">{m.class}</span>
                                 </div>
                               ))}
                             </div>

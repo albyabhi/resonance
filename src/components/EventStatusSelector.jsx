@@ -75,7 +75,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-2 px-3 py-1.5 border rounded-lg text-sm font-medium transition hover:bg-gray-50 dark:hover:bg-gray-800"
+        className="inline-flex items-center gap-2 px-3 py-1.5 border rounded-lg text-sm font-medium transition hover:bg-muted"
         style={{ borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
       >
         <EventStatusBadge status={currentStatus} />
@@ -92,7 +92,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
             <h3 className="text-sm font-semibold" style={{ color: "var(--card-fg)" }}>
               Change Event Status
             </h3>
-            <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+            <button onClick={() => setOpen(false)} className="p-1 hover:bg-muted rounded">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -103,7 +103,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
             </div>
 
             {validTransitions.length === 0 && currentStatus !== "cancelled" && currentStatus !== "completed" && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-xs flex items-center gap-2">
+              <div className="bg-warning/10 border border-warning/30 text-warning px-3 py-2 rounded-lg text-xs flex items-center gap-2">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>No valid transitions from current status. Event may be complete or cancelled.</span>
               </div>
@@ -126,7 +126,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
                   </option>
                 ))}
                 {currentStatus !== "cancelled" && (
-                  <option value="cancelled" className="text-rose-600">
+                  <option value="cancelled" className="text-destructive">
                     Cancelled (irreversible)
                   </option>
                 )}
@@ -160,7 +160,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
                 type="button"
                 onClick={handleChange}
                 disabled={loading || selectedStatus === currentStatus || fetchingTransitions}
-                className="flex-1 px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
+                className="flex-1 px-3 py-2 bg-warning text-warning-foreground rounded-lg text-sm font-medium hover:bg-warning/90 disabled:opacity-50"
               >
                 {loading ? "Updating..." : "Apply"}
               </button>

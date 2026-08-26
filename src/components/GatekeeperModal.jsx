@@ -25,7 +25,7 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Dark backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
+        className="absolute inset-0 bg-background/60 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
       />
       
@@ -33,28 +33,28 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
       <div className="relative max-w-md w-full border rounded-3xl p-8 shadow-2xl transition-all duration-300 z-10 transform scale-100 overflow-hidden animate-fade-in-up" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border-card)' }}>
         
         {/* Glow effect in background */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-full transition-colors cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="text-center space-y-5">
           {/* Main Icon */}
-          <div className="relative inline-flex p-4 bg-indigo-50 dark:bg-indigo-950/50 rounded-2xl">
-            <Trophy className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+          <div className="relative inline-flex p-4 bg-primary/10 border border-primary/30 rounded-2xl">
+            <Trophy className="h-10 w-10 text-primary" />
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">
               Welcome to {competitionName || "the Event"}
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 px-2">
+            <p className="text-sm text-muted-foreground px-2">
               Are you a registered participant of this competition? We will set up your experience.
             </p>
           </div>
@@ -64,18 +64,18 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Log In Option */}
             <button
               onClick={handleLoginClick}
-              className="w-full flex items-center justify-between p-4 border hover:border-indigo-500 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 border hover:border-primary/50 rounded-2xl group transition-all duration-200 cursor-pointer"
               style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
-                <div className="p-2.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-105 transition-transform">
+                <div className="p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-105 transition-transform">
                   <LogIn className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <div className="text-sm font-semibold text-foreground">
                     Yes, I am registered
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Log in with your ID to view your dashboard
                   </div>
                 </div>
@@ -85,18 +85,18 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Register Option */}
             <button
               onClick={handleRegisterClick}
-              className="w-full flex items-center justify-between p-4 border hover:border-emerald-500 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 border hover:border-success/50 rounded-2xl group transition-all duration-200 cursor-pointer"
               style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
-                <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl group-hover:scale-105 transition-transform">
+                <div className="p-2.5 bg-success/10 text-success rounded-xl group-hover:scale-105 transition-transform">
                   <UserCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <div className="text-sm font-semibold text-foreground">
                     I am a new participant
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Join this competition or register
                   </div>
                 </div>
@@ -106,18 +106,18 @@ export default function GatekeeperModal({ isOpen, onClose, competitionName, comp
             {/* Just Browsing Option */}
             <button
               onClick={onClose}
-              className="w-full flex items-center justify-between p-4 bg-transparent border border-dashed hover:border-slate-400 rounded-2xl group transition-all duration-200 cursor-pointer"
+              className="w-full flex items-center justify-between p-4 bg-transparent border border-dashed hover:border-muted-foreground/50 rounded-2xl group transition-all duration-200 cursor-pointer"
               style={{ borderColor: 'var(--border-divider)' }}
             >
               <div className="flex items-center gap-3 text-left">
-                <div className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl group-hover:scale-105 transition-transform">
+                <div className="p-2.5 bg-muted text-muted-foreground rounded-xl group-hover:scale-105 transition-transform">
                   <Eye className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                  <div className="text-sm font-semibold text-muted-foreground">
                     Just browsing for now
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Continue as guest to view the standings
                   </div>
                 </div>

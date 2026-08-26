@@ -157,7 +157,7 @@ export default function Dashboard({
             <Route
               path=":actionSlug"
               element={
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div>
                   <Button variant="outline" onClick={handleGoBack} className="mb-6 rounded-full">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
