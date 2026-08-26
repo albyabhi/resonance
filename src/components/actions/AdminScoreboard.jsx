@@ -82,7 +82,7 @@ const MobileRowCard = ({
               onChangeTeam(newTeamId);
               e.target.value = "";
             }}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <option value="" className="bg-popover">Change team</option>
@@ -97,7 +97,7 @@ const MobileRowCard = ({
               value={posValue}
               onChange={(e) => setPosValue(e.target.value)}
               placeholder="Position"
-              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -349,7 +349,7 @@ const AdminScoreboard = () => {
           <select
             value={houseId}
             onChange={(e) => setHouseId(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <option value="" className="bg-popover">Select {groupLabel.toLowerCase()}</option>
@@ -366,7 +366,7 @@ const AdminScoreboard = () => {
           <select
             value={filterEvent}
             onChange={(e) => setFilterEvent(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
           >
             <option value="" className="bg-popover">All events</option>
@@ -514,7 +514,7 @@ const AdminScoreboard = () => {
                                   editRow(row, { team_id: newTeamId });
                                   e.target.value = "";
                                 }}
-                                className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                               >
                                 <option value="" className="bg-popover">Change team</option>
@@ -526,7 +526,7 @@ const AdminScoreboard = () => {
                                 type="number"
                                 min={1}
                                 placeholder="Position"
-                                className="w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="w-24 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                 style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--card-fg)' }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {

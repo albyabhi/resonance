@@ -135,7 +135,7 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
                         className="flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-muted"
                       >
                         <div className="flex items-center gap-2">
-                          <UserCheck className="h-4 w-4 text-emerald-500" />
+                          <UserCheck className="h-4 w-4 text-accent-green" />
                           <div>
                             <p className="text-sm font-medium text-card-foreground">{judgeName}</p>
                             {judgeEmail && (

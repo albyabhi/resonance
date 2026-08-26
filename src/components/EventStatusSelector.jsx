@@ -117,7 +117,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 disabled={fetchingTransitions}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
               >
                 {availableStatuses.map((s) => (
@@ -142,7 +142,7 @@ export default function EventStatusSelector({ event, onStatusChanged }) {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={2}
                 placeholder="Why is this status changing?"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)", color: "var(--card-fg)" }}
               />
             </div>

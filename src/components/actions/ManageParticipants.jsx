@@ -257,14 +257,14 @@ function ManageParticipants() {
 
         {error && (
           <div
-            className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-4"
+            className="bg-accent-red-tint border border-accent-red/20 text-accent-red px-3 py-2 rounded-lg mb-4"
             role="alert"
             aria-live="polite"
           >
             {error}
             <button
               onClick={() => setError("")}
-              className="ml-2 text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              className="ml-2 text-accent-red focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-red rounded"
             >
               ×
             </button>

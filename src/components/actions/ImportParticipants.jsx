@@ -238,7 +238,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm" role="alert">
+        <div className="flex items-center gap-2 bg-accent-red-tint border border-accent-red/20 text-accent-red px-3 py-2 rounded-lg text-sm" role="alert">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
           <Button variant="ghost" size="icon" className="h-6 w-6 p-0" onClick={() => setError("")}>x</Button>
@@ -425,8 +425,8 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
             <div className="flex gap-4 text-sm text-card-foreground">
               <span>Total: <strong>{validationSummary?.total}</strong></span>
               <span className="text-accent-green">Valid: <strong>{validationSummary?.valid}</strong></span>
-              <span className="text-yellow-600">Duplicates: <strong>{validationSummary?.duplicates}</strong></span>
-              <span className="text-red-600">Errors: <strong>{validationSummary?.errors}</strong></span>
+              <span className="text-accent-amber">Duplicates: <strong>{validationSummary?.duplicates}</strong></span>
+              <span className="text-accent-red">Errors: <strong>{validationSummary?.errors}</strong></span>
             </div>
           </Card>
 
@@ -458,7 +458,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                       <TableCell className="text-sm text-card-foreground">{row.phone || "—"}</TableCell>
                       <TableCell>
                         {isDuplicate ? (
-                          <Badge variant="outline" className="text-yellow-600 bg-yellow-50 border-yellow-200">Duplicate</Badge>
+                          <Badge variant="outline" className="text-accent-amber bg-accent-amber-tint border-accent-amber/20">Duplicate</Badge>
                         ) : isError ? (
                           <Badge variant="error" title={row.errors?.join(", ")}>Error</Badge>
                         ) : (
@@ -503,7 +503,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
 
           <div className="text-sm font-medium text-card-foreground">
             Will import: <strong className="text-accent-green">{previewCounts().importCount}</strong>{" "}
-            | Will update: <strong className="text-yellow-600">{previewCounts().updateCount}</strong>{" "}
+            | Will update: <strong className="text-accent-amber">{previewCounts().updateCount}</strong>{" "}
             | Will skip: <strong className="text-muted-foreground">{previewCounts().skipCount}</strong>
           </div>
 
@@ -544,17 +544,17 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                 <p className="text-2xl font-bold text-accent-green">{result.imported}</p>
                 <p className="text-xs text-accent-green">Imported</p>
               </div>
-              <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-yellow-600">{result.updated}</p>
-                <p className="text-xs text-yellow-700">Updated</p>
+              <div className="bg-accent-amber-tint rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-accent-amber">{result.updated}</p>
+                <p className="text-xs text-accent-amber">Updated</p>
               </div>
               <div className="bg-muted rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-muted-foreground">{result.skipped}</p>
                 <p className="text-xs text-muted-foreground">Skipped</p>
               </div>
-              <div className={`rounded-lg p-4 text-center ${result.errors > 0 ? "bg-red-50" : "bg-muted"}`}>
-                <p className={`text-2xl font-bold ${result.errors > 0 ? "text-red-600" : "text-muted-foreground"}`}>{result.errors}</p>
-                <p className={`text-xs ${result.errors > 0 ? "text-red-700" : "text-muted-foreground"}`}>Errors</p>
+              <div className={`rounded-lg p-4 text-center ${result.errors > 0 ? "bg-accent-red-tint" : "bg-muted"}`}>
+                <p className={`text-2xl font-bold ${result.errors > 0 ? "text-accent-red" : "text-muted-foreground"}`}>{result.errors}</p>
+                <p className={`text-xs ${result.errors > 0 ? "text-accent-red" : "text-muted-foreground"}`}>Errors</p>
               </div>
             </div>
 
@@ -578,7 +578,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                           <TableCell className="text-xs">{c.email}</TableCell>
                           <TableCell className="text-xs font-mono text-accent-amber">{c.password}</TableCell>
                           <TableCell>
-                            <Badge variant={c.action === "imported" ? "success" : "outline"} className={c.action !== "imported" ? "text-yellow-600 bg-yellow-50 border-yellow-200" : ""}>
+                            <Badge variant={c.action === "imported" ? "success" : "outline"} className={c.action !== "imported" ? "text-accent-amber bg-accent-amber-tint border-accent-amber/20" : ""}>
                               {c.action === "imported" ? "New" : "Updated"}
                             </Badge>
                           </TableCell>
@@ -610,7 +610,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                       <TableRow key={i} className="border-b border-border">
                         <TableCell className="text-xs">{err.row_number}</TableCell>
                         <TableCell className="text-xs">{err.field || "—"}</TableCell>
-                        <TableCell className="text-xs text-red-600">{err.error}</TableCell>
+                        <TableCell className="text-xs text-accent-red">{err.error}</TableCell>
                         <TableCell className="text-xs">{JSON.stringify(err.row_data)}</TableCell>
                       </TableRow>
                     ))}

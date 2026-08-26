@@ -261,7 +261,7 @@ const ManageResult = () => {
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3">
+          <div className="bg-accent-red-tint border border-accent-red/20 text-accent-red px-3 py-2 rounded-lg mb-3">
             {error}
           </div>
         )}

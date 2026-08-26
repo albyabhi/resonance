@@ -271,7 +271,7 @@ export default function ParticipantLoginPage() {
     }
   };
 
-  const primaryColor = branding?.primary_color || "#B68A32";
+  const primaryColor = branding?.primary_color || "var(--accent-amber)";
   const inputClass = "w-full pl-11 pr-4 py-3 bg-input-bg border border-input rounded-xl focus:ring-2 focus:ring-ring outline-none transition-all text-sm text-foreground placeholder:text-muted-foreground";
   const labelClass = "block text-xs font-semibold mb-1 text-foreground";
   const iconSpan = "absolute inset-y-0 left-0 pl-3.5 flex items-center text-muted-foreground";

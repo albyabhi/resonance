@@ -7,7 +7,7 @@ const MEDAL_STYLES = [
   { border: "border-accent-amber/50", glow: "shadow-accent-amber/20", ring: "from-accent-amber to-accent-amber/80" },
 ];
 
-export default function PublicStandings({ standings, groupLabel = "Group", primaryColor = "#2563EB" }) {
+export default function PublicStandings({ standings, groupLabel = "Group", primaryColor = "var(--primary)" }) {
   const podium = standings.slice(0, 3);
 
   return (

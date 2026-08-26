@@ -241,7 +241,7 @@ export default function WelcomePage() {
 
         {/* Continue Section */}
         {isAuthenticated && (loadingComps || adminCompetitions.length > 0 || participantCompetitions.length > 0) && (
-          <section id="continue-section" className="py-20 scroll-mt-20" style={{ borderTop: "1px solid var(--border)", backgroundColor: "rgba(241, 219, 168, 0.15)" }}>
+          <section id="continue-section" className="py-20 scroll-mt-20" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--accent-amber-tint)" }}>
             <div className="mx-auto max-w-7xl px-6">
               <div className="mb-12 max-w-2xl">
                 <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wider uppercase mb-4"

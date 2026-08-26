@@ -176,7 +176,7 @@ export default function Sidebar({
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] backdrop-blur-sm md:hidden"
-              style={{ backgroundColor: "rgba(45, 52, 44, 0.4)" }}
+              style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
               onClick={onClose} />
             <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}

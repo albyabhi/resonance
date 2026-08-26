@@ -918,7 +918,7 @@ export default function ParticipantRegister() {
                 <form onSubmit={handleInviteTeammates} className="space-y-4">
                   <div>
                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Teammate Email Addresses <span className="text-red-400">*</span>
+                      Teammate Email Addresses <span className="text-accent-red">*</span>
                     </Label>
                     <textarea
                       value={inviteEmails}

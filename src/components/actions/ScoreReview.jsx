@@ -19,8 +19,8 @@ const statusBadgeProps = (status) => {
     draft: { variant: "secondary", className: "" },
     submitted: { variant: "outline", className: "text-accent-amber border-accent-amber bg-accent-amber/10" },
     approved: { variant: "success", className: "" },
-    published: { variant: "outline", className: "text-blue-600 border-blue-200 bg-blue-50" },
-    locked: { variant: "outline", className: "text-purple-600 border-purple-200 bg-purple-50" },
+    published: { variant: "outline", className: "text-accent-blue border-accent-blue/20 bg-accent-blue-tint" },
+    locked: { variant: "outline", className: "text-accent-purple border-accent-purple/20 bg-accent-purple-tint" },
     judging: { variant: "outline", className: "text-accent-amber border-accent-amber bg-accent-amber/10" },
     result_pending: { variant: "outline", className: "text-accent-blue border-accent-blue bg-accent-blue/10" },
   };
@@ -504,9 +504,9 @@ const canRevertAny = allResults.some((r) =>
   const flowSteps = [
     { id: "draft", label: "Draft", desc: "Initial state", color: "text-muted-foreground" },
     { id: "submitted", label: "Submitted", desc: "Judge submitted scores", color: "text-accent-amber" },
-    { id: "approved", label: "Approved", desc: "Internal confirmation — no points yet", color: "text-emerald-600" },
-    { id: "published", label: "Published", desc: "Public — points live on overall standings", color: "text-blue-600" },
-    { id: "locked", label: "Locked", desc: "Final, cannot change", color: "text-purple-600" },
+    { id: "approved", label: "Approved", desc: "Internal confirmation — no points yet", color: "text-accent-green" },
+    { id: "published", label: "Published", desc: "Public — points live on overall standings", color: "text-accent-blue" },
+    { id: "locked", label: "Locked", desc: "Final, cannot change", color: "text-accent-purple" },
   ];
 
   return (
@@ -621,7 +621,7 @@ const canRevertAny = allResults.some((r) =>
                     <Button
                       onClick={() => showConfirm("Confirm & Publish Everything", "Run the full chain: aggregate → approve → publish. Points go live on the overall standings immediately.", () => handleFinalize(false))}
                       disabled={aggregating || finalizing}
-                      className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                      className="bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50"
                     >
                       {finalizing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                       <Rocket className="h-4 w-4 mr-1" /> Confirm &amp; Publish Everything
@@ -639,7 +639,7 @@ const canRevertAny = allResults.some((r) =>
                   <Button
                     onClick={() => showConfirm("Confirm & Publish Everything", "Aggregate latest judge scores, approve, publish, and move the event to published. Points go live on the overall standings.", () => handleFinalize(false))}
                     disabled={aggregating || finalizing}
-                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50"
                   >
                     {finalizing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     <Rocket className="h-4 w-4 mr-1" /> Confirm &amp; Publish Everything
@@ -660,7 +660,7 @@ const canRevertAny = allResults.some((r) =>
               <p className="text-xs text-muted-foreground">Teams Scored</p>
             </div>
             <div className="border border-border rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-600">{totalSubmittedSheets}</p>
+              <p className="text-2xl font-bold text-accent-green">{totalSubmittedSheets}</p>
               <p className="text-xs text-muted-foreground">Submitted Sheets</p>
             </div>
             <div className="border border-border rounded-lg p-3 text-center">
@@ -677,12 +677,12 @@ const canRevertAny = allResults.some((r) =>
           <div
             className={`mb-4 px-3 py-2 rounded-lg border flex items-start gap-2 ${
               judges.all_submitted
-                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40"
-                : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40"
+                ? "border-accent-green/20 bg-accent-green-tint dark:border-accent-green/30 dark:bg-accent-green-tint"
+                : "border-accent-amber/20 bg-accent-amber-tint dark:border-accent-amber/30 dark:bg-accent-amber-tint"
             }`}
           >
             {judges.all_submitted ? (
-              <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-600 shrink-0" />
+              <CheckCircle className="h-4 w-4 mt-0.5 text-accent-green shrink-0" />
             ) : (
               <AlertTriangle className="h-4 w-4 mt-0.5 text-accent-amber shrink-0" />
             )}
@@ -876,7 +876,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => handleApproveResult(r._id, r.position)}
                                         disabled={!canApprove}
-                                        className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                                        className="text-accent-green border-accent-green/20 hover:bg-accent-green-tint"
                                       >
                                         Approve
                                       </Button>
@@ -892,7 +892,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => showConfirm("Reject Result", `Reject position ${r.position}?`, () => handleRejectResult(r._id, r.position))}
                                         disabled={!canApprove}
-                                        className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                                        className="text-accent-red border-accent-red/20 hover:bg-accent-red-tint"
                                       >
                                         Reject
                                       </Button>
@@ -912,7 +912,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => handlePublishResult(r._id, r.position)}
                                         disabled={!canApprove}
-                                        className="text-blue-700 border-blue-200 hover:bg-blue-50"
+                                        className="text-accent-blue border-accent-blue/20 hover:bg-accent-blue-tint"
                                       >
                                         Publish
                                       </Button>
@@ -928,7 +928,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? No points have gone live yet.`, () => handleRevert(r._id, r.position, status))}
                                         disabled={!canApprove}
-                                        className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
+                                        className="text-accent-amber border-accent-amber/20 hover:bg-accent-amber-tint flex items-center gap-1"
                                       >
                                         <Undo2 className="h-3 w-3" /> Revert
                                       </Button>
@@ -948,7 +948,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => showConfirm("Lock Result", `Lock position ${r.position}? This cannot be undone.`, () => handleLockResult(r._id, r.position))}
                                         disabled={!canApprove}
-                                        className="text-purple-700 border-purple-200 hover:bg-purple-50"
+                                        className="text-accent-purple border-accent-purple/20 hover:bg-accent-purple-tint"
                                       >
                                         Lock
                                       </Button>
@@ -964,7 +964,7 @@ const canRevertAny = allResults.some((r) =>
                                         size="sm"
                                         onClick={() => showConfirm("Revert Result", `Revert position ${r.position} to draft? Published points will be removed from the overall standings.`, () => handleRevert(r._id, r.position, status))}
                                         disabled={!canApprove}
-                                        className="text-amber-700 border-amber-200 hover:bg-amber-50 flex items-center gap-1"
+                                        className="text-accent-amber border-accent-amber/20 hover:bg-accent-amber-tint flex items-center gap-1"
                                       >
                                         <Undo2 className="h-3 w-3" /> Revert
                                       </Button>
@@ -978,7 +978,7 @@ const canRevertAny = allResults.some((r) =>
                               {status === "locked" && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">
+                                    <Badge variant="outline" className="text-accent-purple border-accent-purple/20 bg-accent-purple-tint">
                                       Locked
                                     </Badge>
                                   </TooltipTrigger>
@@ -1004,7 +1004,7 @@ const canRevertAny = allResults.some((r) =>
                         <Button
                           onClick={() => showConfirm("Confirm & Publish Everything", "Refresh drafts from latest judge scores, approve, publish all, and mark the event published. Points go live on the overall standings immediately.", () => handleFinalize(false))}
                           disabled={finalizing}
-                          className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                          className="bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50"
                         >
                           {finalizing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-1" />}
                           Confirm &amp; Publish Everything
@@ -1021,7 +1021,7 @@ const canRevertAny = allResults.some((r) =>
                         <TooltipTrigger asChild>
                           <Button
                             onClick={() => showConfirm("Approve All", "Approve all pending results for this round?", handleApproveAll)}
-                            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                            className="bg-accent-green text-white hover:bg-accent-green/90 disabled:opacity-50"
                             disabled={!canApprove}
                           >
                             Approve All
@@ -1052,7 +1052,7 @@ const canRevertAny = allResults.some((r) =>
                       <TooltipTrigger asChild>
                         <Button
                           onClick={() => showConfirm("Revert All", "Revert all approved/published results to draft for this round?", handleRevertAll)}
-                          className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                          className="bg-accent-amber text-white hover:bg-accent-amber/90 disabled:opacity-50"
                           disabled={!canApprove}
                         >
                           Revert All
@@ -1068,7 +1068,7 @@ const canRevertAny = allResults.some((r) =>
                       <TooltipTrigger asChild>
                         <Button
                           onClick={() => showConfirm("Publish All", "Publish all approved results for this round?", handlePublishAll)}
-                          className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                          className="bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50"
                           disabled={!canApprove}
                         >
                           Publish All Approved
@@ -1084,7 +1084,7 @@ const canRevertAny = allResults.some((r) =>
                       <TooltipTrigger asChild>
                         <Button
                           onClick={() => showConfirm("Lock All", "Lock all published results for this round? This cannot be undone.", handleLockAll)}
-                          className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                          className="bg-accent-purple text-white hover:bg-accent-purple/90 disabled:opacity-50"
                           disabled={!canApprove}
                         >
                           Lock All Published
@@ -1146,7 +1146,7 @@ const canRevertAny = allResults.some((r) =>
                                 size="sm"
                                 onClick={() => showConfirm("Delete Result", `Delete position ${row.position}?`, () => handleDeleteResult(row._id, row.position))}
                                 disabled={!canApprove}
-                                className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                                className="text-accent-red border-accent-red/20 hover:bg-accent-red-tint"
                               >
                                 Delete
                               </Button>

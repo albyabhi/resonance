@@ -143,6 +143,11 @@
 
     /* ── Elevation ────────────────────────────────────── */
     --shadow-card: 0 2px 12px rgba(45, 52, 44, 0.05);
+    --shadow-card-hover: 0 4px 16px rgba(45, 52, 44, 0.08);
+
+    /* ── Glass ────────────────────────────────────────── */
+    --glass-bg: rgba(251, 246, 233, 0.85);
+    --glass-border: rgba(216, 201, 168, 0.15);
 
     /* ── Bohemian-specific tokens ─────────────────────── */
     --ticker-bg: #376D62;
@@ -247,6 +252,11 @@
 
     /* ── Elevation (dark) ─────────────────────────────── */
     --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+    /* ── Glass (dark) ────────────────────────────────── */
+    --glass-bg: rgba(26, 23, 20, 0.85);
+    --glass-border: rgba(61, 56, 48, 0.15);
 
     /* ── Bohemian-specific tokens (dark) ──────────────── */
     --ticker-bg: #4E9A8C;
@@ -311,7 +321,7 @@
   }
 
   .card-premium:hover {
-    box-shadow: 0 4px 16px rgba(45, 52, 44, 0.08);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .card-secondary {
@@ -334,13 +344,13 @@
   /* ── Glass header ───────────────────────────────────── */
   .glass {
     @apply backdrop-blur-xl border-b;
-    background: rgba(251, 246, 233, 0.85);
-    border-color: rgba(216, 201, 168, 0.15);
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
   }
 
   .dark .glass {
-    background: rgba(26, 23, 20, 0.85);
-    border-color: rgba(61, 56, 48, 0.15);
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
   }
 
   /* ── Theme text utilities ────────────────────────────── */

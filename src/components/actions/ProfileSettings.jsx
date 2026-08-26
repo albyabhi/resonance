@@ -164,7 +164,7 @@ export default function ProfileSettings() {
           )}
 
           {success && (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-600 dark:text-emerald-400">
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-accent-green/20 bg-accent-green-tint p-4 text-sm text-accent-green">
               <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
               <p>{success}</p>
             </div>

@@ -170,7 +170,7 @@ export default function ManageCompetition() {
       )}
 
       {success && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-4 text-emerald-600 dark:text-emerald-400 animate-in slide-in-from-top-2">
+        <div className="p-4 bg-accent-green-tint border border-accent-green/20 rounded-lg flex items-center gap-4 text-accent-green animate-in slide-in-from-top-2">
           <Globe className="w-5 h-5 shrink-0" />
           <p className="text-xs font-bold uppercase tracking-widest leading-none">{success}</p>
         </div>
@@ -194,7 +194,7 @@ export default function ManageCompetition() {
                   <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Share Public URL</p>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
                     formData.is_public
-                      ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                      ? "text-accent-green border-accent-green/30 bg-accent-green-tint"
                       : "text-muted-foreground border-border bg-background"
                   }`}>
                     {formData.is_public ? "Public" : "Private"}

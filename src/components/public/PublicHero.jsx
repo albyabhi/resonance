@@ -10,7 +10,7 @@ const STATUS_STYLES = {
 
 export default function PublicHero({ competition }) {
   const { name, year, status, logoUrl, branding, current_stage, group_label_plural } = competition;
-  const primary = branding?.primary_color || "#2563EB";
+  const primary = branding?.primary_color || "var(--primary)";
   const statusInfo = STATUS_STYLES[status] || STATUS_STYLES.upcoming;
 
   return (

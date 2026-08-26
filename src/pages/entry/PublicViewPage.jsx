@@ -126,7 +126,7 @@ export default function PublicViewPage() {
   }
 
   const { competition, stats, standings, events, results, ticker } = data;
-  const primaryColor = competition.branding?.primary_color || "#2563EB";
+  const primaryColor = competition.branding?.primary_color || "var(--primary)";
 
   // ─── Kiosk layout: full-screen standings HUD ──────────────────────────────────
   if (isKiosk) {
@@ -178,12 +178,12 @@ export default function PublicViewPage() {
                       key={group._id}
                       className={`relative overflow-hidden flex items-center justify-between p-6 rounded-xl border transition-all duration-500 ${
                         index === 0
-                          ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                          ? "bg-primary/10 border-primary/30 shadow-[0_0_15px_var(--accent-blue-tint)]"
                           : "bg-muted/50 border-border/50"
                       }`}
                     >
                       {index === 0 && (
-                        <div className="absolute top-0 left-0 w-1 h-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary shadow-[0_0_10px_var(--primary)]" />
                       )}
                       <div className="flex items-center gap-4 z-10">
                         <div className="font-black text-muted-foreground text-5xl w-16">{index + 1}</div>
@@ -213,7 +213,7 @@ export default function PublicViewPage() {
                     className="h-full rounded-full transition-all duration-1000 ease-out"
                     style={{
                       width: `${stats.progress_percent}%`,
-                      background: `linear-gradient(to right, ${primaryColor}, #6366f1)`,
+                      background: `linear-gradient(to right, ${primaryColor}, var(--accent-purple))`,
                     }}
                   ></div>
                 </div>

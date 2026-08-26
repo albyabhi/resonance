@@ -20,7 +20,7 @@ function CountUp({ target, duration = 900 }) {
   return <>{value}</>;
 }
 
-export default function PublicStats({ stats, primaryColor = "#2563EB" }) {
+export default function PublicStats({ stats, primaryColor = "var(--primary)" }) {
   const cards = [
     {
       key: "groups",

@@ -205,7 +205,7 @@ export default function CaptainEventRegister() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-sm font-semibold">
+        <div className="flex items-center gap-3 p-4 bg-accent-red-tint border border-accent-red/20 text-accent-red rounded-2xl text-sm font-semibold">
           <AlertCircle className="h-5 w-5 shrink-0" />
           {error}
         </div>
@@ -292,10 +292,10 @@ export default function CaptainEventRegister() {
                         {e.registration_mode && (
                           <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-wider ${
                             e.registration_mode === "captain"
-                              ? "border-amber-200 bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30"
+                              ? "border-accent-amber/20 bg-accent-amber-tint text-accent-amber"
                               : e.registration_mode === "participant"
-                              ? "border-sky-200 bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-900/30"
-                              : "border-purple-200 bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/30"
+                              ? "border-accent-teal/20 bg-accent-teal-tint text-accent-teal"
+                              : "border-accent-purple/20 bg-accent-purple-tint text-accent-purple"
                           }`}>
                             {e.registration_mode === "captain" ? "Captain" : e.registration_mode === "participant" ? "Self" : "Open"}
                           </Badge>
@@ -452,7 +452,7 @@ export default function CaptainEventRegister() {
             {selectedEvent?.event_type === "team" && (
               <div className="space-y-2">
                 <Label>
-                  Team Name <span className="text-red-400">*</span>
+                  Team Name <span className="text-accent-red">*</span>
                 </Label>
                 <Input
                   type="text"
@@ -558,7 +558,7 @@ export default function CaptainEventRegister() {
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent-blue/10 text-accent-blue"
                       >
                         {p.name}
-                        <button onClick={(e) => { e.stopPropagation(); toggleParticipantSelection(id); }} className="ml-0.5 hover:text-red-500">
+                        <button onClick={(e) => { e.stopPropagation(); toggleParticipantSelection(id); }} className="ml-0.5 hover:text-accent-red">
                           <X className="h-3 w-3" />
                         </button>
                       </span>

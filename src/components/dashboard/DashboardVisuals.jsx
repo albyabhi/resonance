@@ -111,7 +111,7 @@ function StandingsTable({ scoreboard = [], userHouseId }) {
           return (
             <TableRow
               key={getScoreboardId(item) || index}
-              style={{ backgroundColor: isCurrent ? "rgba(30, 161, 255, 0.06)" : undefined }}
+              style={{ backgroundColor: isCurrent ? "var(--accent-blue-tint)" : undefined }}
             >
               <TableCell className="font-semibold">#{item.rank || index + 1}</TableCell>
               <TableCell className="font-medium truncate max-w-[200px]">{getScoreboardName(item)}</TableCell>

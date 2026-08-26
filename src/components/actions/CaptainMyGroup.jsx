@@ -187,14 +187,14 @@ export default function CaptainMyGroup() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-sm font-semibold">
+        <div className="flex items-center gap-3 p-4 bg-accent-red-tint border border-accent-red/20 text-accent-red rounded-2xl text-sm font-semibold">
           <AlertCircle className="h-5 w-5 shrink-0" />
           {error}
         </div>
       )}
 
       {!canCreateParticipants && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl text-sm flex items-center gap-3">
+        <div className="p-4 bg-accent-amber-tint border border-accent-amber/20 text-accent-amber rounded-2xl text-sm flex items-center gap-3">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div>
             <p className="font-semibold">Participants are managed by the organizer for this competition.</p>
@@ -213,7 +213,7 @@ export default function CaptainMyGroup() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>
-                    Name <span className="text-red-400">*</span>
+                    Name <span className="text-accent-red">*</span>
                   </Label>
                   <Input
                     type="text" required
@@ -224,7 +224,7 @@ export default function CaptainMyGroup() {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Class <span className="text-red-400">*</span>
+                    Class <span className="text-accent-red">*</span>
                   </Label>
                   <Input
                     type="text" required
@@ -444,7 +444,7 @@ export default function CaptainMyGroup() {
                       <Button
                         variant="outline"
                         onClick={() => setDeleteTarget(p)}
-                        className="flex-1 min-h-[44px] gap-2 text-red-600"
+                        className="flex-1 min-h-[44px] gap-2 text-accent-red"
                       >
                         <Trash2 className="h-4 w-4" /> Delete
                       </Button>
@@ -534,7 +534,7 @@ export default function CaptainMyGroup() {
                             <Edit className="h-4 w-4 text-accent-blue" />
                           </Button>
                           <Button variant="ghost" onClick={() => setDeleteTarget(p)} className="h-8 w-8 p-0" title="Delete">
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-accent-red" />
                           </Button>
                         </div>
                       </TableCell>
