@@ -7,6 +7,10 @@ const ACCENT = {
   amber: { css: "icon-tile-amber", color: "var(--accent-amber)" },
   teal: { css: "icon-tile-teal", color: "var(--accent-teal)" },
   red: { css: "icon-tile-red", color: "var(--accent-red)" },
+  terracotta: { css: "icon-tile-red", color: "var(--accent-red)" },
+  mustard: { css: "icon-tile-amber", color: "var(--accent-amber)" },
+  plum: { css: "icon-tile-purple", color: "var(--accent-purple)" },
+  forest: { css: "icon-tile-teal", color: "var(--accent-teal)" },
 };
 
 function Sparkline({ color = "var(--accent-blue)", data = [2, 3, 2.5, 4, 3.5, 5, 4.5] }) {

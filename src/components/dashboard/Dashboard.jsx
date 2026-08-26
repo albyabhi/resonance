@@ -238,7 +238,7 @@ export default function Dashboard({
           />
         )}
 
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: "1px solid var(--border-divider)", backgroundColor: "var(--card)" }}>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
           <div className="flex h-16 justify-around items-center px-2">
             <button onClick={() => handleSectionClick("home")}
               className="flex flex-col items-center justify-center w-full h-full space-y-1"

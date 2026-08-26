@@ -2,7 +2,6 @@
 <html lang="en" suppressHydrationWarning>
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/src/assets/Rlogo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- ── Phase 3 – Static meta tags ──────────────────────────── -->
@@ -12,13 +11,13 @@
     <!-- Media-aware theme-color: first matching tag wins.
          Chrome & Safari read the media attribute and pick the right one
          based on the OS preference. -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F6F2" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0B0C0C" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F0DF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#1A1714" />
 
     <!-- Fallback theme-color (no media) – used by crawlers and browsers
          that don't support the media attribute. Phase 4's sync hook
          updates this tag dynamically when the user toggles. -->
-    <meta name="theme-color" content="#F7F6F2" />
+    <meta name="theme-color" content="#F7F0DF" />
 
     <!-- ── Phase 6 – PWA manifest link ─────────────────────────── -->
     <link rel="manifest" href="/manifest.json" />
@@ -26,7 +25,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
 
     <title>Resonance 2026</title>
 
@@ -52,7 +51,7 @@
 
         // Update the fallback <meta name="theme-color"> tag to match
         var fallback = document.querySelector('meta[name="theme-color"]:not([media])');
-        if (fallback) fallback.setAttribute('content', dark ? '#0B0C0C' : '#F7F6F2');
+        if (fallback) fallback.setAttribute('content', dark ? '#1A1714' : '#F7F0DF');
       })();
     </script>
   </head>

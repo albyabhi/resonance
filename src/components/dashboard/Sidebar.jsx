@@ -92,7 +92,7 @@ export default function Sidebar({
   }, [open, onClose]);
 
   const SidebarContent = (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--sidebar)", borderRight: "1px solid var(--border-divider)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--sidebar)", borderRight: "1px solid var(--border)" }}>
       <div className="flex-1 overflow-y-auto py-6 space-y-8">
         <section>
           {sidebarOpen && (
@@ -131,7 +131,7 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="p-4" style={{ borderTop: "1px solid var(--border-divider)", backgroundColor: "var(--sidebar)" }}>
+      <div className="p-4" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--sidebar)" }}>
         <div className={`flex items-center ${sidebarOpen ? "mb-4 gap-3" : "justify-center mb-3"}`}>
           <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ backgroundColor: "var(--muted)" }}>
             {user?.profile_image ? (
@@ -176,7 +176,7 @@ export default function Sidebar({
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] backdrop-blur-sm md:hidden"
-              style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+              style={{ backgroundColor: "rgba(45, 52, 44, 0.4)" }}
               onClick={onClose} />
             <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}

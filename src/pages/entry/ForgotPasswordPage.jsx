@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Mail, KeyRound, ArrowRight, Trophy } from 'lucide-react';
+import { Mail, KeyRound, ArrowRight } from 'lucide-react';
 import { apiJson } from '../../utils/apiClient';
 
 export default function ForgotPasswordPage() {
@@ -36,9 +36,6 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-foreground">
       <div className="max-w-md w-full bg-card border border-border rounded-3xl p-8 shadow-xl relative overflow-hidden transition-all duration-300">
         
-        {/* Glow accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary-strong" />
-
         <div className="text-center mb-8">
           <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-4">
             <KeyRound className="h-6 w-6 text-primary" />

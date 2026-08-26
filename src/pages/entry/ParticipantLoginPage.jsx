@@ -11,7 +11,6 @@ import {
   Mail, 
   UserPlus, 
   LogIn, 
-  Trophy, 
   ArrowRight,
   Layers,
   Calendar,
@@ -285,7 +284,6 @@ export default function ParticipantLoginPage() {
           className="w-full max-w-lg mb-6 py-2.5 px-4 text-center text-xs font-semibold tracking-wider uppercase rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300 flex items-center justify-center gap-1.5"
           style={{ backgroundColor: `${primaryColor}15`, color: primaryColor, border: `1px solid ${primaryColor}30` }}
         >
-          <Trophy className="h-3.5 w-3.5" />
           {matchedCompetitionName} • Participant Portal
         </div>
       )}
@@ -301,16 +299,12 @@ export default function ParticipantLoginPage() {
 
         {/* Brand header */}
         <div className="text-center mb-6">
-          {branding?.logo_url ? (
+          {branding?.logo_url && (
             <img 
               src={branding.logo_url} 
               alt={matchedCompetitionName} 
               className="h-14 w-auto mx-auto mb-3 object-contain rounded-2xl animate-in zoom-in-95 duration-300"
             />
-          ) : (
-            <div className="h-12 w-12 rounded-2xl bg-accent-amber-tint flex items-center justify-center mx-auto mb-3 border border-border">
-              <Trophy className="h-6 w-6 text-primary" style={{ color: primaryColor }} />
-            </div>
           )}
           
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -328,7 +322,6 @@ export default function ParticipantLoginPage() {
               You are registering for
             </p>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <Trophy className="h-4 w-4 text-accent-amber shrink-0" />
               {eventData.event.title || eventData.event.name}
             </h3>
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -469,12 +462,8 @@ export default function ParticipantLoginPage() {
                             onClick={() => handleCompetitionSelection(competition._id || competition.id)}
                             className="w-full flex items-center gap-3 p-3 rounded-2xl border border-border bg-muted hover:border-primary text-left transition-all disabled:opacity-60"
                           >
-                            {competition.logoUrl ? (
-                              <img src={competition.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain bg-card border border-border" />
-                            ) : (
-                              <span className="h-10 w-10 rounded-xl bg-accent-amber-tint flex items-center justify-center shrink-0">
-                                <Trophy className="h-5 w-5" style={{ color: primaryColor }} />
-                              </span>
+                            {competition.logoUrl && (
+                              <img src={competition.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain bg-card border border-border shrink-0" />
                             )}
                             <span className="min-w-0 flex-1">
                               <span className="block text-sm font-bold text-foreground truncate">{competition.name}</span>

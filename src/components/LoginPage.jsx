@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
-import { User, KeyRound, Lock, ArrowRight, Trophy } from "lucide-react";
+import { User, KeyRound, Lock, ArrowRight } from "lucide-react";
 import { apiJson } from "../utils/apiClient";
 
 export default function LoginPage({ onLogin = () => {} }) {
@@ -54,14 +54,8 @@ export default function LoginPage({ onLogin = () => {} }) {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-foreground">
       <div className="max-w-md w-full bg-card border border-border rounded-3xl p-8 shadow-xl relative overflow-hidden transition-all duration-300">
         
-        {/* Glow accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-secondary" />
-
         <div className="text-center mb-8">
-          <div className="h-12 w-12 rounded-2xl bg-accent-amber-tint flex items-center justify-center mx-auto mb-4 border border-border">
-            <Trophy className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary" style={{ fontFamily: "var(--font-poppins)" }}>
             Resonance
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
