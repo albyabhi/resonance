@@ -14,6 +14,7 @@ import PublicViewPage from './pages/entry/PublicViewPage';
 import ForgotPasswordPage from './pages/entry/ForgotPasswordPage';
 import ResetPasswordPage from './pages/entry/ResetPasswordPage';
 import SetupPasswordPage from './pages/entry/SetupPasswordPage';
+import ParticipantSetupPasswordPage from './pages/entry/ParticipantSetupPasswordPage';
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
@@ -49,6 +50,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       <Route path="/setup-password/:token" element={<SetupPasswordPage />} />
+      <Route path="/participant-setup-password/:token" element={<ParticipantSetupPasswordPage />} />
       <Route path="/participate/:eventId" element={<ParticipateRedirectPage />} />
       <Route path="/participant-login" element={<ParticipantLoginPage />} />
 

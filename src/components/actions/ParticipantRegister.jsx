@@ -64,8 +64,7 @@ export default function ParticipantRegister() {
   const [inviteEmails, setInviteEmails] = useState("");
   const [inviting, setInviting] = useState(false);
 
-  const queryParams = new URLSearchParams(window.location.search);
-  const shareEventId = queryParams.get("eventId");
+  const shareEventId = useMemo(() => new URLSearchParams(window.location.search).get("eventId"), []);
 
   // Withdraw state
   const [withdrawingId, setWithdrawingId] = useState(null);
@@ -117,43 +116,6 @@ export default function ParticipantRegister() {
     if (token) fetchData();
   }, [token, lastUpdate, fetchData]);
 
-  useEffect(() => {
-    if (events.length > 0 && shareEventId) {
-      const target = events.find(e => (e._id || e.event_id) === shareEventId);
-      if (target) {
-        const alreadyReg = myRegistrations.some(r => (r.event_id?._id || r.event_id) === shareEventId);
-        if (!alreadyReg) {
-          toast(
-            <span className="flex items-center gap-2 font-medium">
-              <Info className="h-5 w-5 text-accent-blue shrink-0" />
-              You were redirected to register for: <b>{target.title || target.name}</b>
-            </span>
-          , { duration: 4000 });
-
-          setTimeout(() => {
-            const el = document.getElementById(`event-card-${shareEventId}`);
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-              el.classList.add("ring-4", "ring-accent-blue", "ring-offset-2");
-              setTimeout(() => {
-                el.classList.remove("ring-4", "ring-accent-blue", "ring-offset-2");
-              }, 3000);
-            }
-          }, 800);
-
-          if (target.event_type === "individual") {
-            handleIndividualParticipate(target);
-          } else {
-            openTeamModal(target);
-          }
-        } else {
-          toast.success(`You are already registered for ${target.title || target.name}!`, { icon: <CheckCircle className="h-5 w-5 text-accent-green" /> });
-          setActiveTab("my-events");
-        }
-      }
-    }
-  }, [events, shareEventId, myRegistrations, handleIndividualParticipate, openTeamModal]);
-
   const fetchEventTeams = useCallback(async (event) => {
     const eventId = event._id || event.event_id;
     try {
@@ -201,6 +163,43 @@ export default function ParticipantRegister() {
     setInviteEmails("");
     fetchEventTeams(event);
   }, [fetchEventTeams]);
+
+  useEffect(() => {
+    if (events.length > 0 && shareEventId) {
+      const target = events.find(e => (e._id || e.event_id) === shareEventId);
+      if (target) {
+        const alreadyReg = myRegistrations.some(r => (r.event_id?._id || r.event_id) === shareEventId);
+        if (!alreadyReg) {
+          toast(
+            <span className="flex items-center gap-2 font-medium">
+              <Info className="h-5 w-5 text-accent-blue shrink-0" />
+              You were redirected to register for: <b>{target.title || target.name}</b>
+            </span>
+          , { duration: 4000 });
+
+          setTimeout(() => {
+            const el = document.getElementById(`event-card-${shareEventId}`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("ring-4", "ring-accent-blue", "ring-offset-2");
+              setTimeout(() => {
+                el.classList.remove("ring-4", "ring-accent-blue", "ring-offset-2");
+              }, 3000);
+            }
+          }, 800);
+
+          if (target.event_type === "individual") {
+            handleIndividualParticipate(target);
+          } else {
+            openTeamModal(target);
+          }
+        } else {
+          toast.success(`You are already registered for ${target.title || target.name}!`, { icon: <CheckCircle className="h-5 w-5 text-accent-green" /> });
+          setActiveTab("my-events");
+        }
+      }
+    }
+  }, [events, shareEventId, myRegistrations, handleIndividualParticipate, openTeamModal]);
 
   const closeTeamModal = () => {
     setSelectedEvent(null);
@@ -576,6 +575,14 @@ export default function ParticipantRegister() {
                             className="w-full bg-accent-green/10 text-accent-green border-accent-green/30 cursor-default"
                           >
                             <CheckCircle className="h-4 w-4 mr-2" /> Selected
+                          </Button>
+                        ) : e.status !== "registration_open" ? (
+                          <Button
+                            disabled
+                            variant="outline"
+                            className="w-full bg-muted text-muted-foreground cursor-not-allowed"
+                          >
+                            <Lock className="h-4 w-4 mr-2" /> Registration {e.status === "registration_closed" ? "Closed" : "Not Open"}
                           </Button>
                         ) : isEventFullForGroup(e) ? (
                           <Button

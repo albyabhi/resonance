@@ -3,7 +3,7 @@ import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, Copy, Download } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
@@ -560,14 +560,14 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
 
             {result.credentials?.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold mb-2 text-card-foreground">Generated Credentials</h4>
+                <h4 className="text-sm font-semibold mb-2 text-card-foreground">Setup Links</h4>
                 <div className="overflow-x-auto rounded-lg border border-border mb-4">
                   <Table>
                     <TableHeader className="bg-muted">
                       <TableRow>
                         <TableHead className="text-xs">Name</TableHead>
                         <TableHead className="text-xs">Email</TableHead>
-                        <TableHead className="text-xs">Password</TableHead>
+                        <TableHead className="text-xs">Setup Link</TableHead>
                         <TableHead className="text-xs">Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -576,11 +576,19 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                         <TableRow key={i} className="border-b border-border">
                           <TableCell className="text-xs">{c.name}</TableCell>
                           <TableCell className="text-xs">{c.email}</TableCell>
-                          <TableCell className="text-xs font-mono text-accent-amber">{c.password}</TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate" title={c.setup_link}>{c.setup_link}</TableCell>
                           <TableCell>
-                            <Badge variant={c.action === "imported" ? "success" : "outline"} className={c.action !== "imported" ? "text-accent-amber bg-accent-amber-tint border-accent-amber/20" : ""}>
-                              {c.action === "imported" ? "New" : "Updated"}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant={c.action === "imported" ? "success" : "outline"} className={c.action !== "imported" ? "text-accent-amber bg-accent-amber-tint border-accent-amber/20" : ""}>
+                                {c.action === "imported" ? "New" : "Updated"}
+                              </Badge>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                navigator.clipboard.writeText(c.setup_link);
+                                toast.success("Link copied");
+                              }}>
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -588,8 +596,8 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                   </Table>
                 </div>
                 <p className="text-xs mb-4 text-muted-foreground">
-                  Passwords are auto-generated. If <strong>Admission No</strong> was provided, password = {`<admission_no> + <class>`} (e.g. "202501MCAB").
-                  Otherwise a random password was generated. Share these credentials with participants.
+                  Each participant has a one-time setup link. Share the link with each participant to set their password.
+                  The link expires once used.
                 </p>
               </div>
             )}
@@ -621,6 +629,23 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={resetAll}>Import Another File</Button>
+              {result.credentials?.length > 0 && (
+                <Button variant="outline" onClick={() => {
+                  const wsData = [["Name", "Email", "Setup Link"]];
+                  result.credentials.forEach(c => {
+                    wsData.push([c.name, c.email, c.setup_link]);
+                  });
+                  const ws = XLSX.utils.aoa_to_sheet(wsData);
+                  ws["!cols"] = [{ wch: 25 }, { wch: 30 }, { wch: 60 }];
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, "Setup Links");
+                  const groupName = groups.find((g) => g._id === selectedGroup)?.name || "Import";
+                  XLSX.writeFile(wb, `${groupName}_Setup_Links.xlsx`);
+                  toast.success("Excel downloaded");
+                }}>
+                  <Download className="h-4 w-4 mr-1" /> Download Excel
+                </Button>
+              )}
               <Button onClick={onDone}>Back to Participants</Button>
             </div>
           </CardContent>

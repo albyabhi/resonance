@@ -215,6 +215,10 @@ export const API_ROUTES = {
       EXECUTE: '/api/participants/import/execute',
       JOB: (jobId) => `/api/participants/import/${jobId}`,
     },
+    EXPORT: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return `/api/participants/export${q ? `?${q}` : ''}`;
+    },
   },
 
   // Events

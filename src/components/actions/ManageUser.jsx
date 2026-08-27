@@ -272,7 +272,7 @@ const ManageUser = () => {
         {credentials && (
           <Card className="border-2 border-accent-green/40">
             <CardHeader>
-              <CardTitle className="text-accent-green">User Created — Share Credentials</CardTitle>
+              <CardTitle className="text-accent-green">User Created — Share Setup Link</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto rounded-lg border border-border mb-4">
@@ -295,15 +295,6 @@ const ManageUser = () => {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-medium text-foreground">Password</TableCell>
-                      <TableCell className="font-mono text-accent-amber">{credentials.password}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.password, "Password")}>
-                          <Copy className="h-3 w-3 mr-1" /> Copy
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
                       <TableCell className="font-medium text-foreground">Setup Link</TableCell>
                       <TableCell className="text-xs break-all text-muted-foreground">{credentials.setup_link}</TableCell>
                       <TableCell>
@@ -316,8 +307,8 @@ const ManageUser = () => {
                 </Table>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
-                Share the password or the setup link with the user. The link expires in 7 days.
-                The user can set their password at the link and then sign in.
+                Share the setup link with the user. The link is one-time use and expires in 7 days.
+                The user sets their own password at the link and then signs in.
               </p>
               <div className="flex gap-2">
                 <Button onClick={() => { setCredentials(null); setActiveTab("manage"); }}>

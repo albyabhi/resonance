@@ -4,6 +4,8 @@ import { apiJson, API_ROUTES, buildUrl } from "../../utils/apiClient";
 import usePermission from "../../hooks/usePermission";
 import { useCompetition } from "../../context/CompetitionContext";
 import ImportParticipants from "./ImportParticipants";
+import ExportParticipantsDialog from "./ExportParticipantsDialog";
+import toast from "react-hot-toast";
 import {
   Card, CardHeader, CardTitle, CardContent,
 } from "../ui/card";
@@ -22,7 +24,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
   AlertDialogAction, AlertDialogCancel,
 } from "../ui/alert-dialog";
-import { Pencil, Trash2, AlertTriangle, XCircle, ArrowLeftCircle } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, XCircle, ArrowLeftCircle, Download, Copy } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { getParticipantStatusMeta } from "../../utils/participantStatus";
 
@@ -53,6 +55,8 @@ function ManageParticipants() {
   const [addForm, setAddForm] = useState({ name: "", class: "", group_id: "", admission_no: "", phone: "", email: "", gender: "" });
 
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -121,10 +125,11 @@ function ManageParticipants() {
     setError("");
     setLoading(true);
     try {
-      const { participant } = await apiCall(API_ROUTES.PARTICIPANTS.CREATE, {
+      const { participant, setup_link } = await apiCall(API_ROUTES.PARTICIPANTS.CREATE, {
         method: "POST",
         body: JSON.stringify(addForm),
       });
+      setCreatedCredentials({ name: participant.name, email: participant.email, setup_link });
       setAddForm({ name: "", class: "", group_id: "", admission_no: "", phone: "", email: "", gender: "" });
       setParticipants((prev) => [participant, ...prev]);
       setActiveTab("all");
@@ -133,6 +138,13 @@ function ManageParticipants() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text).then(
+      () => toast.success(`${label} copied to clipboard`),
+      () => toast.error("Failed to copy")
+    );
   };
 
   const handleEditStart = (stu) => {
@@ -271,6 +283,33 @@ function ManageParticipants() {
           </div>
         )}
 
+        {createdCredentials && (
+          <Card className="border-2 border-accent-green/40 mb-4">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-accent-green">Participant Created — Share Setup Link</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Share the one-time setup link with <strong>{createdCredentials.name}</strong>. The link expires in 7 days.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCreatedCredentials(null)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex items-center gap-2 bg-muted rounded-lg p-2">
+                <span className="text-xs truncate flex-1 text-muted-foreground">{createdCredentials.setup_link}</span>
+                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(createdCredentials.setup_link, "Setup link")}>
+                  <Copy className="h-3 w-3 mr-1" /> Copy Link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="mb-4">
           <CardContent className="p-1 flex gap-1" role="tablist" aria-label="Participant management views">
             {tabs.map((tab) => (
@@ -333,6 +372,9 @@ function ManageParticipants() {
               </div>
               <Button variant="outline" onClick={handleDeselectAll}>Clear Selection</Button>
               <Button variant="outline" onClick={handleSelectAll}>Select All</Button>
+              <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
               <Button variant="destructive" disabled={!selectedIds.length} onClick={() => setDeleteTarget({ type: "bulk" })}>
                 Bulk Delete
               </Button>
@@ -608,6 +650,13 @@ function ManageParticipants() {
           </AlertDialogAction>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ExportParticipantsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        groups={groups}
+        groupLabel={groupLabel}
+      />
     </div>
   );
 }
