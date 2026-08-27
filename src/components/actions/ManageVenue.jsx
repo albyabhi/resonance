@@ -13,6 +13,7 @@ import {
 } from "../ui/table";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -25,6 +26,7 @@ const ManageVenue = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: "", location: "", capacity: "", coordinator_id: "" });
+  const [coordinators, setCoordinators] = useState([]);
 
   const competitionId = competition?._id || competition?.id || competition?.competition_id;
 
@@ -53,6 +55,19 @@ const ManageVenue = () => {
   useEffect(() => {
     if (token && competitionId) loadVenues();
   }, [token, competitionId, loadVenues]);
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchCoordinators = async () => {
+      try {
+        const { data } = await apiCall("/api/event/coordinators");
+        setCoordinators(data || []);
+      } catch {
+        setCoordinators([]);
+      }
+    };
+    fetchCoordinators();
+  }, [token, apiCall]);
 
   const resetForm = () => {
     setForm({ name: "", location: "", capacity: "", coordinator_id: "" });
@@ -174,12 +189,22 @@ const ManageVenue = () => {
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   Coordinator
                 </label>
-                <Input
-                  type="text"
-                  value={form.coordinator_id}
-                  onChange={(e) => setForm({ ...form, coordinator_id: e.target.value })}
-                  placeholder="User ID (optional)"
-                />
+                <Select
+                  value={form.coordinator_id || "none"}
+                  onValueChange={(v) => setForm({ ...form, coordinator_id: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {coordinators.map((c) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.name}{c.email ? ` (${c.email})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex gap-2">

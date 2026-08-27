@@ -59,6 +59,10 @@
   --font-poppins: "Fraunces", serif;
   --font-mono: "DM Mono", "monospace";
 
+  /* ── Bohemian ticker tokens ────────────────────────── */
+  --color-ticker-bg: var(--ticker-bg);
+  --color-ticker-text: var(--ticker-text);
+
   /* ── Animation easings ──────────────────────────────── */
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
 }

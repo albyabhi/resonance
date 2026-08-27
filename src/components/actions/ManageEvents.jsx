@@ -3,7 +3,7 @@ import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
-import { Share2, Copy, Download, X, ChevronDown, ChevronRight, Plus, UserCheck } from "lucide-react";
+import { Share2, Copy, Download, X, ChevronDown, ChevronRight, Plus, UserCheck, MapPin } from "lucide-react";
 import { useRealtime } from "../../context/RealtimeContext";
 import EventStatusBadge from "../EventStatusBadge";
 import EventStatusSelector from "../EventStatusSelector";
@@ -85,6 +85,7 @@ const DEFAULT_EVENT_FORM = {
   status: "draft",
   registration_closes_at: "",
   coordinator_id: "",
+  venue_id: "",
 };
 
 const DEFAULT_ROUND = {
@@ -145,6 +146,10 @@ const ManageEvents = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const [coordinators, setCoordinators] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [showCreateVenue, setShowCreateVenue] = useState(false);
+  const [createVenueContext, setCreateVenueContext] = useState(null); // {source: "event_form" | "round", roundIndex?: number}
+  const [venueForm, setVenueForm] = useState({ name: "", location: "", capacity: "" });
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -207,6 +212,21 @@ const ManageEvents = () => {
     fetchCoordinators();
   }, [token, apiCall]);
 
+  useEffect(() => {
+    if (!token) return;
+    const fetchVenues = async () => {
+      try {
+        const competitionId = competition?._id || competition?.id || competition?.competition_id;
+        const query = competitionId ? `?competition_id=${competitionId}` : "";
+        const { data } = await apiCall(`/api/venues${query}`);
+        setVenues(data || []);
+      } catch {
+        setVenues([]);
+      }
+    };
+    fetchVenues();
+  }, [token, apiCall, competition]);
+
   const resetForms = () => {
     setEventForm({ ...DEFAULT_EVENT_FORM });
     const defaults = getCurrentScheduleDefaults();
@@ -268,6 +288,7 @@ const ManageEvents = () => {
           ? new Date(event.registration_closes_at).toISOString().slice(0, 16)
           : "",
         coordinator_id: event.coordinator_id?._id || event.coordinator_id || "",
+        venue_id: event.venue_id?._id || event.venue_id || "",
       });
 
       const roundsData = (schedules || [])
@@ -489,6 +510,43 @@ const ManageEvents = () => {
 
   const removePointRow = (idx) => {
     setPointsForm((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const saveVenueFromEvents = async () => {
+    try {
+      setError("");
+      if (!venueForm.name.trim() || !venueForm.location.trim()) {
+        setError("Venue name and location are required");
+        return;
+      }
+      const competitionId = competition?._id || competition?.id || competition?.competition_id;
+      const payload = {
+        name: venueForm.name.trim(),
+        location: venueForm.location.trim(),
+        capacity: venueForm.capacity ? parseInt(venueForm.capacity, 10) : null,
+        competition_id: competitionId,
+      };
+      const { data: newVenue } = await apiCall("/api/venues", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      // Refresh venues list
+      const query = competitionId ? `?competition_id=${competitionId}` : "";
+      const { data: updatedVenues } = await apiCall(`/api/venues${query}`);
+      setVenues(updatedVenues || []);
+      // Auto-select the new venue in the correct place
+      if (createVenueContext?.source === "event_form") {
+        handleEventChange("venue_id", newVenue._id);
+      } else if (createVenueContext?.source === "round" && createVenueContext.roundIndex != null) {
+        updateRoundField(createVenueContext.roundIndex, "venue", newVenue.name);
+      }
+      setShowCreateVenue(false);
+      setCreateVenueContext(null);
+      setVenueForm({ name: "", location: "", capacity: "" });
+      toast.success("Venue created successfully!");
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const validateFields = (form) => {
@@ -1116,6 +1174,29 @@ const ManageEvents = () => {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div>
+                          <Label className="text-muted-foreground mb-2 block">Venue</Label>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Select value={eventForm.venue_id || "none"} onValueChange={(v) => handleEventChange("venue_id", v === "none" ? "" : v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="None" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {venues.map((v) => (
+                                    <SelectItem key={v._id} value={v._id}>
+                                      {v.name}{v.location ? ` (${v.location})` : ""}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button type="button" variant="outline" size="icon" onClick={() => { setCreateVenueContext({ source: "event_form" }); setVenueForm({ name: "", location: "", capacity: "" }); setShowCreateVenue(true); }} title="Add new venue">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -1351,9 +1432,26 @@ const ManageEvents = () => {
                                   </div>
                                   <div className="md:col-span-2">
                                     <Label className="text-muted-foreground mb-2 block">Venue</Label>
-                                    <Input type="text" value={r.venue || ""}
-                                      onChange={(e) => updateRoundField(idx, "venue", e.target.value)}
-                                      placeholder="Enter venue" />
+                                    <div className="flex gap-2">
+                                      <div className="flex-1">
+                                        <Select value={r.venue || "none"} onValueChange={(v) => updateRoundField(idx, "venue", v === "none" ? "" : v)}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select venue" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            {venues.map((v) => (
+                                              <SelectItem key={v._id} value={v.name}>
+                                                {v.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <Button type="button" variant="outline" size="icon" onClick={() => { setCreateVenueContext({ source: "round", roundIndex: idx }); setVenueForm({ name: "", location: "", capacity: "" }); setShowCreateVenue(true); }} title="Add new venue">
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1500,6 +1598,46 @@ const ManageEvents = () => {
             </AlertDialogAction>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showCreateVenue} onOpenChange={(open) => { if (!open) { setShowCreateVenue(false); setCreateVenueContext(null); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-accent-amber" />
+                Add New Venue
+              </DialogTitle>
+              <DialogDescription>Create a venue to use in this event.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label className="text-muted-foreground mb-2 block">Name *</Label>
+                <Input type="text" value={venueForm.name}
+                  onChange={(e) => setVenueForm({ ...venueForm, name: e.target.value })}
+                  placeholder="Auditorium" />
+              </div>
+              <div>
+                <Label className="text-muted-foreground mb-2 block">Location *</Label>
+                <Input type="text" value={venueForm.location}
+                  onChange={(e) => setVenueForm({ ...venueForm, location: e.target.value })}
+                  placeholder="Main Building, 2nd Floor" />
+              </div>
+              <div>
+                <Label className="text-muted-foreground mb-2 block">Capacity</Label>
+                <Input type="number" value={venueForm.capacity}
+                  onChange={(e) => setVenueForm({ ...venueForm, capacity: e.target.value })}
+                  placeholder="100" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={saveVenueFromEvents} className="bg-accent-amber text-white hover:bg-accent-amber/90">
+                  Create & Select
+                </Button>
+                <Button variant="outline" onClick={() => { setShowCreateVenue(false); setCreateVenueContext(null); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {managingJudges && (
           <ManageJudges

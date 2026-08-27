@@ -369,6 +369,9 @@ export default function WelcomePage() {
             <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
               &copy; {new Date().getFullYear()} Resonance. All rights reserved.
             </p>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+              Developed by <a href="https://alby-ab.vercel.app/" target="_blank" rel="noopener noreferrer" className="underline transition-colors hover:text-foreground">Alby</a>
+            </p>
           </div>
           <div className="flex gap-6">
             <a href="#" className="text-sm transition-colors" style={{ color: "var(--muted-foreground)" }}>Privacy Policy</a>

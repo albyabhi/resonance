@@ -1,17 +1,12 @@
 import React from "react";
 import { Trophy, Medal, Award, TrendingDown } from "lucide-react";
-
-const MEDAL_STYLES = [
-  { border: "border-warning/50", glow: "shadow-warning/20", ring: "from-warning to-warning" },
-  { border: "border-muted-foreground/50", glow: "shadow-muted-foreground/20", ring: "from-muted-foreground to-muted-foreground/70" },
-  { border: "border-accent-amber/50", glow: "shadow-accent-amber/20", ring: "from-accent-amber to-accent-amber/80" },
-];
+import { MEDAL_STYLES } from "../../lib/publicUtils";
 
 export default function PublicStandings({ standings, groupLabel = "Group", primaryColor = "var(--primary)" }) {
   const podium = standings.slice(0, 3);
 
   return (
-    <section className="max-w-6xl mx-auto px-6">
+    <section>
       <div className="flex items-center gap-2 mb-6">
         <Trophy className="w-5 h-5" style={{ color: primaryColor }} />
         <h2 className="text-xl font-bold text-foreground">Standings</h2>
@@ -33,7 +28,7 @@ export default function PublicStandings({ standings, groupLabel = "Group", prima
                 return (
                   <div
                     key={group._id}
-                    className={`relative bg-card border rounded-2xl p-4 sm:p-6 text-center shadow-2xl ${medal.border} ${medal.glow} ${
+                    className={`relative bg-card border rounded-2xl p-4 sm:p-6 text-center shadow-[var(--shadow-card)] ${medal.border} ${medal.glow} ${
                       isLeader ? "scale-105 z-10 -translate-y-2" : ""
                     }`}
                   >
@@ -56,7 +51,7 @@ export default function PublicStandings({ standings, groupLabel = "Group", prima
                       )}
                     </div>
                     <div className="font-bold text-foreground text-sm sm:text-base truncate">{group.name}</div>
-                    <div className="text-2xl sm:text-4xl font-black mt-1 bg-clip-text text-transparent bg-gradient-to-br from-foreground to-muted-foreground">
+                    <div className="text-2xl sm:text-4xl font-black mt-1 text-foreground">
                       {group.total_score}
                     </div>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground">pts</div>
@@ -67,7 +62,7 @@ export default function PublicStandings({ standings, groupLabel = "Group", prima
           )}
 
           {/* Full table */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-[var(--shadow-card)]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground uppercase tracking-wider text-xs">

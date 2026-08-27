@@ -1,30 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Trophy, CalendarRange, Medal, TrendingUp } from "lucide-react";
+import CountUp from "./CountUp";
 
-function CountUp({ target, duration = 900 }) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    let raf;
-    const start = performance.now();
-    const tick = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(eased * target));
-      if (progress < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-
-  return <>{value}</>;
-}
-
-export default function PublicStats({ stats, primaryColor = "var(--primary)" }) {
+export default function PublicStats({ stats, primaryColor = "var(--primary)", groupLabel = "Group" }) {
   const cards = [
     {
       key: "groups",
-      label: "Groups",
+      label: groupLabel,
       value: stats.group_count,
       icon: Trophy,
       display: <CountUp target={stats.group_count} />,
@@ -54,11 +36,11 @@ export default function PublicStats({ stats, primaryColor = "var(--primary)" }) 
 
   return (
     <section className="max-w-6xl mx-auto px-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-8 relative z-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-6 relative z-10">
         {cards.map((card) => (
           <div
             key={card.key}
-            className="bg-card border border-border rounded-2xl p-5 shadow-xl flex items-center gap-4"
+            className="bg-card border border-border rounded-2xl p-5 shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)] flex items-center gap-4"
           >
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"

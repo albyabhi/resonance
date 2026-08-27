@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, CalendarDays, MapPin, Sparkles } from "lucide-react";
+import { Trophy, CalendarDays, MapPin } from "lucide-react";
 
 const STATUS_STYLES = {
   upcoming: { label: "UPCOMING", classes: "text-warning border-warning/30 bg-warning/10", pulse: false },
@@ -9,21 +9,11 @@ const STATUS_STYLES = {
 };
 
 export default function PublicHero({ competition }) {
-  const { name, year, status, logoUrl, branding, current_stage, group_label_plural } = competition;
-  const primary = branding?.primary_color || "var(--primary)";
+  const { name, year, status, logoUrl, branding } = competition;
   const statusInfo = STATUS_STYLES[status] || STATUS_STYLES.upcoming;
 
   return (
-    <header className="relative overflow-hidden border-b border-border">
-      {/* Glow accents */}
-      <div
-        className="absolute -top-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-        style={{ backgroundColor: primary }}
-      />
-      <div className="absolute -bottom-40 -right-24 w-96 h-96 rounded-full blur-3xl opacity-10 pointer-events-none"
-        style={{ backgroundColor: primary }}
-      />
-
+    <header className="relative border-b border-border">
       <div className="relative max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center gap-8">
         {logoUrl && (
           <div className="shrink-0">
@@ -41,7 +31,7 @@ export default function PublicHero({ competition }) {
               {branding.organization_name}
             </p>
           )}
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
+          <h1 className="text-4xl sm:text-5xl font-black font-heading tracking-tight text-foreground">
             {name}
           </h1>
           <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-3">
@@ -60,10 +50,6 @@ export default function PublicHero({ competition }) {
               <CalendarDays className="w-3.5 h-3.5" />
               {year}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted text-muted-foreground text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" style={{ color: primary }} />
-              {current_stage || `${group_label_plural} Battle`}
-            </span>
             {branding?.logo_url ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted text-muted-foreground text-xs font-semibold">
                 <MapPin className="w-3.5 h-3.5" />
@@ -71,10 +57,6 @@ export default function PublicHero({ competition }) {
               </span>
             ) : null}
           </div>
-        </div>
-
-        <div className="shrink-0 hidden sm:flex flex-col items-center gap-1 opacity-80">
-          <Trophy className="w-10 h-10" style={{ color: primary }} />
         </div>
       </div>
     </header>

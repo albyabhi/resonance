@@ -9,11 +9,67 @@ import PublicStats from "../../components/public/PublicStats";
 import PublicStandings from "../../components/public/PublicStandings";
 import PublicResultsByEvent from "../../components/public/PublicResultsByEvent";
 import PublicTicker from "../../components/public/PublicTicker";
+import PublicWinners from "../../components/public/PublicWinners";
+import PublicCategoryStats from "../../components/public/PublicCategoryStats";
+import PublicParticipationStats from "../../components/public/PublicParticipationStats";
+import PublicEventDetailModal from "../../components/public/PublicEventDetailModal";
 import PublicErrorPage from "../../components/public/PublicErrorPage";
-import { RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { apiJson } from "../../utils/apiClient";
+import { Wifi, Trophy, BarChart3, ListChecks, Zap, Medal } from "lucide-react";
+import { apiFetch } from "../../utils/apiClient";
+// eslint-disable-next-line no-unused-vars -- motion is used as <motion.div> JSX element
+import { motion } from "framer-motion";
+import { Skeleton } from "../../components/ui/skeleton";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const TABS = [
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "standings", label: "Standings", icon: Trophy },
+  { id: "winners", label: "Winners", icon: Medal },
+  { id: "events", label: "Events", icon: ListChecks },
+  { id: "stats", label: "Statistics", icon: Zap },
+];
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="relative overflow-hidden border-b border-border hero-bg">
+        <div className="relative max-w-6xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center gap-8">
+          <Skeleton className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shrink-0" />
+          <div className="flex-1 space-y-3">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-12 w-64" />
+            <div className="flex gap-3 mt-4">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-12 rounded-full" />
+              <Skeleton className="h-6 w-24 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 -mt-6 relative z-10">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="bg-card border border-border rounded-2xl p-5 h-20" />
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        <div className="flex gap-4 border-b border-border pb-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-5 w-16 rounded" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PublicViewPage() {
   const { slug } = useParams();
@@ -25,13 +81,17 @@ export default function PublicViewPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("results");
+  const [activeTab, setActiveTab] = useState("overview");
   const [isGatekeeperOpen, setIsGatekeeperOpen] = useState(false);
-  const [lastManualRefresh, setLastManualRefresh] = useState(null);
+
+  const [winners, setWinners] = useState(null);
+  const [statsData, setStatsData] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventDetailLoading, setEventDetailLoading] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await apiJson(`${API_BASE_URL}/api/public/${slug}/dashboard`);
+      const res = await apiFetch(`${API_BASE_URL}/api/public/${slug}/dashboard`);
       if (res.status === 404) {
         setError({ status: 404, message: "This competition does not exist or the link is out of date." });
         setLoading(false);
@@ -48,7 +108,8 @@ export default function PublicViewPage() {
         return;
       }
       if (!res.ok) {
-        setError({ status: res.status, message: "Something went wrong while loading this page." });
+        const errBody = await res.json().catch(() => null);
+        setError({ status: res.status, message: errBody?.message || "Something went wrong while loading this page." });
         setLoading(false);
         return;
       }
@@ -59,6 +120,47 @@ export default function PublicViewPage() {
     } catch {
       setError({ status: 0, message: "Network error. Please check your connection and try again." });
       setLoading(false);
+    }
+  }, [slug]);
+
+  const fetchWinners = useCallback(async () => {
+    if (winners) return;
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/public/${slug}/winners`);
+      if (res.ok) {
+        const json = await res.json();
+        setWinners(json.winners);
+      }
+    } catch {
+      // Silent fail — winners are non-critical
+    }
+  }, [slug, winners]);
+
+  const fetchStats = useCallback(async () => {
+    if (statsData) return;
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/public/${slug}/stats`);
+      if (res.ok) {
+        const json = await res.json();
+        setStatsData(json);
+      }
+    } catch {
+      // Silent fail — stats are non-critical
+    }
+  }, [slug, statsData]);
+
+  const fetchEventDetail = useCallback(async (eventId) => {
+    setEventDetailLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/public/${slug}/events/${eventId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setSelectedEvent(json);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setEventDetailLoading(false);
     }
   }, [slug]);
 
@@ -73,6 +175,8 @@ export default function PublicViewPage() {
 
   useLiveScore(slug, () => {
     fetchDashboard();
+    setWinners(null);
+    setStatsData(null);
   });
 
   useEffect(() => {
@@ -84,19 +188,23 @@ export default function PublicViewPage() {
     }
   }, [loading, data, isAuthenticated, isKiosk, slug]);
 
+  useEffect(() => {
+    if (activeTab === "winners") fetchWinners();
+    if (activeTab === "stats") fetchStats();
+  }, [activeTab, fetchWinners, fetchStats]);
+
   const handleCloseGatekeeper = () => {
     setIsGatekeeperOpen(false);
     sessionStorage.setItem(`gatekeeper_dismissed_${slug}`, "true");
   };
 
   const getLastUpdateTime = () => {
-    const time = lastUpdate || lastManualRefresh;
-    if (!time) return null;
-    const diff = Date.now() - time;
+    if (!lastUpdate) return null;
+    const diff = Date.now() - lastUpdate;
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (seconds < 30) return "Just now";
     if (seconds < 60) return `${seconds}s ago`;
     if (minutes < 60) return `${minutes}m ago`;
@@ -105,20 +213,12 @@ export default function PublicViewPage() {
     return `${days}d ago`;
   };
 
-  const handleManualRefresh = () => {
-    setLastManualRefresh(Date.now());
-    fetchDashboard();
+  const handleEventClick = (eventId) => {
+    fetchEventDetail(eventId);
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p>Loading Live Dashboard...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (error || !data) {
@@ -141,33 +241,23 @@ export default function PublicViewPage() {
         </div>
 
         <div className="absolute top-6 left-8 text-left">
-          <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
-            {getLastUpdateTime() ? (
-              <>
-                <Wifi className="h-3 w-3 text-success" />
-                Last updated: <span className="font-mono font-bold">{getLastUpdateTime()}</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3 text-muted-foreground" />
-                Offline
-              </>
-            )}
-          </div>
+          {getLastUpdateTime() && (
+            <div className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+              <Wifi className="h-3 w-3 text-success" />
+              Last updated: <span className="font-mono font-bold">{getLastUpdateTime()}</span>
+            </div>
+          )}
         </div>
 
-        <h1 className="text-6xl font-black text-center mt-12 mb-10 bg-gradient-to-r from-primary to-primary-strong bg-clip-text text-transparent">
+        <h1 className="text-6xl font-black text-center mt-12 mb-10 text-foreground">
           {competition.name}
         </h1>
 
         <main className="flex-1 px-10 pb-10 flex flex-col gap-6">
           <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
             <div className="col-span-8 bg-card border border-border rounded-2xl p-6 flex flex-col shadow-2xl shadow-primary/10 h-full">
-              <h2 className="font-bold mb-6 text-4xl text-foreground flex items-center gap-2">
-                <svg className="w-8 h-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-                Standings
+              <h2 className="font-bold mb-6 text-4xl text-foreground">
+                {competition.group_label}
               </h2>
               <div className="flex-1 overflow-y-auto pr-2 space-y-5">
                 {standings.length === 0 ? (
@@ -200,25 +290,6 @@ export default function PublicViewPage() {
             </div>
 
             <div className="col-span-4 flex flex-col gap-6 h-full">
-              <div className="bg-card border border-border rounded-2xl p-6 flex-none">
-                <h2 className="font-bold mb-4 text-3xl text-foreground">Event Progress</h2>
-                <div className="flex justify-between items-end mb-2">
-                  <span className="font-bold text-foreground text-5xl">{stats.progress_percent}%</span>
-                  <span className="text-muted-foreground font-medium text-xl">
-                    {stats.completed_events} / {stats.event_count} Events
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full overflow-hidden h-6">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
-                    style={{
-                      width: `${stats.progress_percent}%`,
-                      background: `linear-gradient(to right, ${primaryColor}, var(--accent-purple))`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-
               <div className="bg-card border border-border rounded-2xl p-6 flex-1 flex flex-col overflow-hidden">
                 <h2 className="font-bold mb-6 text-3xl text-foreground flex items-center gap-2">
                   <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -252,74 +323,100 @@ export default function PublicViewPage() {
     );
   }
 
-  // ─── Standard showcase layout ──────────────────────────────────────────────────
+  // ─── Standard showcase layout with tabs ───────────────────────────────────────
   return (
-    <div className="min-h-screen font-sans bg-background text-foreground">
+    <div className="min-h-screen font-sans bg-background text-foreground flex flex-col">
       <PublicHero competition={competition} />
 
-      <div className="max-w-6xl mx-auto px-6 pb-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground font-medium">
-            {getLastUpdateTime() ? (
-              <>
-                <Wifi className="h-3 w-3 inline mr-1 text-success" />
-                Live &middot; Last updated: <span className="font-mono font-bold">{getLastUpdateTime()}</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3 inline mr-1 text-muted-foreground" />
-                Offline &middot; Last updated: <span className="font-mono font-bold">Unknown</span>
-              </>
-            )}
-          </span>
-          <button
-            onClick={handleManualRefresh}
-            className="text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted border border-border hover:border-muted-foreground/50 transition-colors"
-            title="Refresh now"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
+      <PublicStats stats={stats} primaryColor={primaryColor} groupLabel={competition.group_label} />
+
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 flex-1 w-full">
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-bold uppercase tracking-wider transition-all duration-200 border-b-2 -mb-px whitespace-nowrap ${
+                  isActive
+                    ? "text-foreground border-primary bg-primary/5"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      <PublicStats stats={stats} primaryColor={primaryColor} />
+        {/* Tab Content with transitions */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          {activeTab === "overview" && (
+            <div className="space-y-8">
+              <PublicStandings standings={standings} groupLabel={competition.group_label} primaryColor={primaryColor} />
 
-      <main className="max-w-6xl mx-auto px-6 py-12 space-y-12">
-        <PublicStandings standings={standings} groupLabel={competition.group_label} primaryColor={primaryColor} />
-
-        <section>
-          <div className="flex items-center gap-3 mb-6 border-b border-border">
-            <button
-              type="button"
-              onClick={() => setActiveTab("results")}
-              className={`px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
-                activeTab === "results"
-                  ? "text-foreground border-primary"
-                  : "text-muted-foreground border-transparent hover:text-foreground"
-              }`}
-            >
-              Results by Event
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("ticker")}
-              className={`px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
-                activeTab === "ticker"
-                  ? "text-foreground border-primary"
-                  : "text-muted-foreground border-transparent hover:text-foreground"
-              }`}
-            >
-              Recent Updates
-            </button>
-          </div>
-
-          {activeTab === "results" ? (
-            <PublicResultsByEvent events={events} results={results} groupLabel={competition.group_label} />
-          ) : (
-            <PublicTicker ticker={ticker} />
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Zap className="w-5 h-5" style={{ color: primaryColor }} />
+                  <h2 className="text-xl font-bold text-foreground">Recent Updates</h2>
+                </div>
+                <PublicTicker ticker={ticker} />
+              </section>
+            </div>
           )}
-        </section>
+
+          {activeTab === "standings" && (
+            <PublicStandings standings={standings} groupLabel={competition.group_label} primaryColor={primaryColor} />
+          )}
+
+          {activeTab === "winners" && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Medal className="w-5 h-5" style={{ color: primaryColor }} />
+                <h2 className="text-xl font-bold text-foreground">Event Winners</h2>
+              </div>
+              {winners ? (
+                <PublicWinners winners={winners} primaryColor={primaryColor} />
+              ) : (
+                <div className="text-center text-muted-foreground py-16 border border-dashed border-border rounded-2xl">
+                  Loading winners...
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "events" && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <ListChecks className="w-5 h-5" style={{ color: primaryColor }} />
+                <h2 className="text-xl font-bold text-foreground">All Events</h2>
+              </div>
+              <PublicResultsByEvent
+                events={events}
+                results={results}
+                groupLabel={competition.group_label}
+                onEventClick={handleEventClick}
+              />
+            </div>
+          )}
+
+          {activeTab === "stats" && (
+            <div className="space-y-6">
+              <PublicParticipationStats stats={statsData || stats} primaryColor={primaryColor} />
+              <PublicCategoryStats stats={statsData || stats} primaryColor={primaryColor} />
+            </div>
+          )}
+        </motion.div>
       </main>
 
       <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
@@ -332,6 +429,24 @@ export default function PublicViewPage() {
         competitionName={competition.name}
         competitionSlug={slug}
       />
+
+      {/* Event Detail Modal */}
+      {eventDetailLoading && !selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading event details...</p>
+          </div>
+        </div>
+      )}
+      {selectedEvent && (
+        <PublicEventDetailModal
+          event={selectedEvent.event}
+          competition={selectedEvent.competition}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
     </div>
   );
 }
