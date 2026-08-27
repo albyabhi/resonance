@@ -81,7 +81,7 @@ function EmptyPanel({ icon = Trophy, message }) {
   const PanelIcon = icon;
 
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center" style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}>
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center" style={{ borderColor: "var(--border-divider)", color: "var(--chart-axis)" }}>
       <PanelIcon className="h-6 w-6" />
       <p className="text-sm">{message}</p>
     </div>
@@ -230,15 +230,6 @@ function ResultProgress({ results = [] }) {
   );
 }
 
-function StatCardsRow({ cards, count }) {
-  const gridCols = count === 3 ? "grid-cols-3 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-4 sm:grid-cols-2 xl:grid-cols-4";
-  return (
-    <div className={`grid ${gridCols} gap-2 sm:gap-6 w-full`}>
-      {cards.map((card, i) => <StatCard key={i} {...card} />)}
-    </div>
-  );
-}
-
 export default function DashboardVisuals() {
   const { data, loading, error } = useDashboardData();
   const { role, user, token } = useAuth();
@@ -269,13 +260,13 @@ export default function DashboardVisuals() {
 
   if (loading) {
     return (
-      <div className="flex w-full flex-col gap-6">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-32 animate-pulse rounded-lg bg-muted"></div>
-          ))}
-        </div>
-        <div className="h-[400px] animate-pulse rounded-lg bg-muted w-full"></div>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full lg:grid-cols-12">
+        {[1,2,3,4].map(i => (
+          <div key={i} className="lg:col-span-3 h-32 animate-pulse rounded-lg bg-muted"></div>
+        ))}
+        <div className="lg:col-span-7 h-[300px] animate-pulse rounded-lg bg-muted"></div>
+        <div className="lg:col-span-5 h-[300px] animate-pulse rounded-lg bg-muted"></div>
+        <div className="lg:col-span-12 h-[320px] animate-pulse rounded-lg bg-muted"></div>
       </div>
     );
   }
@@ -410,10 +401,9 @@ export default function DashboardVisuals() {
   const RECENT_WINNERS = "recentWinners";
   const UPCOMING_EVENTS = "upcomingEvents";
   const TOP_HOUSES = "topHouses";
+  const CHART = "chart";
 
-  const sectionWidget = (type, colSpan, extraProps = {}) => {
-    // Note: colSpan is intentionally not used for Tailwind dynamic classes.
-    // Parent container handles responsive column spans deterministically.
+  const sectionWidget = (type, extraProps = {}) => {
     switch (type) {
       case STANDINGS:
         return (
@@ -457,128 +447,108 @@ export default function DashboardVisuals() {
             <TopHouses scoreboard={normalizedScoreboard} />
           </div>
         );
+      case CHART:
+        return (
+          <SectionCard title={`${groupLabel} performance`} description="Standings and points" className="w-full min-w-0">
+            <div className="w-full h-64">
+              <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
+            </div>
+          </SectionCard>
+        );
       default:
         return null;
     }
   };
 
-  const colSpanClass = (span) => {
-    const map = {
-      1: "lg:col-span-1",
-      2: "lg:col-span-2",
-      3: "lg:col-span-3",
-      4: "lg:col-span-4",
-      5: "lg:col-span-5",
-      6: "lg:col-span-6",
-      7: "lg:col-span-7",
-      8: "lg:col-span-8",
-      9: "lg:col-span-9",
-      10: "lg:col-span-10",
-      11: "lg:col-span-11",
-      12: "lg:col-span-12",
-    };
-    return map[span] || "lg:col-span-12";
+  const COL_SPAN = {
+    3: "lg:col-span-3",
+    4: "lg:col-span-4",
+    5: "lg:col-span-5",
+    6: "lg:col-span-6",
+    7: "lg:col-span-7",
+    12: "lg:col-span-12",
   };
-
-  const sectionPanel = (leftSlot, rightSlots, leftCols) => {
-    const rightCols = 12 - leftCols;
-    const rightArray = Array.isArray(rightSlots) ? rightSlots : [rightSlots];
-
-    return (
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className={`${colSpanClass(leftCols)} w-full min-w-0`}>{leftSlot}</div>
-
-        <div className={`${colSpanClass(rightCols)} flex flex-col gap-6 w-full min-w-0`}>
-          {rightArray.map((item, i) => (
-            <React.Fragment key={i}>{item}</React.Fragment>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  const colSpan = (n) => COL_SPAN[n] || "lg:col-span-12";
 
   const ROLE_LAYOUTS = {
     admin: {
+      grid: [
+        { widget: STANDINGS, span: 7, description: `${groupLabelPlural} ranked by approved points` },
+        { widget: RESULT_PROGRESS, span: 5 },
+        { widget: PARTICIPANT_HIGHLIGHTS, span: 5 },
+        { widget: RECENT_WINNERS, span: 7, description: "Latest released event results" },
+        { widget: UPCOMING_EVENTS, span: 12 },
+        { widget: CHART, span: 12 },
+      ],
       stats: [
         { title: "Events running", value: liveEvents.length, subtitle: `${nextEvents.length} open or upcoming`, icon: Flag, variant: "indigo", delay: 0.1 },
         { title: "Completed events", value: completedEvents.length, subtitle: `${events.length} total events`, icon: CheckCircle, variant: "emerald", delay: 0.2 },
         { title: "Pending results", value: pendingCount, subtitle: "Need review before points count", icon: ClipboardCheck, variant: "amber", delay: 0.3 },
         { title: "Current leader", value: leader ? getScoreboardName(leader) : "-", subtitle: leader ? `${getScoreboardPoints(leader).toLocaleString()} pts` : "No points yet", icon: Trophy, variant: "violet", delay: 0.4 },
       ],
-      sections: [
-        {
-          left: sectionWidget(STANDINGS, 7, { description: `${groupLabelPlural} ranked by approved points` }),
-          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(RESULT_PROGRESS, 5)],
-          leftCols: 7,
-        },
-        {
-          left: sectionWidget(RECENT_WINNERS, 6, { description: "Latest released event results" }),
-          right: sectionWidget(UPCOMING_EVENTS, 6, {}),
-          leftCols: 6,
-        },
-      ],
+      statSpan: 3,
     },
     captain: {
+      grid: [
+        { widget: STANDINGS, span: 7, description: "Where your group sits now" },
+        { widget: PARTICIPANT_HIGHLIGHTS, span: 5, userGroupId: true },
+        { widget: UPCOMING_EVENTS, span: 12 },
+        { widget: CHART, span: 12 },
+      ],
       stats: [
         { title: "Registered teams", value: houseTeamsCount, icon: Activity, variant: "indigo", delay: 0.1 },
         { title: "Available events", value: nextEvents.length, icon: Calendar, variant: "violet", delay: 0.2 },
         { title: "Group points", value: currentGroup ? getScoreboardPoints(currentGroup) : 0, icon: Trophy, variant: "amber", delay: 0.3 },
         { title: "Current rank", value: currentGroup ? `#${currentGroup.rank}` : "-", icon: TrendingUp, variant: "emerald", delay: 0.4 },
       ],
-      sections: [
-        {
-          left: sectionWidget(STANDINGS, 7, { description: "Where your group sits now" }),
-          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5, { userGroupId: true }), sectionWidget(UPCOMING_EVENTS, 5, {})],
-          leftCols: 7,
-        },
-      ],
+      statSpan: 3,
     },
     coordinator: {
+      grid: [
+        { widget: RECENT_WINNERS, span: 7, description: "Released event results" },
+        { widget: PARTICIPANT_HIGHLIGHTS, span: 5 },
+        { widget: UPCOMING_EVENTS, span: 12 },
+        { widget: CHART, span: 12 },
+      ],
       stats: [
         { title: "Assigned events", value: coordinatorEvents.length, subtitle: `${events.length} total events`, icon: Calendar, variant: "indigo", delay: 0.1 },
         { title: "Pending review", value: pendingCount, icon: AlertCircle, variant: "amber", delay: 0.2 },
         { title: "Live events", value: liveEvents.length, icon: Activity, variant: "emerald", delay: 0.3 },
       ],
-      sections: [
-        {
-          left: sectionWidget(RECENT_WINNERS, 7, { description: "Released event results" }),
-          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(UPCOMING_EVENTS, 5, {})],
-          leftCols: 7,
-        },
-      ],
+      statSpan: 4,
     },
     guest: {
-      stats: [],
-      sections: [
-        {
-          left: sectionWidget(STANDINGS, 7, { description: "Current competition ranking", userHouseId: false }),
-          right: [sectionWidget(PARTICIPANT_HIGHLIGHTS, 5), sectionWidget(TOP_HOUSES, 5)],
-          leftCols: 7,
-        },
-        {
-          left: sectionWidget(RECENT_WINNERS, 6, { description: "Latest released event results" }),
-          right: sectionWidget(UPCOMING_EVENTS, 6, {}),
-          leftCols: 6,
-        },
+      grid: [
+        { widget: STANDINGS, span: 7, description: "Current competition ranking", userHouseId: false },
+        { widget: PARTICIPANT_HIGHLIGHTS, span: 5 },
+        { widget: TOP_HOUSES, span: 7 },
+        { widget: UPCOMING_EVENTS, span: 5 },
+        { widget: RECENT_WINNERS, span: 12, description: "Latest released event results" },
+        { widget: CHART, span: 12 },
       ],
+      stats: [],
+      statSpan: 3,
     },
   };
 
   const renderDashboardByRole = (kind) => {
     if (kind === "judge") return renderJudgeWidgets();
-    if (kind === "guest") {
-      // Guest uses the standard layout, no stat cards
-      const layout = ROLE_LAYOUTS[kind];
-      return (
-        <div className="space-y-6">{layout.sections.map((s, i) => <React.Fragment key={i}>{sectionPanel(s.left, s.right, s.leftCols)}</React.Fragment>)}</div>
-      );
-    }
+
     const layout = ROLE_LAYOUTS[kind];
     if (!layout) return null;
+
     return (
-      <div className="space-y-6">
-        <StatCardsRow cards={layout.stats} count={layout.stats.length} />
-        {layout.sections.map((s, i) => <React.Fragment key={i}>{sectionPanel(s.left, s.right, s.leftCols)}</React.Fragment>)}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full lg:grid-cols-12">
+        {layout.stats.map((card, i) => (
+          <div key={`stat-${i}`} className={colSpan(layout.statSpan)}>
+            <StatCard {...card} />
+          </div>
+        ))}
+        {layout.grid.map((item, i) => (
+          <div key={`widget-${i}`} className={colSpan(item.span)}>
+            {sectionWidget(item.widget, item)}
+          </div>
+        ))}
       </div>
     );
   };
@@ -587,16 +557,6 @@ export default function DashboardVisuals() {
     <div className="flex w-full flex-col gap-6">
       <FadeIn delay={0.1}>
         {renderDashboardByRole(dashboardKind)}
-      </FadeIn>
-
-      <FadeIn delay={0.3}>
-        {dashboardKind !== "judge" && (
-          <SectionCard title={`${groupLabel} performance`} description="Standings and points">
-            <div className="h-80 w-full">
-              <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
-            </div>
-          </SectionCard>
-        )}
       </FadeIn>
 
       {dashboardKind !== "guest" && dashboardKind !== "admin" && dashboardKind !== "judge" && (

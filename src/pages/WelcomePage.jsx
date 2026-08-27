@@ -14,22 +14,14 @@ import img5 from '../assets/5.png';
 import MandalaBackground from '../components/MandalaBackground';
 import { useAuth } from '../components/AuthContext';
 import { apiFetch } from '../utils/apiClient';
-import { useTheme } from '../context/ThemeContext';
+import { normalizeRole, roleConfig } from '../components/dashboard/roleConfig';
 
 
 export default function WelcomePage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, login, logout, token, refreshToken } = useAuth();
-  const { resolvedTheme } = useTheme();
-
-  // Force light theme on WelcomePage — restore on unmount
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('dark');
-    return () => {
-      if (resolvedTheme === 'dark') root.classList.add('dark');
-    };
-  }, [resolvedTheme]);
+  
+  // Theme is forced to light by ThemeContext when pathname === '/' — no manual override needed
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const images = [img1, img2, img3, img4, img5];
@@ -264,14 +256,23 @@ export default function WelcomePage() {
               ) : (
                 <div className="space-y-12">
                   {/* Admin Competitions */}
-                  {adminCompetitions.length > 0 && (
+                  {adminCompetitions.length > 0 && (() => {
+                    const roleKeys = adminCompetitions.map(c => normalizeRole(c.membership_role));
+                    const uniqueRoles = [...new Set(roleKeys)];
+                    const sectionTitle = uniqueRoles.length === 1
+                      ? `${roleConfig[uniqueRoles[0]]?.title || uniqueRoles[0]} Workspaces`
+                      : "Staff Workspaces";
+                    return (
                     <div>
                       <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
                         <Building2 className="h-5 w-5" style={{ color: "var(--primary)" }} />
-                        Admin Workspace
+                        {sectionTitle}
                       </h3>
                       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {adminCompetitions.map((comp) => (
+                        {adminCompetitions.map((comp) => {
+                          const roleKey = normalizeRole(comp.membership_role);
+                          const roleTitle = roleConfig[roleKey]?.title || comp.membership_role || "Staff";
+                          return (
                           <div
                             key={comp._id}
                             onClick={() => handleSelectCompetition(comp._id)}
@@ -285,7 +286,7 @@ export default function WelcomePage() {
                               </div>
                               <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize"
                                 style={{ backgroundColor: "var(--accent-teal-tint)", color: "var(--accent-teal)" }}>
-                                Admin
+                                {roleTitle}
                               </span>
                             </div>
                             <h4 className="text-lg font-bold mb-2 transition-colors"
@@ -303,10 +304,12 @@ export default function WelcomePage() {
                               </span>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Participant Competitions */}
                   {participantCompetitions.length > 0 && (

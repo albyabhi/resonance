@@ -32,7 +32,7 @@ function Sparkline({ color = "var(--accent-blue)", data = [2, 3, 2.5, 4, 3.5, 5,
   );
 }
 
-function StatCard({ title, value, icon: Icon, variant = "blue", delay = 0 }) {
+function StatCard({ title, value, subtitle, icon: Icon, variant = "blue", delay = 0 }) {
   const v = ACCENT[variant] || ACCENT.blue;
 
   return (
@@ -63,6 +63,11 @@ function StatCard({ title, value, icon: Icon, variant = "blue", delay = 0 }) {
           <span className="text-2xl font-bold leading-none tracking-tight" style={{ color: "var(--card-foreground)" }}>
             {typeof value === "number" ? value.toLocaleString() : value}
           </span>
+          {subtitle && (
+            <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              {subtitle}
+            </span>
+          )}
         </div>
       </div>
     </FadeIn>

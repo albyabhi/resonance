@@ -97,7 +97,7 @@ export default function JoinPage() {
                   { id: 'participant', label: 'Participant', desc: 'View standings, register for events', icon: UserCheck },
                   { id: 'coordinator', label: 'Coordinator', desc: 'Submit scores, manage house details', icon: Shield },
                   { id: 'faculty', label: 'Faculty Coordinator', desc: 'Oversee house actions and entries', icon: BookOpen }
-                ].map(({ id, label, desc, icon: Icon }) => (
+                ].map(({ id, label, desc, icon: RoleIcon }) => (
                   <label 
                     key={id} 
                     className={`flex items-start gap-3.5 p-4 border rounded-2xl cursor-pointer transition-all ${
@@ -116,7 +116,7 @@ export default function JoinPage() {
                     />
                     <div className="flex-1">
                       <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <RoleIcon className="h-4 w-4 text-muted-foreground" />
                         {label}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">

@@ -18,6 +18,8 @@ import {
   Shield
 } from "lucide-react";
 import { apiJson } from "../../utils/apiClient";
+import { Button } from "../../components/ui/button";
+import MandalaBackground from "../../components/MandalaBackground";
 
 export default function ParticipantLoginPage() {
   const navigate = useNavigate();
@@ -271,30 +273,40 @@ export default function ParticipantLoginPage() {
     }
   };
 
-  const primaryColor = branding?.primary_color || "var(--accent-amber)";
-  const inputClass = "w-full pl-11 pr-4 py-3 bg-input-bg border border-input rounded-xl focus:ring-2 focus:ring-ring outline-none transition-all text-sm text-foreground placeholder:text-muted-foreground";
-  const labelClass = "block text-xs font-semibold mb-1 text-foreground";
-  const iconSpan = "absolute inset-y-0 left-0 pl-3.5 flex items-center text-muted-foreground";
+  const [bgIndex, setBgIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % 5);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 relative">
+      {/* Subtle Mandala Background */}
+      <div className="absolute inset-0 -z-10 opacity-20">
+        <MandalaBackground currentIndex={bgIndex} />
+      </div>
+
       {/* Top micro banner for branding */}
       {matchedCompetitionName && (
         <div 
           className="w-full max-w-lg mb-6 py-2.5 px-4 text-center text-xs font-semibold tracking-wider uppercase rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-4 duration-300 flex items-center justify-center gap-1.5"
-          style={{ backgroundColor: `${primaryColor}15`, color: primaryColor, border: `1px solid ${primaryColor}30` }}
+          style={{ backgroundColor: "var(--accent-amber-tint)", color: "var(--accent-amber)", border: "1px solid var(--border-gold)" }}
         >
           {matchedCompetitionName} • Participant Portal
         </div>
       )}
 
       {/* Main card */}
-      <div className="max-w-md w-full bg-card border border-border rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden transition-all duration-300">
+      <div className="max-w-md w-full card-premium relative overflow-hidden transition-all duration-300">
+        <div className="absolute top-0 left-0 right-0 accent-stripe" style={{ height: "4px" }} />
         
         {/* Glow effect at the top */}
         <div 
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-secondary to-transparent blur-sm"
-          style={{ backgroundImage: `linear-gradient(to right, transparent, ${primaryColor}, transparent)` }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-secondary to-transparent blur-sm"
+          style={{ backgroundImage: "linear-gradient(to right, transparent, var(--secondary), transparent)" }}
         />
 
         {/* Brand header */}
@@ -307,27 +319,27 @@ export default function ParticipantLoginPage() {
             />
           )}
           
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-heading)" }}>
             {matchedCompetitionName || "Resonance"}
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
             {eventData ? "Access the event registration portal" : "Join or log in to your participant dashboard"}
           </p>
         </div>
 
         {/* Dynamic Context Event Card */}
         {eventData && eventData.event && (
-          <div className="mb-5 p-3.5 bg-muted rounded-2xl border border-border animate-in fade-in zoom-in-95 duration-300">
-            <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: primaryColor }}>
+          <div className="mb-5 p-3.5 rounded-2xl animate-in fade-in zoom-in-95 duration-300" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--secondary)" }}>
               You are registering for
             </p>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+            <h3 className="text-sm font-bold flex items-center gap-1.5" style={{ color: "var(--foreground)" }}>
               {eventData.event.title || eventData.event.name}
             </h3>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
               {eventData.event.description || "No description provided."}
             </p>
-            <div className="flex gap-3 mt-2 pt-2 border-t border-border text-[10px] font-semibold text-muted-foreground">
+            <div className="flex gap-3 mt-2 pt-2 border-t text-[10px] font-semibold" style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}>
               <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {eventData.event.event_type}</span>
               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {eventData.event.mode}</span>
             </div>
@@ -336,8 +348,8 @@ export default function ParticipantLoginPage() {
 
         {/* Loading state indicator */}
         {loadingEvent && (
-          <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
-            <span className="h-4 w-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${primaryColor} transparent` }} />
+          <div className="flex items-center justify-center py-6 gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}>
+            <span className="h-4 w-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--secondary) transparent" }} />
             Loading event context...
           </div>
         )}
@@ -345,15 +357,12 @@ export default function ParticipantLoginPage() {
         {!loadingEvent && (
           <>
             {/* Login / Signup / Claim Selector Tabs */}
-            <div className="flex rounded-2xl bg-muted p-0.5 mb-6">
-              <button
+            <div className="flex rounded-2xl p-0.5 mb-6" style={{ backgroundColor: "var(--muted)" }}>
+              <Button
                 type="button"
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  participantMode === "login"
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={participantMode === "login" ? { color: primaryColor } : {}}
+                variant={participantMode === "login" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all"
                 onClick={() => {
                   setParticipantMode("login");
                   setSelectionToken("");
@@ -362,15 +371,12 @@ export default function ParticipantLoginPage() {
               >
                 <LogIn className="h-3.5 w-3.5" />
                 Log In
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  participantMode === "signup"
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={participantMode === "signup" ? { color: primaryColor } : {}}
+                variant={participantMode === "signup" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all"
                 onClick={() => {
                   setParticipantMode("signup");
                   setSelectionToken("");
@@ -379,15 +385,12 @@ export default function ParticipantLoginPage() {
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 Sign Up
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  participantMode === "claim"
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={participantMode === "claim" ? { color: primaryColor } : {}}
+                variant={participantMode === "claim" ? "default" : "ghost"}
+                size="sm"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all"
                 onClick={() => {
                   setParticipantMode("claim");
                   setClaimStep("admission");
@@ -401,7 +404,7 @@ export default function ParticipantLoginPage() {
               >
                 <Fingerprint className="h-3.5 w-3.5" />
                 Claim
-              </button>
+              </Button>
             </div>
 
             {/* Inputs & Forms */}
@@ -409,29 +412,29 @@ export default function ParticipantLoginPage() {
               
               {participantMode === "signup" && (
               <div>
-                <label className={labelClass}>Competition URL Slug</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Competition URL Slug</label>
                 <div className="relative">
-                  <span className={iconSpan}>
-                    {isSlugLocked ? <Lock className="h-4.5 w-4.5" style={{ color: primaryColor }} /> : <Globe className="h-4.5 w-4.5" />}
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}>
+                    {isSlugLocked ? <Lock className="h-4.5 w-4.5" style={{ color: "var(--secondary)" }} /> : <Globe className="h-4.5 w-4.5" />}
                   </span>
                   <input 
                     type="text" 
                     required 
                     disabled={isSlugLocked}
                     placeholder="e.g. annual-sports-2026"
-                    className={`${inputClass} ${isSlugLocked ? "opacity-70 cursor-not-allowed font-medium text-muted-foreground" : ""}`}
+                    className={`theme-input pl-11 pr-4 py-3 rounded-xl ${isSlugLocked ? "opacity-70 cursor-not-allowed font-medium" : ""}`} 
                     value={competitionSlug}
                     onChange={(e) => setCompetitionSlug(e.target.value)}
                     autoComplete="off"
                   />
                 </div>
                 {isSlugLocked && (
-                  <p className="text-[10px] mt-1 ml-1 flex items-center gap-1 font-medium" style={{ color: primaryColor }}>
+                  <p className="text-[10px] mt-1 ml-1 flex items-center gap-1 font-medium" style={{ color: "var(--secondary)" }}>
                     <Lock className="h-2.5 w-2.5" /> Auto-detected and locked
                   </p>
                 )}
                 {matchedCompetitionName && !isSlugLocked && (
-                  <p className="text-[10px] text-accent-teal mt-1 ml-1 font-medium flex items-center gap-0.5">
+                  <p className="text-[10px] mt-1 ml-1 font-medium flex items-center gap-0.5" style={{ color: "var(--accent-teal)" }}>
                     ✓ Connected: {matchedCompetitionName}
                   </p>
                 )}
@@ -442,8 +445,8 @@ export default function ParticipantLoginPage() {
                 competitionOptions.length > 0 ? (
                   <div className="space-y-3">
                     <div>
-                      <h2 className="text-sm font-bold text-foreground">Select Competition</h2>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <h2 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Select Competition</h2>
+                      <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
                         Your account is registered in more than one competition.
                       </p>
                     </div>
@@ -460,23 +463,24 @@ export default function ParticipantLoginPage() {
                             type="button"
                             disabled={loading}
                             onClick={() => handleCompetitionSelection(competition._id || competition.id)}
-                            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-border bg-muted hover:border-primary text-left transition-all disabled:opacity-60"
+                            className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all disabled:opacity-60"
+                            style={{ border: "1px solid var(--border)", backgroundColor: "var(--muted)" }}
                           >
                             {competition.logoUrl && (
-                              <img src={competition.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain bg-card border border-border shrink-0" />
+                              <img src={competition.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain shrink-0" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }} />
                             )}
                             <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-bold text-foreground truncate">{competition.name}</span>
-                              <span className="block text-[11px] text-muted-foreground truncate">
+                              <span className="block text-sm font-bold truncate" style={{ color: "var(--foreground)" }}>{competition.name}</span>
+                              <span className="block text-[11px] truncate" style={{ color: "var(--muted-foreground)" }}>
                                 {competition.slug}{competition.year ? ` • ${competition.year}` : ""}
                               </span>
                               {eventMatch && (
-                                <span className="mt-1 inline-flex text-[10px] font-bold uppercase tracking-wide" style={{ color: primaryColor }}>
+                                <span className="mt-1 inline-flex text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--secondary)" }}>
                                   Event match
                                 </span>
                               )}
                             </span>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <ArrowRight className="h-4 w-4 shrink-0" style={{ color: "var(--muted-foreground)" }} />
                           </button>
                         );
                       })}
@@ -487,7 +491,8 @@ export default function ParticipantLoginPage() {
                         setSelectionToken("");
                         setCompetitionOptions([]);
                       }}
-                      className="w-full text-xs font-bold text-muted-foreground hover:text-foreground"
+                      className="w-full text-xs font-bold hover:underline cursor-pointer transition-colors"
+                      style={{ color: "var(--muted-foreground)" }}
                     >
                       Back to login
                     </button>
@@ -495,14 +500,14 @@ export default function ParticipantLoginPage() {
                 ) : (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
-                    <label className={labelClass}>Email Address</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Email Address</label>
                     <div className="relative">
-                      <span className={iconSpan}><Mail className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
                       <input 
                         type="email" 
                         required 
                         placeholder="your@email.com" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pEmail} 
                         onChange={(e) => setPEmail(e.target.value)} 
                         autoComplete="email" 
@@ -511,14 +516,14 @@ export default function ParticipantLoginPage() {
                   </div>
                   
                   <div>
-                    <label className={labelClass}>Password</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Password</label>
                     <div className="relative">
-                      <span className={iconSpan}><KeyRound className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><KeyRound className="h-4.5 w-4.5" /></span>
                       <input 
                         type="password" 
                         required 
                         placeholder="••••••••" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pPassword} 
                         onChange={(e) => setPPassword(e.target.value)} 
                         autoComplete="current-password" 
@@ -526,14 +531,14 @@ export default function ParticipantLoginPage() {
                     </div>
                   </div>
 
-                  <button 
+                  <Button 
                     type="submit" 
                     disabled={loading} 
-                    className="w-full py-3 text-primary-foreground font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-6" 
-                    style={{ backgroundColor: primaryColor }}
+                    size="lg" 
+                    className="w-full mt-6"
                   >
                     {loading ? 'Authenticating...' : <><span>Log In & Enter</span><ArrowRight className="h-4 w-4" /></>}
-                  </button>
+                  </Button>
                 </form>
                 )
               ) : participantMode === "claim" ? (
@@ -566,30 +571,28 @@ export default function ParticipantLoginPage() {
                       }
                     }} className="space-y-3.5">
                       <div>
-                        <label className={labelClass}>Competition URL Slug</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Competition URL Slug</label>
                         <div className="relative">
-                          <span className={iconSpan}><Globe className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Globe className="h-4.5 w-4.5" /></span>
                           <input type="text" required placeholder="e.g. annual-sports-2026"
-                            className={inputClass} value={competitionSlug}
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={competitionSlug}
                             onChange={(e) => setCompetitionSlug(e.target.value)}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className={labelClass}>Admission Number</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Admission Number</label>
                         <div className="relative">
-                          <span className={iconSpan}><Fingerprint className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Fingerprint className="h-4.5 w-4.5" /></span>
                           <input type="text" required placeholder="e.g. 24MCA001"
-                            className={inputClass} value={claimAdmissionNo}
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimAdmissionNo}
                             onChange={(e) => setClaimAdmissionNo(e.target.value)}
                           />
                         </div>
                       </div>
-                      <button type="submit" disabled={loading}
-                        className="w-full py-3 text-primary-foreground font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-6"
-                        style={{ backgroundColor: primaryColor }}>
+                      <Button type="submit" disabled={loading} size="lg" className="w-full mt-6">
                         {loading ? 'Sending OTP...' : <><Shield className="h-4 w-4" /><span>Send OTP</span></>}
-                      </button>
+                      </Button>
                     </form>
                   )}
 
@@ -621,53 +624,49 @@ export default function ParticipantLoginPage() {
                       }
                     }} className="space-y-3.5">
                       {claimMaskedPhone && (
-                        <div className="p-3 bg-muted rounded-xl border border-border text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">OTP sent to</p>
-                          <p className="text-sm font-bold text-foreground">{claimMaskedPhone}</p>
+                        <div className="p-3 rounded-xl text-center" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>OTP sent to</p>
+                          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{claimMaskedPhone}</p>
                         </div>
                       )}
                       <div>
-                        <label className={labelClass}>Enter OTP</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Enter OTP</label>
                         <div className="relative">
-                          <span className={iconSpan}><Shield className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Shield className="h-4.5 w-4.5" /></span>
                           <input type="text" required placeholder="6-digit OTP"
-                            className={inputClass} value={claimOtp}
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimOtp}
                             onChange={(e) => setClaimOtp(e.target.value)}
                             maxLength={6}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className={labelClass}>Email Address</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Email Address</label>
                         <div className="relative">
-                          <span className={iconSpan}><Mail className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
                           <input type="email" required placeholder="your@email.com"
-                            className={inputClass} value={claimEmail}
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimEmail}
                             onChange={(e) => setClaimEmail(e.target.value)}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className={labelClass}>Create Password</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Create Password</label>
                         <div className="relative">
-                          <span className={iconSpan}><KeyRound className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><KeyRound className="h-4.5 w-4.5" /></span>
                           <input type="password" required minLength={6} placeholder="Min 6 characters"
-                            className={inputClass} value={claimPassword}
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimPassword}
                             onChange={(e) => setClaimPassword(e.target.value)}
                           />
                         </div>
                       </div>
                       <div className="flex gap-3 mt-2">
-                        <button type="button" onClick={() => setClaimStep("admission")}
-                          className="flex-1 py-3 border border-border font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer text-foreground"
-                        >
+                        <Button type="button" variant="outline" onClick={() => setClaimStep("admission")} className="flex-1 py-3 font-bold text-xs uppercase tracking-wider">
                           Back
-                        </button>
-                        <button type="submit" disabled={loading}
-                          className="flex-1 py-3 text-primary-foreground font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                          style={{ backgroundColor: primaryColor }}>
+                        </Button>
+                        <Button type="submit" disabled={loading} size="lg" className="flex-1">
                           {loading ? 'Claiming...' : <><span>Claim Account</span><ArrowRight className="h-4 w-4" /></>}
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   )}
@@ -676,14 +675,14 @@ export default function ParticipantLoginPage() {
                 /* Signup Form */
                 <form onSubmit={handleSignup} className="space-y-3.5">
                   <div>
-                    <label className={labelClass}>Full Name</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Full Name</label>
                     <div className="relative">
-                      <span className={iconSpan}><User className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><User className="h-4.5 w-4.5" /></span>
                       <input 
                         type="text" 
                         required 
                         placeholder="Your full name" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pName} 
                         onChange={(e) => setPName(e.target.value)} 
                       />
@@ -691,14 +690,14 @@ export default function ParticipantLoginPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>Email Address</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Email Address</label>
                     <div className="relative">
-                      <span className={iconSpan}><Mail className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
                       <input 
                         type="email" 
                         required 
                         placeholder="your@email.com" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pEmail} 
                         onChange={(e) => setPEmail(e.target.value)} 
                         autoComplete="email" 
@@ -707,15 +706,15 @@ export default function ParticipantLoginPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>Password</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Password</label>
                     <div className="relative">
-                      <span className={iconSpan}><KeyRound className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><KeyRound className="h-4.5 w-4.5" /></span>
                       <input 
                         type="password" 
                         required 
                         minLength={6} 
                         placeholder="Min 6 characters" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pPassword} 
                         onChange={(e) => setPPassword(e.target.value)} 
                       />
@@ -723,14 +722,14 @@ export default function ParticipantLoginPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>Class / Section</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Class / Section</label>
                     <div className="relative">
-                      <span className={iconSpan}><Ticket className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Ticket className="h-4.5 w-4.5" /></span>
                       <input 
                         type="text" 
                         required 
                         placeholder="e.g. 10-A or Section B" 
-                        className={inputClass} 
+                        className="theme-input pl-11 pr-4 py-3 rounded-xl" 
                         value={pClass} 
                         onChange={(e) => setPClass(e.target.value)} 
                       />
@@ -738,13 +737,13 @@ export default function ParticipantLoginPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>
                       {!competitionSlug.trim() ? `${resolvedLabel} (enter slug first)` : `Select ${resolvedLabel}`}
                     </label>
                     <select
                       required
                       disabled={groups.length === 0}
-                      className={`${inputClass} pl-4 ${groups.length === 0 ? "opacity-60 cursor-not-allowed" : ""}`}
+                      className={`theme-input pl-4 ${groups.length === 0 ? "opacity-60 cursor-not-allowed" : ""}`}
                       value={pGroupId}
                       onChange={(e) => setPGroupId(e.target.value)}
                     >
@@ -755,53 +754,48 @@ export default function ParticipantLoginPage() {
                     </select>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={loading} 
-                    className="w-full py-3 text-primary-foreground font-bold rounded-xl transition-all shadow-md active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-6" 
-                    style={{ backgroundColor: primaryColor }}
-                  >
+                  <Button type="submit" disabled={loading} size="lg" className="w-full mt-6">
                     {loading ? 'Creating Account...' : <><span>Sign Up & Enter</span><ArrowRight className="h-4 w-4" /></>}
-                  </button>
+                  </Button>
                 </form>
               )}
             </div>
 
             {/* Form footer text toggler */}
-            <p className="text-xs text-center text-muted-foreground mt-5">
+            <p className="text-xs text-center mt-5" style={{ color: "var(--muted-foreground)" }}>
               {participantMode === "login" 
                 ? <><button type="button" onClick={() => {
                   setParticipantMode("signup");
                   setSelectionToken("");
                   setCompetitionOptions([]);
-                }} className="hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Sign up</button> or <button type="button" onClick={() => {
+                }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Sign up</button> or <button type="button" onClick={() => {
                   setParticipantMode("claim");
                   setClaimStep("admission");
-                }} className="hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Claim account</button></>
+                }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Claim account</button></>
                 : participantMode === "claim"
                 ? <><button type="button" onClick={() => {
                   setParticipantMode("login");
                   setSelectionToken("");
                   setCompetitionOptions([]);
-                }} className="hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Log in</button> instead</>
+                }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Log in</button> instead</>
                 : <>Already registered? <button type="button" onClick={() => {
                   setParticipantMode("login");
                   setSelectionToken("");
                   setCompetitionOptions([]);
-                }} className="hover:underline cursor-pointer font-bold" style={{ color: primaryColor }}>Log in</button></>
+                }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Log in</button></>
               }
             </p>
           </>
         )}
 
         {/* Back to general Staff options link */}
-        <div className="mt-6 pt-5 border-t border-border text-center text-xs text-muted-foreground">
+        <div className="mt-6 pt-5 border-t text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}>
           Staff / Captain?{" "}
           <button 
             type="button" 
             onClick={() => navigate("/login")} 
-            className="hover:underline font-bold cursor-pointer"
-            style={{ color: primaryColor }}
+            className="hover:underline font-bold cursor-pointer transition-colors"
+            style={{ color: "var(--primary)" }}
           >
             Go to Staff Login
           </button>

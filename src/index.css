@@ -169,7 +169,7 @@
     --border-divider: var(--border);
     --chart-grid: rgba(45, 52, 44, 0.06);
     --chart-axis: #5C6258;
-    --chart-bar-default: #D8C9A8;
+    --chart-bar-default: #A67C52;
     --chart-surface: var(--muted);
     --card-fg: var(--card-foreground);
     --bg: var(--background);
@@ -269,7 +269,7 @@
     --border-divider: rgba(61, 56, 48, 0.6);
     --chart-grid: rgba(163, 158, 148, 0.07);
     --chart-axis: #8A857D;
-    --chart-bar-default: #3D3830;
+    --chart-bar-default: #8B7355;
     --chart-surface: rgba(35, 31, 27, 0.6);
     --card-fg: var(--card-foreground);
     --bg: var(--background);

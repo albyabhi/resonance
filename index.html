@@ -44,7 +44,11 @@
           stored = localStorage.getItem('theme');
         } catch (e) { /* storage blocked — fall through to system */ }
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var dark = stored === 'dark' || (stored !== 'light' && prefersDark);
+
+        // Welcome page ("/") is always light — skip dark class on that route
+        var path = window.location.pathname;
+        var isWelcomePage = path === '/' || path === '';
+        var dark = !isWelcomePage && (stored === 'dark' || (stored !== 'light' && prefersDark));
 
         // Apply dark class immediately
         if (dark) document.documentElement.classList.add('dark');

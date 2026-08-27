@@ -127,6 +127,27 @@
 - **Transitions:** no global `*` transition. `body` keeps a scoped `transition-colors`, and `.theme-transition` (bg/border/color, 180ms) is applied temporarily by the provider only during a theme swap. `prefers-reduced-motion` disables it.
 - **Contrast gate:** `npm run check:contrast` (zero-dep, reads tokens from `index.css`) enforces WCAG AA on core text pairs and surfaces brand/structural pairs as advisory flags.
 
+### 3.5 Welcome Page Light-Only Exception
+
+The welcome page (`/`) is **always rendered in light mode**, regardless of the user's stored theme preference. This is enforced at two layers:
+
+| Layer | File | Mechanism |
+|-------|------|-----------|
+| Pre-React (synchronous) | `index.html` inline script | Skips `.dark` class when `window.location.pathname === '/'` |
+| React (runtime) | `ThemeContext.jsx` | `useEffect` removes `.dark` class when `location.pathname === '/'` |
+
+**Why two layers?**
+- Layer 1 prevents the flash on full page load/refresh (runs before React mounts)
+- Layer 2 handles SPA navigation (clicking "Home" from dashboard)
+
+**What this does NOT affect:**
+- User's stored preference in `localStorage` — never modified
+- Theme toggle — not rendered on the welcome page
+- Other routes — fully theme-aware
+- Cross-tab sync — continues to work normally
+
+**To add another light-only page:** Add its path to the `isWelcomePage` check in both `index.html` (inline script) and `ThemeContext.jsx` (the `isWelcomePage` constant).
+
 ### 3.4 Values Exposed by `useTheme()`
 
 ```js
@@ -480,6 +501,7 @@ Muted text:    #5F6E82    Muted text:   #9CA3AF
 Toggle:     .dark class on <html>
 Persist:    localStorage("theme") via safeStorage
 Context:    useTheme() → { theme, setTheme, toggleTheme, resolvedTheme, isSystem }
+Welcome:    "/" is always light (index.html + ThemeContext route-aware)
 Source of truth: CSS tokens in index.css (JS reads via getThemeColor)
 Drift:      index.html inline script must mirror themeCore.js
 Gate:       npm run check:contrast
@@ -501,3 +523,6 @@ Dark strategy:  Borders + glow + transparency
 | 7 | `npm run check:contrast` | Exit 0; advisory flags reviewed |
 | 8 | DevTools: dump `localStorage.theme` as garbage | Falls back to system preference |
 | 9 | Toggle → reload → Shift-click (System) | Menu checkmark follows stored value |
+| 10 | Dark pref → refresh "/" → no flash | Welcome page loads light, no dark flash |
+| 11 | Dark pref → SPA nav to "/" → light | No transition, immediate light |
+| 12 | On "/" → navigate to "/dashboard" | Dark mode restored (user's pref) |

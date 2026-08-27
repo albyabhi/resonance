@@ -11,6 +11,7 @@
 // enableColorScheme   →  injects <meta name="color-scheme"> automatically
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import {
   THEME_STORAGE_KEY,
   resolveThemePreference,
@@ -48,6 +49,9 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  const location = useLocation();
+  const isWelcomePage = location.pathname === '/';
+
   const [systemTheme, setSystemTheme] = useState(getSystemTheme);
 
   // resolvedTheme collapses "system" → actual light/dark
@@ -69,14 +73,19 @@ export function ThemeProvider({
   }, [resolvedTheme]);
 
   // Apply `dark` class (or data-theme attribute) on <html>
+  // On welcome page ("/"), force light mode — skip dark class
   useEffect(() => {
     const root = document.documentElement;
+    if (isWelcomePage) {
+      root.classList.remove("dark");
+      return;
+    }
     if (attribute === "class") {
       root.classList.toggle("dark", resolvedTheme === "dark");
     } else {
       root.setAttribute(attribute, resolvedTheme);
     }
-  }, [resolvedTheme, attribute]);
+  }, [resolvedTheme, attribute, isWelcomePage]);
 
   // Cross-tab sync: listen for storage events from other tabs
   useEffect(() => {
@@ -96,7 +105,9 @@ export function ThemeProvider({
   // Drift detector — the FOUC-prevention script in index.html
   // mirrors the decision table in themeCore.js. If the two ever
   // disagree (logic drift), fix the class and warn in dev.
+  // Skip on welcome page — it intentionally overrides the theme.
   useEffect(() => {
+    if (isWelcomePage) return;
     const root = document.documentElement;
     const applied = root.classList.contains("dark");
     if (applied !== (resolvedTheme === "dark")) {
@@ -113,14 +124,15 @@ export function ThemeProvider({
         );
       }
     }
-  }, [resolvedTheme, attribute]);
+  }, [resolvedTheme, attribute, isWelcomePage]);
 
   // Opt-in transition: temporarily enable `.theme-transition` on
   // <body> while the palette swaps, then remove it. Respects
   // prefers-reduced-motion via the CSS media guard.
+  // Skip on welcome page — no transition needed when forcing light.
   const isFirstRun = useRef(true);
   useEffect(() => {
-    if (isFirstRun.current) {
+    if (isFirstRun.current || isWelcomePage) {
       isFirstRun.current = false;
       return;
     }
@@ -133,7 +145,7 @@ export function ThemeProvider({
       clearTimeout(timer);
       body.classList.remove("theme-transition");
     };
-  }, [resolvedTheme]);
+  }, [resolvedTheme, isWelcomePage]);
 
   // Inject/update <meta name="color-scheme">
   useEffect(() => {
@@ -144,8 +156,9 @@ export function ThemeProvider({
       meta.setAttribute("name", "color-scheme");
       document.head.appendChild(meta);
     }
-    meta.setAttribute("content", resolvedTheme === "dark" ? "dark light" : "light dark");
-  }, [resolvedTheme, enableColorScheme]);
+    const effectiveTheme = isWelcomePage ? "light" : resolvedTheme;
+    meta.setAttribute("content", effectiveTheme === "dark" ? "dark light" : "light dark");
+  }, [resolvedTheme, enableColorScheme, isWelcomePage]);
 
   // ── Watch system preference ────────────────────────────────
   useEffect(() => {

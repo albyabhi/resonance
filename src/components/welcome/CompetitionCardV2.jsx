@@ -2,27 +2,21 @@ import React from 'react';
 import { Calendar, Building2, Award, Users, Trophy } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { normalizeRole, roleConfig } from '../../components/dashboard/roleConfig';
 
-const roleConfig = {
-  admin: {
-    icon: Building2,
-    iconTileClass: 'icon-tile-amber',
-    badgeVariant: 'success',
-    badgeLabel: 'Admin',
-    headingIcon: Trophy,
-  },
-  participant: {
-    icon: Users,
-    iconTileClass: 'icon-tile-blue',
-    badgeVariant: 'outline',
-    badgeLabel: 'Participant',
-    headingIcon: Award,
-  },
+const badgeStyles = {
+  super_admin: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  organizer: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  event_coordinator: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  judge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  house_captain: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  participant: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400',
 };
 
-export default function CompetitionCardV2({ comp, role, onClick }) {
-  const config = roleConfig[role] || roleConfig.participant;
-  const Icon = config.icon;
+export default function CompetitionCardV2({ comp, role, membership_role, onClick }) {
+  const roleKey = normalizeRole(membership_role || role);
+  const config = roleConfig[roleKey] ?? roleConfig.viewer;
+  const Icon = roleKey === 'participant' ? Users : Trophy;
 
   return (
     <Card
@@ -33,10 +27,11 @@ export default function CompetitionCardV2({ comp, role, onClick }) {
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className={`${config.iconTileClass} h-11 w-11 rounded-[12px] flex items-center justify-center`}>
+          <div className="h-11 w-11 rounded-[12px] flex items-center justify-center"
+            style={{ backgroundColor: roleKey === 'participant' ? 'var(--accent-blue-tint)' : 'var(--accent-amber-tint)', color: roleKey === 'participant' ? 'var(--secondary)' : 'var(--primary)' }}>
             <Icon className="h-6 w-6" />
           </div>
-          <Badge variant={config.badgeVariant}>{config.badgeLabel}</Badge>
+          <Badge className={badgeStyles[roleKey] || badgeStyles.participant}>{config.title}</Badge>
         </div>
         <CardTitle className="text-lg" style={{ color: 'var(--card-foreground)' }}>{comp.name}</CardTitle>
       </CardHeader>
