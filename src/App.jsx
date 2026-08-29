@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
@@ -18,7 +18,6 @@ import ParticipantSetupPasswordPage from './pages/entry/ParticipantSetupPassword
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
-import useWake from './hooks/useWake';
 
 function TokenRedirect() {
   const { token } = useParams();
@@ -71,39 +70,17 @@ function TokenRedirect() {
 export default function App() {
   const { role, isAuthenticated, competition, loading, isAuthReady, logout } = useAuth();
   const { hasRole } = usePermission();
-  const { isReady, isWarming, error, retry } = useWake();
 
-  if (!isReady && isWarming) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-center space-y-2">
-            <p className="text-lg font-semibold">Warming up the server</p>
-            <p className="text-sm text-muted-foreground">This may take a moment on first visit...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="text-center space-y-4">
-          <div className="text-7xl font-black text-muted-foreground">!</div>
-          <h1 className="text-xl font-bold">Server Unavailable</h1>
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <button
-            onClick={retry}
-            className="inline-block mt-2 px-5 py-2.5 rounded-xl bg-muted border border-border text-sm font-semibold hover:bg-muted/80 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const controller = new AbortController();
+    // eslint-disable-next-line no-restricted-syntax
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/wake`, {
+      method: 'GET',
+      credentials: 'include',
+      signal: controller.signal,
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   if (loading || !isAuthReady) return <div>Loading...</div>;
 
