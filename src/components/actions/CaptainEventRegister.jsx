@@ -122,19 +122,29 @@ export default function CaptainEventRegister() {
     setParticipantSearch("");
   };
 
+  const remainingSlots = useMemo(() => {
+    if (!selectedEvent) return 0;
+    const eventId = selectedEvent._id || selectedEvent.event_id;
+    const existing = (registrationsByEvent[eventId]?.length || 0);
+    const max = selectedEvent.max_per_group || 1;
+    return Math.max(0, max - existing);
+  }, [selectedEvent, registrationsByEvent]);
+
   const toggleParticipantSelection = (id) => {
     if (!selectedEvent) return;
 
-    if (selectedEvent.event_type === "individual") {
-      setSelectedParticipantIds((prev) => (prev.includes(id) ? [] : [id]));
-      return;
-    }
+    const cap = selectedEvent.event_type === "team"
+      ? (selectedEvent.max_team_size || Infinity)
+      : remainingSlots;
 
-    const maxSize = selectedEvent.max_team_size || Infinity;
     setSelectedParticipantIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= maxSize) {
-        toast.error(`Maximum ${maxSize} members allowed for this event`);
+      if (prev.length >= cap) {
+        if (selectedEvent.event_type === "team") {
+          toast.error(`Maximum ${cap} members allowed for this event`);
+        } else {
+          toast.error(`Maximum ${cap} registration${cap !== 1 ? "s" : ""} per group for this event`);
+        }
         return prev;
       }
       return [...prev, id];
@@ -164,21 +174,48 @@ export default function CaptainEventRegister() {
 
     try {
       setSubmitting(true);
-      const resp = await apiCall("/api/captain/register-for-event", {
-        method: "POST",
-        body: JSON.stringify({
-          event_id: selectedEvent._id || selectedEvent.event_id,
-          participant_ids: selectedParticipantIds,
-          team_name: selectedEvent.event_type === "team" ? teamName.trim() : undefined,
-        }),
-      });
+
+      const isBulkIndividual = selectedEvent.event_type === "individual" && selectedParticipantIds.length > 1;
+
+      let resp;
+      if (isBulkIndividual) {
+        resp = await apiCall("/api/captain/bulk-register", {
+          method: "POST",
+          body: JSON.stringify({
+            event_id: selectedEvent._id || selectedEvent.event_id,
+            teams: selectedParticipantIds.map((pid) => ({ participant_ids: [pid] })),
+          }),
+        });
+      } else {
+        resp = await apiCall("/api/captain/register-for-event", {
+          method: "POST",
+          body: JSON.stringify({
+            event_id: selectedEvent._id || selectedEvent.event_id,
+            participant_ids: selectedParticipantIds,
+            team_name: selectedEvent.event_type === "team" ? teamName.trim() : undefined,
+          }),
+        });
+      }
 
       if (resp.success) {
-        toast.success(
-          selectedEvent.event_type === "team"
-            ? `Team "${teamName}" registered successfully!`
-            : "Participant registered successfully!",
-        );
+        const created = resp.data?.created || resp.data?.teams?.length || selectedParticipantIds.length;
+        const skipped = resp.data?.skipped || 0;
+
+        if (isBulkIndividual) {
+          if (skipped > 0 && created > 0) {
+            toast.success(`${created} participant${created !== 1 ? "s" : ""} registered, ${skipped} failed`);
+          } else if (created > 0) {
+            toast.success(`${created} participant${created !== 1 ? "s" : ""} registered successfully!`);
+          } else {
+            toast.error(resp.data?.errors?.[0]?.error || "Registration failed");
+          }
+        } else {
+          toast.success(
+            selectedEvent.event_type === "team"
+              ? `Team "${teamName}" registered successfully!`
+              : "Participant registered successfully!",
+          );
+        }
         closeRegistrationModal();
         fetchData();
       }
@@ -448,6 +485,25 @@ export default function CaptainEventRegister() {
             </DialogDescription>
           </DialogHeader>
 
+          {selectedEvent?.event_type === "individual" && (
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted border-border">
+              <div className="text-xs font-bold text-card-foreground">
+                Registration Slots
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-muted-foreground">
+                  {selectedParticipantIds.length} selected &middot; {remainingSlots} remaining
+                </div>
+                <div className="h-2 w-24 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent-blue rounded-full transition-all"
+                    style={{ width: `${selectedEvent.max_per_group ? ((selectedEvent.max_per_group - remainingSlots) / selectedEvent.max_per_group) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {selectedEvent?.event_type === "team" && (
               <div className="space-y-2">
@@ -590,7 +646,7 @@ export default function CaptainEventRegister() {
               {selectedEvent?.event_type === "team"
                 ? `${selectedParticipantIds.length} participant${selectedParticipantIds.length !== 1 ? "s" : ""} selected`
                 : selectedParticipantIds.length > 0
-                  ? "1 participant selected"
+                  ? `${selectedParticipantIds.length} participant${selectedParticipantIds.length !== 1 ? "s" : ""} selected`
                   : "No participant selected"}
             </div>
             <div className={`flex ${isMobile ? "flex-col" : "flex-row justify-end"} gap-3`}>
@@ -614,7 +670,11 @@ export default function CaptainEventRegister() {
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    {selectedEvent?.event_type === "team" ? "Register Team" : "Register Participant"}
+                    {selectedEvent?.event_type === "team"
+                      ? "Register Team"
+                      : selectedParticipantIds.length > 1
+                        ? `Register ${selectedParticipantIds.length} Participants`
+                        : "Register Participant"}
                   </>
                 )}
               </Button>
