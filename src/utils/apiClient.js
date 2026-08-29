@@ -178,6 +178,9 @@ export const apiJson = async (url, options = {}) => {
  * Centralized endpoint definitions for consistency
  */
 export const API_ROUTES = {
+  // Health
+  HEALTH: '/api/health',
+
   // Auth
   AUTH: {
     SIGNUP: '/api/auth/signup',
