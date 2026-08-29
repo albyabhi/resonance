@@ -9,6 +9,14 @@ import { CompetitionProvider } from "./context/CompetitionContext";
 import { RealtimeProvider } from "./context/RealtimeContext";
 import { Toaster } from "react-hot-toast";
 
+// Fire-and-forget wake ping — hits backend as early as possible so cold
+// starts begin before providers mount and auth validation runs.
+// eslint-disable-next-line no-restricted-syntax
+fetch(`${import.meta.env.VITE_BACKEND_URL}/wake`, {
+  method: "GET",
+  credentials: "include",
+}).catch(() => {});
+
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ThemeProvider

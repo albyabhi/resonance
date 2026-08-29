@@ -71,17 +71,6 @@ export default function App() {
   const { role, isAuthenticated, competition, loading, isAuthReady, logout } = useAuth();
   const { hasRole } = usePermission();
 
-  useEffect(() => {
-    const controller = new AbortController();
-    // eslint-disable-next-line no-restricted-syntax
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/wake`, {
-      method: 'GET',
-      credentials: 'include',
-      signal: controller.signal,
-    }).catch(() => {});
-    return () => controller.abort();
-  }, []);
-
   if (loading || !isAuthReady) return <div>Loading...</div>;
 
   return (
