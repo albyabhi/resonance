@@ -338,7 +338,7 @@ export default function DashboardVisuals() {
     }
 
     const draftSheets = judgeSheets.filter((s) => s.status === "draft").length;
-    const submittedSheets = judgeSheets.filter((s) => s.status === "submitted").length;
+    const submittedSheets = judgeSheets.filter((s) => ["submitted", "confirmed", "published"].includes(s.status)).length;
     const activeAssignedEvents = assignedEvents.filter(
       (e) => e.status === "judging" || e.status === "ongoing" || e.status === "registration_open"
     );
@@ -358,7 +358,7 @@ export default function DashboardVisuals() {
                 const eventSheets = judgeSheets.filter(
                   (s) => String(s.event_id?._id || s.event_id) === eid
                 );
-                const submitted = eventSheets.filter((s) => s.status === "submitted").length;
+                const submitted = eventSheets.filter((s) => ["submitted", "confirmed", "published"].includes(s.status)).length;
                 const draft = eventSheets.filter((s) => s.status === "draft").length;
                 return (
                   <div

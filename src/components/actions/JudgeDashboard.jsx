@@ -175,7 +175,13 @@ const JudgeDashboard = () => {
           start_number: startNumber,
         }),
       });
-      toast.success(`Assigned chest numbers to ${resp.data?.total ?? unassignedParticipants.length} team(s)`);
+      const assignedCount = resp.data?.total ?? 0;
+      const errorCount = resp.data?.errors?.length ?? 0;
+      if (errorCount > 0) {
+        toast.warning(`Assigned ${assignedCount} team(s). ${errorCount} skipped due to duplicate chest numbers.`);
+      } else {
+        toast.success(`Assigned chest numbers to ${assignedCount} team(s)`);
+      }
       await loadSessionInfo(eventId, selectedRound);
     } catch (err) {
       setError(err.message || "Failed to auto-assign chest numbers");
@@ -263,8 +269,24 @@ const JudgeDashboard = () => {
       toast.success("Judging session started");
       setViewState(VIEW.JUDGING);
     } catch (err) {
-      setError(err.message || "Failed to start session");
-      toast.error(err.message);
+      if (err?.status === 409 && err?.payload?.data) {
+        const existingSession = err.payload.data;
+        setSession(existingSession);
+        setScoreMax(existingSession.score_scale?.max || 100);
+        if (existingSession.status === "in_progress") {
+          toast("Existing in-progress session loaded. Resuming...");
+          setViewState(VIEW.JUDGING);
+        } else if (existingSession.status === "submitted") {
+          toast("A submitted session already exists. You can reopen it to start fresh.");
+          setViewState(VIEW.SUBMITTED);
+        } else {
+          setError(err.payload?.error || "A session already exists for this event");
+          toast.error(err.payload?.error || "A session already exists");
+        }
+      } else {
+        setError(err.message || "Failed to start session");
+        toast.error(err.message);
+      }
     } finally {
       setSessionActionLoading(false);
     }

@@ -68,10 +68,18 @@ const MyScores = () => {
     const map = {
       draft: "secondary",
       submitted: "success",
+      confirmed: "success",
+      published: "outline",
       rescored: "outline",
     };
-    const label = status === "rescored" ? "Re-scored" : status;
-    return <Badge variant={map[status] || "outline"}>{label}</Badge>;
+    const labelMap = {
+      submitted: "Submitted",
+      confirmed: "Confirmed",
+      published: "Published",
+      rescored: "Re-scored",
+    };
+    const className = status === "published" ? "text-accent-blue border-accent-blue/20 bg-accent-blue-tint" : status === "confirmed" ? "text-accent-green border-accent-green/20 bg-accent-green/10" : "";
+    return <Badge variant={map[status] || "outline"} className={className}>{labelMap[status] || status}</Badge>;
   };
 
   return (
@@ -79,7 +87,7 @@ const MyScores = () => {
       <CardHeader>
         <CardTitle>My Scores</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Your submitted, draft, and rescored score sheets.
+          Your submitted, draft, confirmed, published, and rescored score sheets.
         </p>
       </CardHeader>
       <CardContent>

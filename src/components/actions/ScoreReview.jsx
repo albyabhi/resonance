@@ -19,6 +19,7 @@ const statusBadgeProps = (status) => {
   const map = {
     draft: { variant: "secondary", className: "" },
     submitted: { variant: "outline", className: "text-accent-amber border-accent-amber bg-accent-amber/10" },
+    confirmed: { variant: "outline", className: "text-accent-green border-accent-green bg-accent-green/10" },
     approved: { variant: "success", className: "" },
     published: { variant: "outline", className: "text-accent-blue border-accent-blue/20 bg-accent-blue-tint" },
     locked: { variant: "outline", className: "text-accent-purple border-accent-purple/20 bg-accent-purple-tint" },
@@ -31,7 +32,7 @@ const statusBadgeProps = (status) => {
 const flowSteps = [
   { id: "draft", label: "Draft", desc: "Initial state", color: "text-muted-foreground" },
   { id: "submitted", label: "Submitted", desc: "Judge submitted scores", color: "text-accent-amber" },
-  { id: "approved", label: "Approved", desc: "Internal confirmation — no points yet", color: "text-accent-green" },
+  { id: "confirmed", label: "Confirmed", desc: "Staff confirmed scores", color: "text-accent-green" },
   { id: "published", label: "Published", desc: "Public — points live on overall standings", color: "text-accent-blue" },
   { id: "locked", label: "Locked", desc: "Final, cannot change", color: "text-accent-purple" },
 ];
@@ -91,7 +92,7 @@ const ScoreReview = () => {
     try {
       setLoadingEvents(true);
       setError("");
-      const res = await apiCall("/api/event?status=result_pending,published");
+      const res = await apiCall("/api/event?status=scored_reviewed");
       setApprovedEvents(res.events || res.data || []);
     } catch (err) {
       setError(err.message);
@@ -277,7 +278,11 @@ const ScoreReview = () => {
         method: "POST",
         body: JSON.stringify({ event_id: eventId, round_no: parseInt(data.selectedRound, 10), force }),
       });
-      toast.success(res?.data?.message || "Results finalized — points published to overall standings");
+      if (res?.data?.transitionError) {
+        toast.warning(res.data.message || "Results finalized but event status transition failed");
+      } else {
+        toast.success(res?.data?.message || "Results finalized — points published to overall standings");
+      }
       refreshEventList();
       if (data.selectedRound) {
         await loadEventResults(eventId, data.selectedRound);
@@ -516,9 +521,9 @@ const ScoreReview = () => {
     const { selectedRound = "", report = [], judges = null, loading: evtLoading = false, aggregating = false, finalizing = false, expandedTeams = {} } = data;
     const rounds = evt.rounds ? Array.from({ length: evt.rounds }, (_, i) => i + 1) : [];
 
-    const totalSubmittedSheets = report.reduce((sum, g) => sum + g.scores.filter((s) => s.status === "submitted").length, 0);
+    const totalSubmittedSheets = report.reduce((sum, g) => sum + g.scores.filter((s) => ["submitted", "confirmed", "published"].includes(s.status)).length, 0);
     const totalTeams = report.length;
-    const hasSubmittedScores = report.some((g) => g.scores?.some((s) => s.status === "submitted"));
+    const hasSubmittedScores = report.some((g) => g.scores?.some((s) => ["submitted", "confirmed", "published"].includes(s.status)));
 
     return (
       <div key={evt._id} className="border border-border rounded-lg overflow-hidden">
@@ -623,7 +628,7 @@ const ScoreReview = () => {
                     const isTeamExpanded = expandedTeams[teamId];
                     const chestNo = group.scores?.[0]?.chest_no || group.team_id?.chest_no || `T${teamId.slice(-4).toUpperCase()}`;
                     const teamName = group.team_id?.name || "";
-                    const submittedScores = group.scores.filter((s) => s.status === "submitted");
+                    const submittedScores = group.scores.filter((s) => ["submitted", "confirmed", "published"].includes(s.status));
                     const draftScores = group.scores.filter((s) => s.status === "draft");
 
                     return (
@@ -688,8 +693,8 @@ const ScoreReview = () => {
                                         </TableCell>
                                         <TableCell>
                                           <Badge
-                                            variant={sheet.status === "submitted" ? "success" : sheet.status === "rescored" ? "outline" : "secondary"}
-                                            className={sheet.status === "rescored" ? "text-accent-amber border-accent-amber bg-accent-amber/10" : ""}
+                                            variant={sheet.status === "submitted" ? "success" : sheet.status === "confirmed" ? "success" : sheet.status === "published" ? "outline" : sheet.status === "rescored" ? "outline" : "secondary"}
+                                            className={sheet.status === "rescored" ? "text-accent-amber border-accent-amber bg-accent-amber/10" : sheet.status === "published" ? "text-accent-blue border-accent-blue/20 bg-accent-blue-tint" : sheet.status === "confirmed" ? "text-accent-green border-accent-green/20 bg-accent-green/10" : ""}
                                           >
                                             {sheet.status}
                                           </Badge>

@@ -144,6 +144,9 @@ const ManageEvents = () => {
   const [sharingEvent, setSharingEvent] = useState(null);
   const [managingJudges, setManagingJudges] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deletionImpact, setDeletionImpact] = useState(null);
+  const [deletionLoading, setDeletionLoading] = useState(false);
+  const [deletionConfirmText, setDeletionConfirmText] = useState("");
 
   const [coordinators, setCoordinators] = useState([]);
   const [venues, setVenues] = useState([]);
@@ -322,13 +325,52 @@ const ManageEvents = () => {
     }
   };
 
-  const deleteEvent = async (eventId) => {
+  const BLOCKED_DELETE_STATUSES = ["ongoing", "judging", "result_pending", "published", "completed"];
+
+  const getDeleteBlockedReason = (status) => {
+    const reasons = {
+      ongoing: "This event is currently LIVE. Cancel it before deleting.",
+      judging: "Judges are actively scoring. Cancel it before deleting.",
+      result_pending: "Results are being finalized. Cancel it before deleting.",
+      published: "Results are public. Cancel it before deleting.",
+      completed: "Completed events cannot be deleted.",
+    };
+    return reasons[status] || null;
+  };
+
+  const canDeleteEvent = (event) => !BLOCKED_DELETE_STATUSES.includes(event.status);
+
+  const fetchDeletionImpact = async (eventId) => {
+    try {
+      setDeletionLoading(true);
+      const { data } = await apiCall(`/api/event/${eventId}/deletion-impact`);
+      setDeletionImpact(data);
+    } catch (err) {
+      toast.error(err.message || "Failed to assess deletion impact");
+      setDeleteConfirmId(null);
+    } finally {
+      setDeletionLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (eventId) => {
+    setDeleteConfirmId(eventId);
+    setDeletionImpact(null);
+    setDeletionConfirmText("");
+    fetchDeletionImpact(eventId);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteConfirmId) return;
     try {
       setLoading(true);
       setError("");
-      await apiCall(`/api/event/${eventId}`, { method: "DELETE" });
-      setEvents((prev) => prev.filter((e) => (e._id || e.event_id) !== eventId));
-      toast.success("Event deleted");
+      await apiCall(`/api/event/${deleteConfirmId}`, { method: "DELETE" });
+      setEvents((prev) => prev.filter((e) => (e._id || e.event_id) !== deleteConfirmId));
+      toast.success("Event deleted successfully");
+      setDeleteConfirmId(null);
+      setDeletionImpact(null);
+      setDeletionConfirmText("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -942,7 +984,7 @@ const ManageEvents = () => {
                               }
                               return null;
                             })()}
-                            <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(id)} className="flex-1">
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(id)} className="flex-1" disabled={!canDeleteEvent(e)} title={getDeleteBlockedReason(e.status)}>
                               Delete
                             </Button>
                           </div>
@@ -1055,7 +1097,7 @@ const ManageEvents = () => {
                                   }
                                   return null;
                                 })()}
-                                <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmId(id)}>Delete</Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(id)} disabled={!canDeleteEvent(e)} title={getDeleteBlockedReason(e.status)}>Delete</Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1584,18 +1626,120 @@ const ManageEvents = () => {
           })()}
         </Dialog>
 
-        <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-          <AlertDialogContent>
+        <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) { setDeleteConfirmId(null); setDeletionImpact(null); setDeletionConfirmText(""); } }}>
+          <AlertDialogContent className="max-w-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Event</AlertDialogTitle>
-              <AlertDialogDescription>
-                Delete this event and its schedules? This action cannot be undone.
-              </AlertDialogDescription>
+              <AlertDialogTitle className="flex items-center gap-2">
+                {deletionImpact && !deletionImpact.deletable ? (
+                  <>
+                    <span className="text-destructive">Deletion Blocked</span>
+                  </>
+                ) : deletionImpact && deletionImpact.groupScoreChanges?.length > 0 ? (
+                  <>
+                    <span className="text-destructive">Delete Event — Impact on Standings</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Delete Event</span>
+                  </>
+                )}
+              </AlertDialogTitle>
+
+              {deletionLoading ? (
+                <AlertDialogDescription>
+                  <div className="flex items-center gap-2 py-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <span>Assessing deletion impact...</span>
+                  </div>
+                </AlertDialogDescription>
+              ) : deletionImpact ? (
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    {deletionImpact.blockReason ? (
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
+                        {deletionImpact.blockReason}
+                      </div>
+                    ) : (
+                      <>
+                        {deletionImpact.groupScoreChanges?.length > 0 && (
+                          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm">
+                            <p className="font-semibold text-destructive mb-2">This will affect group standings:</p>
+                            {deletionImpact.groupScoreChanges.map((g) => (
+                              <p key={g.group_id} className="text-xs">
+                                <span className="font-medium">{g.group_name}</span>: {g.current_score} → {g.new_score} ({g.delta} pts)
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="text-sm text-muted-foreground">
+                          <p className="font-medium text-foreground mb-1">This will permanently delete:</p>
+                          <ul className="space-y-0.5 text-xs">
+                            {deletionImpact.impact.teams > 0 && (
+                              <li>• {deletionImpact.impact.teams} team registration{deletionImpact.impact.teams !== 1 ? "s" : ""} ({deletionImpact.impact.participants} participant{deletionImpact.impact.participants !== 1 ? "s" : ""})</li>
+                            )}
+                            {deletionImpact.impact.scoreSheets > 0 && (
+                              <li>• {deletionImpact.impact.scoreSheets} score sheet{deletionImpact.impact.scoreSheets !== 1 ? "s" : ""}</li>
+                            )}
+                            {deletionImpact.impact.results.total > 0 && (
+                              <li>• {deletionImpact.impact.results.total} result{deletionImpact.impact.results.total !== 1 ? "s" : ""} ({deletionImpact.impact.results.published} published, {deletionImpact.impact.results.draft} draft)</li>
+                            )}
+                            {deletionImpact.impact.appeals > 0 && (
+                              <li>• {deletionImpact.impact.appeals} filed appeal{deletionImpact.impact.appeals !== 1 ? "s" : ""}</li>
+                            )}
+                            {deletionImpact.impact.schedules > 0 && (
+                              <li>• {deletionImpact.impact.schedules} schedule{deletionImpact.impact.schedules !== 1 ? "s" : ""}</li>
+                            )}
+                            {deletionImpact.impact.judgeSessions > 0 && (
+                              <li>• {deletionImpact.impact.judgeSessions} judge session{deletionImpact.impact.judgeSessions !== 1 ? "s" : ""}</li>
+                            )}
+                            {deletionImpact.impact.judgeAssignments > 0 && (
+                              <li>• {deletionImpact.impact.judgeAssignments} judge assignment{deletionImpact.impact.judgeAssignments !== 1 ? "s" : ""}</li>
+                            )}
+                            {deletionImpact.impact.teams === 0 && deletionImpact.impact.scoreSheets === 0 && deletionImpact.impact.results.total === 0 && (
+                              <li>• No registrations or results — safe to delete</li>
+                            )}
+                          </ul>
+                        </div>
+
+                        {deletionImpact.groupScoreChanges?.length > 0 && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground mb-1 block">
+                              Type event name to confirm:
+                            </Label>
+                            <Input
+                              type="text"
+                              value={deletionConfirmText}
+                              onChange={(e) => setDeletionConfirmText(e.target.value)}
+                              placeholder={deletionImpact.event?.title || ""}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </AlertDialogDescription>
+              ) : (
+                <AlertDialogDescription>
+                  Delete this event and all associated data? This action cannot be undone.
+                </AlertDialogDescription>
+              )}
             </AlertDialogHeader>
-            <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteConfirmId) { deleteEvent(deleteConfirmId); setDeleteConfirmId(null); } }}>
-              Delete
-            </AlertDialogAction>
+            <div className="flex justify-end gap-2">
+              <AlertDialogCancel onClick={() => { setDeleteConfirmId(null); setDeletionImpact(null); setDeletionConfirmText(""); }}>
+                Cancel
+              </AlertDialogCancel>
+              {deletionImpact && !deletionImpact.blockReason && !deletionLoading && (
+                <AlertDialogAction
+                  onClick={executeDelete}
+                  disabled={deletionLoading || (deletionImpact.groupScoreChanges?.length > 0 && deletionConfirmText !== deletionImpact.event?.title)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deletionImpact.groupScoreChanges?.length > 0 ? "Force Delete Event" : "Delete Event"}
+                </AlertDialogAction>
+              )}
+            </div>
           </AlertDialogContent>
         </AlertDialog>
 
