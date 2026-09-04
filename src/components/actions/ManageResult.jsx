@@ -362,9 +362,7 @@ const ManageResult = () => {
             <CardTitle className="text-sm font-medium">Eligible Teams</CardTitle>
           </CardHeader>
           <CardContent className="max-h-80 overflow-y-auto p-0">
-            {loading ? (
-              <div className="p-3 text-sm text-muted-foreground">Loading…</div>
-            ) : filteredTeams.length === 0 ? (
+            {loading ? null : filteredTeams.length === 0 ? (
               <div className="p-3 text-sm text-muted-foreground">No teams found</div>
             ) : (
               <ul className="divide-y divide-border">

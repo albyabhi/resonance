@@ -77,11 +77,11 @@ export default function ParticipantLoginPage() {
   const finishParticipantLogin = (data, successMessage) => {
     login(data.user, data.access_token, data.refresh_token, data.competition);
     toast.success(successMessage || `Welcome back, ${data.user?.name}!`);
-    
+
     if (eventIdFromUrl) {
       navigate(`/dashboard/event-registration?eventId=${eventIdFromUrl}`, { replace: true });
     } else {
-      navigate("/", { replace: true });
+      navigate("/?scroll=competitions", { replace: true });
     }
   };
 

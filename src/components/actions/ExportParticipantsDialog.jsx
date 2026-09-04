@@ -92,7 +92,7 @@ function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-h-[90dvh] overflow-y-auto w-[calc(100%-2rem)] sm:w-full">
         <AlertDialogHeader>
           <AlertDialogTitle>Export Participants</AlertDialogTitle>
           <AlertDialogDescription>
@@ -101,12 +101,12 @@ function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
         </AlertDialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:flex gap-2">
             <Button
               type="button"
               variant={mode === "all" ? "default" : "outline"}
               onClick={() => { setMode("all"); setSelectedGroupId(""); }}
-              className={mode === "all" ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}
+              className={`min-h-11 ${mode === "all" ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}`}
             >
               Export All Participants
             </Button>
@@ -114,17 +114,17 @@ function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
               type="button"
               variant={mode === "group" ? "default" : "outline"}
               onClick={() => setMode("group")}
-              className={mode === "group" ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}
+              className={`min-h-11 ${mode === "group" ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}`}
             >
               Export by {groupLabel}
             </Button>
           </div>
 
           {mode === "group" && (
-            <div className="pl-6">
+            <div className="sm:pl-6">
               <Label htmlFor="export-group-select" className="sr-only">Select {groupLabel}</Label>
               <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                <SelectTrigger id="export-group-select">
+                <SelectTrigger id="export-group-select" className="min-h-11">
                   <SelectValue placeholder={`Select ${groupLabel}`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -137,12 +137,12 @@ function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2">
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <AlertDialogCancel disabled={loading} className="min-h-11">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleExport}
             disabled={loading || (mode === "group" && !selectedGroupId)}
-            className="bg-accent-amber text-white hover:bg-accent-amber/90"
+            className="min-h-11 bg-accent-amber text-white hover:bg-accent-amber/90"
           >
             {loading ? (
               <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>

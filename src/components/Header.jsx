@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, ChevronDown, Trophy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { api, API_ROUTES } from "../utils/apiClient";
 
@@ -14,51 +14,11 @@ function Header({
   onToggleSidebar = () => {},
 }) {
   const auth = useAuth();
-  const { role, token, isAuthReady, competition, login } = auth || { role: "guest", token: null, isAuthReady: false, competition: null, login: () => {} };
+  const { role, token, isAuthReady, competition } = auth || { role: "guest", token: null, isAuthReady: false, competition: null };
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showCompSwitcher, setShowCompSwitcher] = useState(false);
-  const [compList, setCompList] = useState([]);
-  const [loadingComps, setLoadingComps] = useState(false);
-  const compDropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (compDropdownRef.current && !compDropdownRef.current.contains(e.target)) {
-        setShowCompSwitcher(false);
-      }
-    };
-    if (showCompSwitcher) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showCompSwitcher]);
-
-  useEffect(() => {
-    if (showCompSwitcher && token && role !== "guest") {
-      setLoadingComps(true);
-      api.get(API_ROUTES.COMPETITIONS.MY)
-        .then((data) => {
-          const list = data?.adminCompetitions || data || [];
-          setCompList(Array.isArray(list) ? list : []);
-        })
-        .catch(() => setCompList([]))
-        .finally(() => setLoadingComps(false));
-    }
-  }, [showCompSwitcher, token, role]);
-
-  const handleSwitchCompetition = async (compId) => {
-    try {
-      const res = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, { competition_id: compId });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to switch");
-      login(data.user, data.access_token, data.refresh_token, data.competition);
-      setShowCompSwitcher(false);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   useEffect(() => {
     if (token && role !== "guest" && isAuthReady) {
@@ -79,8 +39,8 @@ function Header({
     <header className="sticky top-0 z-50 transition-colors duration-300">
       <div className="accent-stripe" />
       <div className="glass">
-        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4" style={{ padding: "12px 7%" }}>
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-2 px-4 sm:gap-4 sm:px-[4%] lg:px-[7%]">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-3">
             <Button variant="ghost" size="icon" onClick={onMenuClick}
               className="rounded-full md:hidden" aria-label="Open menu">
               <Menu className="h-5 w-5" />
@@ -92,85 +52,13 @@ function Header({
             </Button>
 
             <button type="button" onClick={() => navigate("/dashboard")} className="flex min-w-0 items-center gap-3 cursor-pointer">
-              <span className="hidden text-[25px] font-bold tracking-tight sm:inline" style={{ color: "var(--foreground)", fontFamily: "var(--font-heading)" }}>
+              <span className="text-[20px] font-bold tracking-tight sm:text-[25px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-heading)" }}>
                 Reson<span style={{ color: "var(--destructive)" }}>ance</span>
               </span>
             </button>
-
-            {role !== "guest" && (competition || ["super_admin", "organizer", "event_coordinator", "judge", "house_captain"].includes(role)) && (
-              <div className="relative ml-2" ref={compDropdownRef}>
-                <button onClick={() => setShowCompSwitcher(!showCompSwitcher)}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
-                  style={{
-                    backgroundColor: "var(--card)",
-                    border: "1px solid var(--border-gold)",
-                    color: "var(--muted-foreground)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "11px",
-                  }}>
-                  <Trophy className="h-3.5 w-3.5" />
-                  {!competition && <span className="font-bold">Select</span>}
-                  <span style={{ color: "var(--accent-amber)" }}>&#9733;</span>
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-
-                {showCompSwitcher && (
-                  <div className="absolute left-0 top-full mt-2 w-64 overflow-hidden rounded-lg shadow-xl z-50"
-                    style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}>
-                    <div className="border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted-foreground)", borderColor: "var(--border)" }}>
-                      Switch Competition
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {loadingComps ? (
-                        <div className="px-4 py-3 text-xs" style={{ color: "var(--muted-foreground)" }}>Loading...</div>
-                      ) : compList.length === 0 ? (
-                        <div className="px-4 py-3 text-xs" style={{ color: "var(--muted-foreground)" }}>No other competitions</div>
-                      ) : (
-                        compList.map((comp) => {
-                          const isActive = comp._id === (competition?._id || competition?.id);
-                          return (
-                            <button key={comp._id} type="button" disabled={isActive}
-                              onClick={() => handleSwitchCompetition(comp._id)}
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{ color: isActive ? "var(--primary)" : "var(--card-foreground)" }}>
-                              <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarFallback className="rounded-lg text-xs font-bold"
-                                  style={{ backgroundColor: "var(--accent-blue-tint)", color: "var(--accent-blue)" }}>
-                                  {comp.name?.charAt(0) || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">{comp.name}</div>
-                                <div className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>
-                                  {comp.year || ""} · {comp.type?.replace(/_/g, " ") || ""}
-                                </div>
-                              </div>
-                              {isActive && (
-                                <span className="text-xs font-semibold" style={{ color: "var(--accent-green)" }}>Active</span>
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          <div className="hidden flex-1 justify-center px-4 md:flex">
-            <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--muted-foreground)" }} />
-              <input type="text" placeholder="Search dashboard" className="theme-input h-11 rounded-full pl-11 pr-4 text-sm" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-            <Button variant="ghost" size="icon" className="rounded-full md:hidden" aria-label="Search">
-              <Search className="h-5 w-5" />
-            </Button>
+          <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
             <ThemeToggle />
 
             {role !== "guest" && (
@@ -187,7 +75,7 @@ function Header({
                 </Button>
 
                 {showNotifications && (
-                  <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-lg shadow-xl"
+                  <div className="absolute right-0 z-50 mt-3 w-[calc(100vw-2rem)] max-w-80 overflow-hidden rounded-lg shadow-xl"
                     style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}>
                     <div className="flex items-center justify-between border-b p-4"
                       style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
@@ -221,6 +109,29 @@ function Header({
                   </div>
                 )}
               </div>
+            )}
+
+            {role !== "guest" && competition && (
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard")}
+                title={competition.name || "Competition"}
+                aria-label="Competition logo"
+                className="shrink-0 cursor-pointer rounded-full transition-opacity hover:opacity-80"
+              >
+                <Avatar className="h-9 w-9 rounded-full" style={{ border: "1px solid var(--border)" }}>
+                  {competition.logoUrl ? (
+                    <img src={competition.logoUrl} alt={competition.name || "Competition logo"} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <AvatarFallback
+                      className="rounded-full text-sm font-bold"
+                      style={{ backgroundColor: "var(--accent-blue-tint)", color: "var(--accent-blue)" }}
+                    >
+                      {competition.name?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </button>
             )}
           </div>
         </div>

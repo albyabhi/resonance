@@ -171,6 +171,9 @@ export default function ProfileSettings() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            <section aria-label="Account">
+            <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">Account</h3>
+            <div className="space-y-5">
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <Avatar className="h-24 w-24">
@@ -180,10 +183,10 @@ export default function ProfileSettings() {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Label
                   htmlFor="profile-image-upload"
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 >
                   <Upload className="h-4 w-4" />
                   <span>Choose Image</span>
@@ -202,6 +205,7 @@ export default function ProfileSettings() {
                     variant="outline"
                     onClick={handleRemoveImage}
                     disabled={submitting}
+                    className="min-h-[44px]"
                   >
                     <RotateCcw className="h-4 w-4" />
                     Remove
@@ -213,6 +217,7 @@ export default function ProfileSettings() {
                     variant="outline"
                     onClick={() => { setSelectedImage(null); setImagePreview(null); setRemoveImage(false); }}
                     disabled={submitting}
+                    className="min-h-[44px]"
                   >
                     Cancel
                   </Button>
@@ -235,6 +240,7 @@ export default function ProfileSettings() {
                 disabled={submitting}
                 required
                 placeholder="Your full name"
+                className="min-h-[44px] text-base sm:text-sm"
               />
             </div>
 
@@ -265,6 +271,9 @@ export default function ProfileSettings() {
               />
             </div>
 
+            {!isStaff && (profile?.class || profile?.admission_no || profile?.unique_id) && (
+            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Competition details (read-only)</p>
             {!isStaff && profile?.class && (
               <div className="space-y-2">
                 <Label htmlFor="class" className="flex items-center gap-2">
@@ -309,6 +318,8 @@ export default function ProfileSettings() {
                 />
               </div>
             )}
+            </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
@@ -321,23 +332,29 @@ export default function ProfileSettings() {
                 onChange={(e) => setPhone(e.target.value)}
                 disabled={submitting}
                 placeholder="Your phone number"
+                className="min-h-[44px] text-base sm:text-sm"
               />
             </div>
 
             {isStaff && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <Checkbox
                   id="phone_visible"
                   checked={phoneVisible}
                   onCheckedChange={(checked) => setPhoneVisible(!!checked)}
                   disabled={submitting}
+                  className="mt-0.5 h-5 w-5"
                 />
-                <Label htmlFor="phone_visible" className="font-medium text-muted-foreground">
+                <Label htmlFor="phone_visible" className="font-medium text-muted-foreground leading-snug">
                   Make phone number visible to others
                 </Label>
               </div>
             )}
+            </div>
+            </section>
 
+            <section aria-label="Security" className="border-t border-border pt-6">
+            <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-muted-foreground">Security</h3>
             <div className="space-y-2">
               <Label htmlFor="password" className="flex items-center gap-2">
                 <Lock className="h-3.5 w-3.5" /> New Password <span className="text-xs text-muted-foreground">(optional)</span>
@@ -349,14 +366,16 @@ export default function ProfileSettings() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
                 placeholder="Leave blank to keep current"
+                className="min-h-[44px] text-base sm:text-sm"
               />
               <p className="text-xs text-muted-foreground">Minimum 6 characters.</p>
             </div>
+            </section>
 
             <Button
               type="submit"
               disabled={submitting || loading}
-              className="w-full"
+              className="w-full min-h-[48px]"
             >
               <Save className="h-4 w-4" />
               {submitting ? "Saving..." : "Save Changes"}

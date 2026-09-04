@@ -46,6 +46,8 @@ export default function CaptainEventRegister() {
   const [selectedParticipantIds, setSelectedParticipantIds] = useState([]);
   const [teamName, setTeamName] = useState("");
   const [participantSearch, setParticipantSearch] = useState("");
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventFilter, setEventFilter] = useState("all");
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -107,6 +109,25 @@ export default function CaptainEventRegister() {
         p.class.toLowerCase().includes(q)
     );
   }, [groupParticipants, participantSearch]);
+
+  const filteredEvents = useMemo(() => {
+    const q = eventSearch.toLowerCase().trim();
+    return events.filter((e) => {
+      if (eventFilter === "individual" && e.event_type !== "individual") return false;
+      if (eventFilter === "team" && e.event_type !== "team") return false;
+      if (eventFilter === "registered") {
+        const id = e._id || e.event_id;
+        if (!hasRegistrationForEvent(id)) return false;
+      }
+      if (!q) return true;
+      return (
+        (e.title || e.name || "").toLowerCase().includes(q) ||
+        (e.category || "").toLowerCase().includes(q) ||
+        (e.description || "").toLowerCase().includes(q)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events, eventSearch, eventFilter, registrationsByEvent]);
 
   const openRegistrationModal = (event) => {
     setSelectedEvent(event);
@@ -227,17 +248,51 @@ export default function CaptainEventRegister() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-card-foreground">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-card-foreground">
             Event Registration
           </h2>
           {groupInfo && (
-            <p className="text-sm mt-1 text-muted-foreground">
-              Registering participants for {groupInfo.name}
+            <p className="text-sm mt-1 text-muted-foreground truncate">
+              Registering participants for {groupInfo.name} &middot; {groupParticipants.length} members
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Sticky search + type filter — works one-handed on mobile */}
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 space-y-2" style={{ backgroundColor: "var(--background)" }}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            value={eventSearch}
+            onChange={(e) => setEventSearch(e.target.value)}
+            placeholder="Search events by name or category..."
+            className="pl-10 min-h-[44px] text-base sm:text-sm"
+          />
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {[
+            { value: "all", label: `All (${events.length})` },
+            { value: "individual", label: "Individual" },
+            { value: "team", label: "Team" },
+            { value: "registered", label: "Registered" },
+          ].map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setEventFilter(f.value)}
+              className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-bold transition-colors min-h-[36px] ${
+                eventFilter === f.value
+                  ? "bg-accent-blue text-white"
+                  : "bg-muted text-muted-foreground hover:text-card-foreground"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -260,6 +315,11 @@ export default function CaptainEventRegister() {
           onClick={() => setActiveTab("available")}
         >
           Available Events
+          {events.length > 0 && (
+            <span className="bg-muted text-muted-foreground text-xs px-2.5 py-0.5 rounded-full font-black">
+              {events.length}
+            </span>
+          )}
         </button>
         <button
           className={`transition-all border-b-2 flex items-center gap-2 ${
@@ -280,14 +340,7 @@ export default function CaptainEventRegister() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-accent-blue" />
-          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            Loading events...
-          </p>
-        </div>
-      ) : activeTab === "available" ? (
+      {loading ? null : activeTab === "available" ? (
         events.length === 0 ? (
           <Card className="text-center py-20">
             <CardContent>
@@ -300,9 +353,28 @@ export default function CaptainEventRegister() {
               </p>
             </CardContent>
           </Card>
+        ) : filteredEvents.length === 0 ? (
+          <Card className="text-center py-16 border-dashed">
+            <CardContent>
+              <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="font-semibold text-lg text-muted-foreground">
+                No events match your filters
+              </p>
+              <p className="text-xs mt-1 text-muted-foreground">
+                Try a different search or filter.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => { setEventSearch(""); setEventFilter("all"); }}
+                className="mt-5 min-h-[44px]"
+              >
+                Clear filters
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((e) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {filteredEvents.map((e) => {
               const id = e._id || e.event_id;
               const registered = hasRegistrationForEvent(id);
               const count = registrationCountForEvent(id);
@@ -340,11 +412,11 @@ export default function CaptainEventRegister() {
                       </div>
                     </div>
 
-                    <h3 className="font-extrabold text-xl text-card-foreground mt-4 leading-snug">
+                    <h3 className="font-extrabold text-lg sm:text-xl text-card-foreground mt-3 leading-snug">
                       {e.title || e.name}
                     </h3>
 
-                    <p className="text-sm text-muted-foreground mt-2.5 line-clamp-3 min-h-[60px] leading-relaxed">
+                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
                       {e.description || "No description provided."}
                     </p>
 
@@ -391,10 +463,10 @@ export default function CaptainEventRegister() {
                     <div className="mt-4">
                       <Button
                         onClick={() => openRegistrationModal(e)}
-                        className="w-full gap-2 text-xs uppercase tracking-widest"
+                        className="w-full min-h-[44px] gap-2 text-xs uppercase tracking-widest"
                       >
                         <UserPlus className="h-4 w-4" />
-                        Register Participants
+                        {registered ? `Registered (${count}) — Add More` : "Register Participants"}
                       </Button>
                     </div>
                   </CardContent>
@@ -424,11 +496,11 @@ export default function CaptainEventRegister() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {groupRegistrations.map((reg) => {
                 const evt = reg.event_id || {};
                 return (
-                  <Card key={reg._id} className="p-6">
+                  <Card key={reg._id} className="p-5 sm:p-6">
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <Badge variant="success" className="text-[10px] font-black uppercase tracking-widest">
@@ -472,29 +544,30 @@ export default function CaptainEventRegister() {
       )}
 
       <Dialog open={!!selectedEvent} onOpenChange={(open) => { if (!open) closeRegistrationModal(); }}>
-        <DialogContent className={`${isMobile ? "max-h-[85vh]" : "max-w-2xl max-h-[90vh]"} overflow-y-auto`}>
+        <DialogContent className={`${isMobile ? "max-h-[92dvh]" : "max-w-2xl max-h-[90vh]"} flex flex-col gap-0 overflow-hidden p-0`}>
+          <div className="sticky top-0 z-10 border-b border-border bg-background px-5 pt-5 pb-4 sm:px-6">
           <DialogHeader>
-            <DialogTitle>{selectedEvent?.title || selectedEvent?.name}</DialogTitle>
+            <DialogTitle className="pr-8 text-left">{selectedEvent?.title || selectedEvent?.name}</DialogTitle>
             <DialogDescription>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant={selectedEvent?.event_type === "individual" ? "secondary" : "outline"} className="text-xs font-black uppercase tracking-wider">
                   {selectedEvent?.event_type === "individual" ? "Individual Event" : "Team Event"}
                 </Badge>
-                <span className="text-muted-foreground">for {groupInfo?.name}</span>
+                <span className="text-muted-foreground text-xs">for {groupInfo?.name}</span>
               </div>
             </DialogDescription>
           </DialogHeader>
 
           {selectedEvent?.event_type === "individual" && (
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted border-border">
-              <div className="text-xs font-bold text-card-foreground">
-                Registration Slots
+            <div className="mt-3 flex items-center justify-between gap-3 p-3 border rounded-lg bg-muted border-border">
+              <div className="text-xs font-bold text-card-foreground shrink-0">
+                Slots
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-xs text-muted-foreground">
-                  {selectedParticipantIds.length} selected &middot; {remainingSlots} remaining
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                <div className="text-xs text-muted-foreground truncate">
+                  {selectedParticipantIds.length} selected &middot; {remainingSlots} left
                 </div>
-                <div className="h-2 w-24 bg-border rounded-full overflow-hidden">
+                <div className="h-2 w-20 sm:w-24 shrink-0 bg-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-accent-blue rounded-full transition-all"
                     style={{ width: `${selectedEvent.max_per_group ? ((selectedEvent.max_per_group - remainingSlots) / selectedEvent.max_per_group) * 100 : 0}%` }}
@@ -503,8 +576,9 @@ export default function CaptainEventRegister() {
               </div>
             </div>
           )}
+          </div>
 
-          <div className="space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
             {selectedEvent?.event_type === "team" && (
               <div className="space-y-2">
                 <Label>
@@ -538,7 +612,7 @@ export default function CaptainEventRegister() {
                 />
               </div>
 
-              <div className="border rounded-lg border-border overflow-hidden max-h-[300px] overflow-y-auto divide-y divide-border">
+              <div className="border rounded-lg border-border overflow-hidden max-h-[40dvh] sm:max-h-[300px] overflow-y-auto divide-y divide-border">
                 {filteredParticipants.length === 0 ? (
                   <div className="p-6 text-center text-sm font-semibold text-muted-foreground">
                     {participantSearch
@@ -641,7 +715,7 @@ export default function CaptainEventRegister() {
             )}
           </div>
 
-          <div className="border-t border-border pt-4">
+          <div className="sticky bottom-0 border-t border-border bg-background px-5 py-4 sm:px-6">
             <div className="text-xs mb-3 text-muted-foreground">
               {selectedEvent?.event_type === "team"
                 ? `${selectedParticipantIds.length} participant${selectedParticipantIds.length !== 1 ? "s" : ""} selected`
@@ -649,18 +723,18 @@ export default function CaptainEventRegister() {
                   ? `${selectedParticipantIds.length} participant${selectedParticipantIds.length !== 1 ? "s" : ""} selected`
                   : "No participant selected"}
             </div>
-            <div className={`flex ${isMobile ? "flex-col" : "flex-row justify-end"} gap-3`}>
+            <div className={`flex ${isMobile ? "flex-col" : "flex-row justify-end"} gap-2.5`}>
               <Button
                 variant="outline"
                 onClick={closeRegistrationModal}
-                className={isMobile ? "min-h-[48px] w-full" : ""}
+                className="min-h-[48px] sm:min-h-0 sm:h-10 w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmitRegistration}
                 disabled={submitting || !selectedParticipantIds.length}
-                className={`gap-2 ${isMobile ? "min-h-[48px] w-full" : ""}`}
+                className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2 w-full sm:w-auto"
               >
                 {submitting ? (
                   <>

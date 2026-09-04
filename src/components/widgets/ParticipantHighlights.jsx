@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Star, Award, Zap, Sparkles, X, Loader2, List } from "lucide-react";
+import { Star, Award, Zap, Sparkles, X, List } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import { apiFetch } from "../../utils/apiClient";
 
@@ -180,12 +180,6 @@ export default function ParticipantHighlights({ participantStats = { overall: { 
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-1.5">
-              {loading && (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--chart-axis)" }} />
-                  <p className="text-xs" style={{ color: "var(--chart-axis)" }}>Loading rankings...</p>
-                </div>
-              )}
 
               {error && (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">

@@ -74,8 +74,8 @@ export const roleConfig = {
   house_captain: {
     title: "House Captain",
     actions: [
-      { label: "Events", icon: Calendar },
-      { label: "My House", icon: Users },
+      { label: "My House", icon: UsersIcon },
+      { label: "Event Registration", icon: Calendar },
       { label: "Manage House Logo", icon: Image },
     ],
     modules: { standings: true, events: true, stats: true },

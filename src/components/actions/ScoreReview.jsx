@@ -518,8 +518,9 @@ const ScoreReview = () => {
   const renderPendingEvent = (evt) => {
     const isExpanded = expandedEvents[evt._id] || false;
     const data = eventData[evt._id] || {};
-    const { selectedRound = "", report = [], judges = null, loading: evtLoading = false, aggregating = false, finalizing = false, expandedTeams = {} } = data;
+    const { selectedRound = "", report = [], judges = null, loading: evtLoading = false, aggregating = false, finalizing = false, expandedTeams = {}, eventInfo = null } = data;
     const rounds = evt.rounds ? Array.from({ length: evt.rounds }, (_, i) => i + 1) : [];
+    const isRankEvent = (eventInfo?.scoring_type || evt.scoring_type || "score") === "rank";
 
     const totalSubmittedSheets = report.reduce((sum, g) => sum + g.scores.filter((s) => ["submitted", "confirmed", "published"].includes(s.status)).length, 0);
     const totalTeams = report.length;
@@ -539,6 +540,7 @@ const ScoreReview = () => {
                 <Badge variant="outline" className="text-accent-amber border-accent-amber bg-accent-amber/10">
                   {evt.status || "pending review"}
                 </Badge>
+                <Badge variant="outline">{isRankEvent ? "Ranking" : "Score"}</Badge>
                 {judges && (
                   <span className={`text-xs ${judges.all_submitted ? "text-accent-green" : "text-accent-amber"}`}>
                     {judges.submitted_count}/{judges.assigned_count} judges submitted
@@ -565,11 +567,7 @@ const ScoreReview = () => {
 
         {isExpanded && (
           <div className="border-t border-border p-4 bg-muted/30">
-            {evtLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-accent-amber" />
-              </div>
-            ) : !selectedRound ? (
+            {evtLoading ? null : !selectedRound ? (
               <p className="text-sm text-muted-foreground text-center py-4">Select a round to view submissions</p>
             ) : report.length === 0 ? (
               <div className="text-center py-6">
@@ -668,7 +666,7 @@ const ScoreReview = () => {
                                   <TableHeader>
                                     <TableRow className="border-b border-border">
                                       <TableHead className="text-muted-foreground">Judge</TableHead>
-                                      <TableHead className="text-muted-foreground">Score</TableHead>
+                                      <TableHead className="text-muted-foreground">{isRankEvent ? "Rank" : "Score"}</TableHead>
                                       <TableHead className="text-muted-foreground">Criteria</TableHead>
                                       <TableHead className="text-muted-foreground">Status</TableHead>
                                       <TableHead className="text-muted-foreground">Submitted</TableHead>
@@ -681,7 +679,9 @@ const ScoreReview = () => {
                                           {sheet.judge?.name || "Unknown"}
                                         </TableCell>
                                         <TableCell className="font-bold text-card-foreground">
-                                          {sheet.total_score?.toFixed(1) || "—"}
+                                          {(sheet.judging_type || (isRankEvent ? "rank" : "score")) === "rank"
+                                            ? (sheet.rank != null ? `#${sheet.rank}` : "—")
+                                            : (sheet.total_score?.toFixed(1) || "—")}
                                         </TableCell>
                                         <TableCell className="text-card-foreground">
                                           {sheet.scores?.map((sc) => (
@@ -704,7 +704,7 @@ const ScoreReview = () => {
                                         </TableCell>
                                       </TableRow>
                                     ))}
-                                    {group.average_score !== null && (
+                                    {group.average_score !== null && !isRankEvent && (
                                       <TableRow className="font-bold">
                                         <TableCell className="text-card-foreground">Average</TableCell>
                                         <TableCell className="text-accent-amber">{group.average_score.toFixed(1)}</TableCell>
@@ -811,11 +811,7 @@ const ScoreReview = () => {
 
         {isExpanded && (
           <div className="border-t border-border p-4 bg-muted/30">
-            {evtLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-accent-amber" />
-              </div>
-            ) : !selectedRound ? (
+            {evtLoading ? null : !selectedRound ? (
               <p className="text-sm text-muted-foreground text-center py-4">Select a round to view results</p>
             ) : (
               <>
@@ -1158,11 +1154,7 @@ const ScoreReview = () => {
                 </div>
               </div>
 
-              {loadingEvents ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-accent-amber" />
-                </div>
-              ) : pendingEvents.length === 0 ? (
+              {loadingEvents ? null : pendingEvents.length === 0 ? (
                 <div className="text-center py-12">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">No events pending review</p>
@@ -1175,11 +1167,7 @@ const ScoreReview = () => {
             </TabsContent>
 
             <TabsContent value="approved" className="mt-0">
-              {loadingEvents ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-accent-amber" />
-                </div>
-              ) : approvedEvents.length === 0 ? (
+              {loadingEvents ? null : approvedEvents.length === 0 ? (
                 <div className="text-center py-12">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">No approved or published events</p>

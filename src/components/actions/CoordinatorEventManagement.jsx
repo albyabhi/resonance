@@ -230,13 +230,7 @@ export default function CoordinatorEventManagement() {
     assignSingleChest(editingChest, editValue.trim());
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-accent-amber" />
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -415,11 +409,7 @@ export default function CoordinatorEventManagement() {
                 </CardHeader>
 
                 <CardContent className="p-4">
-                  {teamsLoading ? (
-                    <div className="flex items-center justify-center py-10">
-                      <Loader2 className="h-6 w-6 animate-spin text-accent-amber" />
-                    </div>
-                  ) : teams.length === 0 ? (
+                  {teamsLoading ? null : teams.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-10 text-center">
                       <Users className="h-8 w-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">No teams registered for this event</p>

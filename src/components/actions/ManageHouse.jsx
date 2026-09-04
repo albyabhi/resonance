@@ -560,12 +560,7 @@ const ManageHouse = () => {
                             </div>
                           </div>
                           <div className="max-h-60 overflow-y-auto">
-                            {participantsLoading ? (
-                              <div className="p-6 text-center">
-                                <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">Loading...</p>
-                              </div>
-                            ) : participants.length === 0 ? (
+                            {participantsLoading ? null : participants.length === 0 ? (
                               <div className="p-6 text-center">
                                 <Users className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
                                 <p className="text-xs font-semibold text-muted-foreground">No participants in this {groupLabel.toLowerCase()}</p>

@@ -160,11 +160,6 @@
     --accent-stripe-2: #BD4C3C;
     --accent-stripe-3: #E0A442;
     --accent-stripe-4: #8B5B83;
-    --flower-petal-terracotta: #BD4C3C;
-    --flower-petal-plum: #8B5B83;
-    --flower-petal-mustard: #E0A442;
-    --flower-center: #2D342C;
-    --flower-stem: #376D62;
     --sun-halo: #F1DBA8;
     --bg-blush: #E6D3BD;
     --border-gold: #B7A57D;
@@ -486,32 +481,6 @@
     );
   }
 
-  /* ── Ticker band ────────────────────────────────────── */
-  .ticker-band {
-    background-color: var(--ticker-bg);
-    color: var(--ticker-text);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-
-  .ticker-band-inner {
-    display: inline-block;
-    animation: ticker-scroll 20s linear infinite;
-  }
-
-  @keyframes ticker-scroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ticker-band-inner { animation: none; }
-  }
-
   /* ── Hero background radial treatment ───────────────── */
   .hero-bg {
     position: relative;
@@ -541,58 +510,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
-  /* ── Folk flower petals ─────────────────────────────── */
-  .petal {
-    position: absolute;
-    border-radius: 70% 25% 70% 25%;
-  }
-
-  .petal-terracotta { background-color: var(--flower-petal-terracotta); }
-  .petal-plum { background-color: var(--flower-petal-plum); }
-  .petal-mustard { background-color: var(--flower-petal-mustard); }
-
-  .flower-stem {
-    position: absolute;
-    background-color: var(--flower-stem);
-    border-radius: 999px;
-  }
-
-  .flower-center {
-    position: absolute;
-    background-color: var(--flower-center);
-    border-radius: 50%;
-  }
-
-  .flower-center-ring {
-    position: absolute;
-    border: 2px dashed var(--border);
-    border-radius: 50%;
-  }
-
-  .flower-sun {
-    position: absolute;
-    background-color: var(--sun-halo);
-    border-radius: 50%;
-  }
-
-  .flower-sparkle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: var(--accent-amber);
-    border-radius: 50%;
-    animation: sparkle-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes sparkle-pulse {
-    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.2); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .flower-sparkle { animation: none; opacity: 0.6; }
-  }
 }
 
 /* ── Respect reduced motion ───────────────────────────── */
@@ -601,6 +518,15 @@
   .theme-transition * {
     transition: none !important;
   }
+}
+
+/* ── Route transition veil ─────────────────────────────── */
+.route-veil-tick {
+  transition: background-color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-veil-tick { transition: none; }
 }
 
 /* ── Custom Scrollbars ───────────────────────────────── */

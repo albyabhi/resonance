@@ -399,12 +399,7 @@ export default function ParticipantRegister() {
         </TabsList>
 
         <TabsContent value="available">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest">Loading entries...</p>
-            </div>
-          ) : events.length === 0 ? (
+          {loading ? null : events.length === 0 ? (
             <Card className="text-center py-20">
               <CardContent>
                 <Trophy className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
@@ -615,12 +610,7 @@ export default function ParticipantRegister() {
         </TabsContent>
 
         <TabsContent value="my-events">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest">Loading entries...</p>
-            </div>
-          ) : myRegistrations.length === 0 ? (
+          {loading ? null : myRegistrations.length === 0 ? (
             <Card className="text-center py-20 border border-dashed">
               <CardContent>
                 <Users className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
@@ -850,12 +840,7 @@ export default function ParticipantRegister() {
               </TabsContent>
 
               <TabsContent value="join" className="space-y-4 mt-4">
-                {loadingTeams ? (
-                  <div className="flex flex-col items-center justify-center py-10 space-y-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-accent-blue" />
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Loading house teams...</p>
-                  </div>
-                ) : eventTeams.length === 0 ? (
+                {loadingTeams ? null : eventTeams.length === 0 ? (
                   <div className="text-center py-10 border border-dashed rounded-lg bg-muted">
                     <Users className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
                     <p className="text-muted-foreground font-semibold text-sm">No ongoing teams found.</p>

@@ -2,13 +2,31 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompetition } from "../../context/CompetitionContext";
 import { FadeIn } from "../AnimateReveal";
-import { Settings, Shield, Globe, Lock, AlertCircle, Copy, Check, Eye, RefreshCw, Trophy } from "lucide-react";
+import {
+  Settings,
+  Shield,
+  Globe,
+  Lock,
+  Copy,
+  Check,
+  Eye,
+  RefreshCw,
+  Trophy,
+  Link2,
+  ChevronDown,
+  X,
+} from "lucide-react";
 import { apiJson } from "../../utils/apiClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "../ui/collapsible";
+import { Checkbox } from "../ui/checkbox";
+import { Separator } from "../ui/separator";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -19,6 +37,18 @@ const competitionTypes = [
   { value: "inter_college", label: "Inter-College" },
   { value: "sports_meet", label: "Sports Meet" },
   { value: "custom", label: "Custom Group Type" },
+];
+
+const participantSources = [
+  { value: "import", label: "Admin Only", desc: "Only admins import and manage participants." },
+  { value: "captain", label: "Captain Managed", desc: "Captains create and manage their group members." },
+  { value: "self", label: "Self Registration", desc: "Participants register themselves via public link." },
+  { value: "hybrid", label: "Hybrid", desc: "Admin import + account claim + captains." },
+];
+
+const visibilityOptions = [
+  { value: "public", label: "Public View", desc: "Anyone with the link can view.", icon: Globe },
+  { value: "private", label: "Private Access", desc: "Only dashboard members can view.", icon: Lock },
 ];
 
 export default function ManageCompetition() {
@@ -42,6 +72,8 @@ export default function ManageCompetition() {
   const [success, setSuccess] = useState("");
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     if (competition) {
@@ -148,271 +180,339 @@ export default function ManageCompetition() {
     );
   }
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const publicUrl = `${origin}/view/${formData.slug}`;
+  const selectedSource = participantSources.find((s) => s.value === formData.participant_source);
+  const visibilityValue = formData.is_public ? "public" : "private";
+  const selectedVisibility = visibilityOptions.find((v) => v.value === visibilityValue);
+
+  const isDirty =
+    formData.name !== (competition.name || "") ||
+    formData.slug !== (competition.slug || "") ||
+    formData.year !== String(competition.year || "") ||
+    formData.is_public !== !!competition.is_public ||
+    formData.participant_source !== (competition.participant_source || "import") ||
+    formData.captain_as_participant !== (competition.captain_as_participant !== false) ||
+    formData.type !== (competition.type || "school_houses") ||
+    formData.group_label !== (competition.group_label || "") ||
+    !!formData.logo ||
+    !!formData.removeLogo;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const openPreview = () => window.open(`/view/${formData.slug}`, "_blank", "noopener,noreferrer");
+
   return (
-    <div className="space-y-10">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-border">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-accent-blue" />
-            <h2 className="text-3xl font-semibold tracking-tight text-card-foreground font-heading">
-              Manage Competition
-            </h2>
-          </div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider leading-none pl-7">Update global parameters</p>
+    <div className="space-y-6">
+      <header className="flex items-center justify-between gap-4 pb-5 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <Settings className="w-5 h-5 text-accent-blue shrink-0" />
+          <h2 className="text-2xl font-semibold tracking-tight text-card-foreground font-heading truncate">
+            Manage Competition
+          </h2>
+          {isDirty && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-600 border border-amber-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Unsaved
+            </span>
+          )}
         </div>
+        <p className="hidden md:block text-xs text-muted-foreground truncate max-w-[280px]">
+          {competition.name} {competition.year ? `· ${competition.year}` : ""}
+        </p>
       </header>
 
       {error && (
-        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-4 text-destructive animate-in slide-in-from-top-2">
-          <Shield className="w-5 h-5 shrink-0" />
-          <p className="text-xs font-bold uppercase tracking-widest leading-none">{error}</p>
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive animate-in slide-in-from-top-2">
+          <Shield className="w-4 h-4 shrink-0" />
+          <p className="text-xs font-bold uppercase tracking-widest leading-none flex-1">{error}</p>
+          <button type="button" onClick={() => setError("")} className="opacity-60 hover:opacity-100" aria-label="Dismiss error">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {success && (
-        <div className="p-4 bg-accent-green-tint border border-accent-green/20 rounded-lg flex items-center gap-4 text-accent-green animate-in slide-in-from-top-2">
-          <Globe className="w-5 h-5 shrink-0" />
-          <p className="text-xs font-bold uppercase tracking-widest leading-none">{success}</p>
+        <div className="p-3 bg-accent-green-tint border border-accent-green/20 rounded-lg flex items-center gap-3 text-accent-green animate-in slide-in-from-top-2">
+          <Globe className="w-4 h-4 shrink-0" />
+          <p className="text-xs font-bold uppercase tracking-widest leading-none flex-1">{success}</p>
+          <button type="button" onClick={() => setSuccess("")} className="opacity-60 hover:opacity-100" aria-label="Dismiss message">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      <FadeIn className="max-w-2xl mx-auto">
+      <FadeIn className="max-w-3xl mx-auto w-full">
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
             <Settings className="w-40 h-40 text-accent-blue" />
           </div>
 
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Competition Settings</CardTitle>
-            <CardDescription>Modify global properties such as identifiers and visibility states.</CardDescription>
+            <CardDescription>Update details, sharing and participant rules. Nothing is saved until you press Save.</CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="p-4 bg-muted border border-border rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Share Public URL</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                    formData.is_public
-                      ? "text-accent-green border-accent-green/30 bg-accent-green-tint"
-                      : "text-muted-foreground border-border bg-background"
-                  }`}>
-                    {formData.is_public ? "Public" : "Private"}
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-card-foreground truncate">
-                  {window.location.origin}/view/{formData.slug}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`/view/${formData.slug}`, "_blank", "noopener,noreferrer")}
-                >
-                  <Eye className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Preview</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={regenerating}
-                  onClick={handleRegenerate}
-                  title="Generate a new random link (old link stops working)"
-                >
-                  <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
-                  <span className="text-xs font-bold uppercase tracking-wider">{regenerating ? "Regenerating..." : "Regenerate"}</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/view/${formData.slug}`);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span className="text-xs font-bold uppercase tracking-wider">{copied ? "Copied!" : "Copy Link"}</span>
-                </Button>
-              </div>
-            </div>
+          <CardContent>
+            <form onSubmit={handleUpdate} className="space-y-5">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="sharing">Sharing</TabsTrigger>
+                  <TabsTrigger value="participants">Participants</TabsTrigger>
+                </TabsList>
 
-            <form onSubmit={handleUpdate} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="comp-name" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Competition Name</Label>
-                  <Input
-                    id="comp-name"
-                    required
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Annual Sports Meet"
-                  />
-                </div>
+                {/* ---- GENERAL ---- */}
+                <TabsContent value="general" className="space-y-5 pt-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="comp-name" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Competition Name</Label>
+                    <Input
+                      id="comp-name"
+                      required
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g. Annual Sports Meet"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="comp-slug" className="text-xs font-black uppercase tracking-wider text-muted-foreground">URL Slug</Label>
-                  <Input
-                    id="comp-slug"
-                    required
-                    type="text"
-                    value={formData.slug}
-                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                    placeholder="e.g. annual-sports"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="comp-logo" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Competition Logo</Label>
-                  <Input
-                    id="comp-logo"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setFormData({ ...formData, logo: e.target.files[0], removeLogo: false });
-                      }
-                    }}
-                  />
-                </div>
-
-                {competition?.logoUrl && (
-                  <div className="space-y-2 flex flex-col justify-end">
-                    <div className="flex items-center gap-4">
-                      <img src={competition.logoUrl} alt="Logo Preview" className="h-12 w-12 object-contain rounded-lg border border-border" />
-                      <Button
-                        type="button"
-                        variant={formData.removeLogo ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => setFormData({ ...formData, removeLogo: !formData.removeLogo, logo: null })}
+                  <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="comp-year" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Year</Label>
+                      <Input
+                        id="comp-year"
+                        required
+                        type="text"
+                        value={formData.year}
+                        onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                        placeholder="2026"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comp-type" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Competition Type</Label>
+                      <Select
+                        value={formData.type}
+                        onValueChange={(value) => setFormData({ ...formData, type: value })}
                       >
-                        {formData.removeLogo ? "Will be removed" : "Remove Logo"}
-                      </Button>
+                        <SelectTrigger id="comp-type">
+                          <SelectValue placeholder="Select a type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {competitionTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="comp-year" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Year</Label>
-                  <Input
-                    id="comp-year"
-                    required
-                    type="text"
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    placeholder="e.g. 2026"
-                  />
-                </div>
+                  {formData.type === "custom" && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                      <Label htmlFor="group-label" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Custom Group Label</Label>
+                      <Input
+                        id="group-label"
+                        required
+                        type="text"
+                        value={formData.group_label}
+                        onChange={(e) => setFormData({ ...formData, group_label: e.target.value })}
+                        placeholder="e.g. Cluster"
+                      />
+                    </div>
+                  )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="comp-type" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Competition Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger id="comp-type">
-                      <SelectValue placeholder="Select a type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {competitionTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <Separator />
 
-              {formData.type === "custom" && (
-                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                  <Label htmlFor="group-label" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Custom Group Label</Label>
-                  <Input
-                    id="group-label"
-                    required
-                    type="text"
-                    value={formData.group_label}
-                    onChange={(e) => setFormData({ ...formData, group_label: e.target.value })}
-                    placeholder="e.g. Cluster"
-                  />
-                </div>
-              )}
+                  <div className="space-y-2">
+                    <Label htmlFor="comp-logo" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Logo</Label>
+                    <div className="flex items-center gap-3">
+                      {competition?.logoUrl && !formData.removeLogo ? (
+                        <img src={competition.logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-lg border border-border shrink-0" />
+                      ) : (
+                        <div className="h-10 w-10 rounded-lg border border-dashed border-border flex items-center justify-center shrink-0 text-muted-foreground">
+                          <Trophy className="w-4 h-4" />
+                        </div>
+                      )}
+                      <Input
+                        id="comp-logo"
+                        type="file"
+                        accept="image/*"
+                        className="flex-1"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setFormData({ ...formData, logo: e.target.files[0], removeLogo: false });
+                          }
+                        }}
+                      />
+                      {competition?.logoUrl && (
+                        <Button
+                          type="button"
+                          variant={formData.removeLogo ? "destructive" : "ghost"}
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, removeLogo: !formData.removeLogo, logo: null })}
+                        >
+                          {formData.removeLogo ? "Undo" : "Remove"}
+                        </Button>
+                      )}
+                    </div>
+                    {formData.logo && (
+                      <p className="text-xs text-muted-foreground">New file: {formData.logo.name}</p>
+                    )}
+                    {formData.removeLogo && (
+                      <p className="text-xs text-destructive">Logo will be removed on save.</p>
+                    )}
+                  </div>
+                </TabsContent>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Visibility</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                    type="button"
-                    variant={formData.is_public ? "default" : "outline"}
-                    onClick={() => setFormData({ ...formData, is_public: true })}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider">Public View</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={!formData.is_public ? "default" : "outline"}
-                    onClick={() => setFormData({ ...formData, is_public: false })}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider">Private Access</span>
-                  </Button>
-                </div>
-              </div>
+                {/* ---- SHARING & VISIBILITY ---- */}
+                <TabsContent value="sharing" className="space-y-5 pt-5">
+                  <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                          formData.is_public
+                            ? "text-accent-green border-accent-green/30 bg-accent-green-tint"
+                            : "text-muted-foreground border-border bg-background"
+                        }`}>
+                          {formData.is_public ? "Public" : "Private"}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-card-foreground truncate" title={publicUrl}>
+                        {publicUrl}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" onClick={handleCopy} className="h-8 w-8 p-0">
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copied ? "Copied!" : "Copy link"}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" onClick={openPreview} className="h-8 w-8 p-0">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Preview public page</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={regenerating}
+                            onClick={handleRegenerate}
+                            className="h-8 w-8 p-0"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Regenerate link (old link stops working)</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
 
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Participant Source</Label>
-                <p className="text-xs text-muted-foreground -mt-1">Controls how participants are created and managed.</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { value: "import", label: "Admin Only", desc: "Admin imports participants" },
-                    { value: "captain", label: "Captain", desc: "Captains create participants" },
-                    { value: "self", label: "Self Reg", desc: "Participants self-register" },
-                    { value: "hybrid", label: "Hybrid", desc: "Admin + Claim + Captains" },
-                  ].map((opt) => (
-                    <Button
-                      key={opt.value}
-                      type="button"
-                      variant={formData.participant_source === opt.value ? "default" : "outline"}
-                      onClick={() => setFormData({ ...formData, participant_source: opt.value })}
-                      className="flex flex-col items-center justify-center gap-1 text-center h-auto py-3"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="comp-visibility" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Visibility</Label>
+                      <Select
+                        value={visibilityValue}
+                        onValueChange={(value) => setFormData({ ...formData, is_public: value === "public" })}
+                      >
+                        <SelectTrigger id="comp-visibility">
+                          <SelectValue placeholder="Select visibility" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {visibilityOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground sm:pt-7">{selectedVisibility?.desc}</p>
+                  </div>
+
+                  <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="border border-border rounded-lg">
+                    <CollapsibleTrigger asChild>
+                      <button type="button" className="flex w-full items-center justify-between p-3 text-left">
+                        <span className="text-xs font-black uppercase tracking-wider text-muted-foreground">Advanced URL settings</span>
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="px-3 pb-3 space-y-2">
+                      <Label htmlFor="comp-slug" className="text-xs font-black uppercase tracking-wider text-muted-foreground">URL Slug</Label>
+                      <Input
+                        id="comp-slug"
+                        required
+                        type="text"
+                        value={formData.slug}
+                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                        placeholder="e.g. annual-sports"
+                      />
+                      <p className="text-xs text-muted-foreground">Changing the slug changes the public URL above. Use Regenerate for a random secure link.</p>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </TabsContent>
+
+                {/* ---- PARTICIPANTS ---- */}
+                <TabsContent value="participants" className="space-y-5 pt-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="comp-source" className="text-xs font-black uppercase tracking-wider text-muted-foreground">Participant Source</Label>
+                    <Select
+                      value={formData.participant_source}
+                      onValueChange={(value) => setFormData({ ...formData, participant_source: value })}
                     >
-                      <span className="text-xs uppercase tracking-wider font-bold">{opt.label}</span>
-                      <span className="text-[9px] opacity-70 leading-tight">{opt.desc}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
+                      <SelectTrigger id="comp-source">
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {participantSources.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedSource && (
+                      <p className="text-xs text-muted-foreground">{selectedSource.desc}</p>
+                    )}
+                  </div>
 
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.captain_as_participant}
-                    onChange={(e) => setFormData({ ...formData, captain_as_participant: e.target.checked })}
-                    className="h-4 w-4 rounded border-border text-accent-blue focus:ring-accent-blue"
-                  />
-                  <span className="text-xs font-medium text-card-foreground">Captain can also participate in events</span>
-                </Label>
-                <p className="text-xs text-muted-foreground ml-6">When enabled, captains will have a participant record and can register themselves for events.</p>
-              </div>
+                  <Separator />
 
-              <div className="pt-8">
+                  <div className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                    <Checkbox
+                      id="captain-participant"
+                      checked={formData.captain_as_participant}
+                      onCheckedChange={(checked) => setFormData({ ...formData, captain_as_participant: checked === true })}
+                      className="mt-0.5"
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="captain-participant" className="text-sm font-medium text-card-foreground cursor-pointer leading-none">
+                        Captain can also participate in events
+                      </Label>
+                      <p className="text-xs text-muted-foreground">When enabled, captains get a participant record and can register themselves.</p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground flex-1">
+                  {isDirty ? "You have unsaved changes." : "All changes saved."}
+                </p>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full text-xs font-black uppercase tracking-wider"
+                  className="w-full sm:w-auto sm:min-w-[200px] text-xs font-black uppercase tracking-wider"
                 >
-                  {loading ? "Saving Changes..." : "Save Configuration"}
+                  {loading ? "Saving..." : "Save Configuration"}
                 </Button>
               </div>
             </form>

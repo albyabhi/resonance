@@ -7,32 +7,6 @@ import { useCompetition } from "../../context/CompetitionContext";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const shimmerBase = "bg-muted";
-const shimmerHighlight = "bg-muted-foreground/30";
-
-const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    <td className="p-3">
-      <div className={`h-4 w-24 rounded ${shimmerBase}`}></div>
-    </td>
-    <td className="p-3">
-      <div className={`h-4 w-14 rounded ${shimmerBase}`}></div>
-    </td>
-    <td className="p-3">
-      <div className={`h-4 w-10 rounded ${shimmerBase}`}></div>
-    </td>
-    <td className="p-3">
-      <div className={`h-4 w-10 rounded ${shimmerBase}`}></div>
-    </td>
-    <td className="p-3">
-      <div className={`h-4 w-40 rounded ${shimmerBase}`}></div>
-    </td>
-    <td className="p-3">
-      <div className={`h-8 w-28 rounded ${shimmerHighlight}`}></div>
-    </td>
-  </tr>
-);
-
 const MobileRowCard = ({
   row,
   grp,
@@ -408,12 +382,7 @@ const AdminScoreboard = () => {
         <div className="md:hidden space-y-3">
           {!houseId ? (
             <div className="p-3 text-sm border rounded-lg" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} to view details</div>
-          ) : loading ? (
-            <>
-              <SkeletonRow />
-              <SkeletonRow />
-            </>
-          ) : groupedByEvent.length === 0 ? (
+          ) : loading ? null : groupedByEvent.length === 0 ? (
             <div className="p-3 text-sm border rounded-lg" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border-divider)', color: 'var(--chart-axis)' }}>No contributions</div>
           ) : (
             groupedByEvent.map((grp) => {
@@ -476,12 +445,7 @@ const AdminScoreboard = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <>
-                  <SkeletonRow />
-                  <SkeletonRow />
-                </>
-              ) : !houseId ? (
+              {loading ? null : !houseId ? (
                 <tr><td className="p-3 text-sm text-center" colSpan={6} style={{ color: 'var(--chart-axis)' }}>Select a {groupLabel.toLowerCase()} to view details</td></tr>
               ) : groupedByEvent.length === 0 ? (
                 <tr><td className="p-3 text-sm text-center" colSpan={6} style={{ color: 'var(--chart-axis)' }}>No contributions</td></tr>

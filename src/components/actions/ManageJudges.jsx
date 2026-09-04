@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { apiJson } from "../../utils/apiClient";
-import { UserCheck, UserX, Loader2 } from "lucide-react";
+import { UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Button } from "../ui/button";
@@ -52,6 +52,8 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
     assignments.map((a) => String(a.judge_id?._id || a.judge_id))
   );
 
+  const isRankEvent = (event?.scoring_type || assignments[0]?.judge_type || "score") === "rank";
+
   const availableJudges = judges.filter(
     (j) => !assignedJudgeIds.has(String(j._id))
   );
@@ -59,6 +61,10 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
   const handleAssign = async () => {
     if (!selectedJudgeId) {
       toast.error("Please select a judge");
+      return;
+    }
+    if (isRankEvent && assignments.length >= 1) {
+      toast.error("Rank events allow only one judge");
       return;
     }
     try {
@@ -103,6 +109,7 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
           <DialogTitle>Manage Judges</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Assign or remove judges for <b>{event?.name || event?.title}</b>
+            {isRankEvent ? " · Ranking event (1 judge only)" : " · Score event"}
           </p>
         </DialogHeader>
 
@@ -112,11 +119,7 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-accent-amber" />
-          </div>
-        ) : (
+        {loading ? null : (
           <div className="space-y-4">
             <div>
               <p className="text-sm font-semibold mb-2 text-muted-foreground">
@@ -137,7 +140,7 @@ const ManageJudges = ({ event, onClose, onUpdated }) => {
                         <div className="flex items-center gap-2">
                           <UserCheck className="h-4 w-4 text-accent-green" />
                           <div>
-                            <p className="text-sm font-medium text-card-foreground">{judgeName}</p>
+                            <p className="text-sm font-medium text-card-foreground">{judgeName} <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{a.judge_type || (isRankEvent ? "rank" : "score")}</span></p>
                             {judgeEmail && (
                               <p className="text-xs text-muted-foreground">{judgeEmail}</p>
                             )}

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
 import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
+import CompetitionSwitcher from "./CompetitionSwitcher";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
 
@@ -77,10 +78,10 @@ export default function Sidebar({
     return actions.map(action => ({
       ...action,
       label: action.label
-        .replace("House", groupLabel)
         .replace("Houses", groupLabelPlural)
-        .replace("Group", groupLabel)
         .replace("Groups", groupLabelPlural)
+        .replace("House", groupLabel)
+        .replace("Group", groupLabel)
     }));
   }, [roleKey, groupLabel, groupLabelPlural]);
 
@@ -91,38 +92,45 @@ export default function Sidebar({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
-  const SidebarContent = (
+  const SidebarContent = (isMobile = false) => {
+    const collapsed = isMobile ? false : !sidebarOpen;
+    const expanded = !collapsed;
+    return (
     <div className="flex h-full flex-col" style={{ backgroundColor: "var(--sidebar)", borderRight: "1px solid var(--border)" }}>
       <div className="flex-1 overflow-y-auto py-6 space-y-8">
         <section>
-          {sidebarOpen && (
+          {expanded && (
             <p className="px-6 mb-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
               Menu
             </p>
           )}
-          <div className={sidebarOpen ? "px-2" : "flex flex-col items-center gap-1"}>
+          <div className={expanded ? "px-2" : "flex flex-col items-center gap-1"}>
             {visibleSections.map((s) => (
               <SidebarButton key={s.id} label={s.label} icon={s.icon}
-                collapsed={!sidebarOpen} active={!activeAction && activeSection === s.id}
+                collapsed={collapsed} active={!activeAction && activeSection === s.id}
                 onClick={() => { onSectionClick(s.id); onClose(); }} />
             ))}
-            <SidebarButton label="Profile" icon={UserCircle} collapsed={!sidebarOpen}
+            <SidebarButton label="Profile" icon={UserCircle} collapsed={collapsed}
               active={activeAction === "Profile"}
               onClick={() => { onActionClick("Profile"); onClose(); }} />
           </div>
         </section>
 
+        <section>
+          <CompetitionSwitcher collapsed={collapsed} onSwitched={onClose} />
+        </section>
+
         {visibleActions.length > 0 && (
-          <section>
-            {sidebarOpen && (
-              <p className="px-6 mb-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
-                Management
-              </p>
-            )}
-            <div className={sidebarOpen ? "px-2" : "flex flex-col items-center gap-1"}>
+        <section>
+          {expanded && (
+            <p className="px-6 mb-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>
+              {roleKey === "house_captain" ? "Captain" : "Management"}
+            </p>
+          )}
+            <div className={expanded ? "px-2" : "flex flex-col items-center gap-1"}>
               {visibleActions.map((a) => (
                 <SidebarButton key={a.label} label={a.label} icon={a.icon}
-                  withArrow={sidebarOpen} collapsed={!sidebarOpen}
+                  withArrow={expanded} collapsed={collapsed}
                   active={activeAction === a.label}
                   onClick={() => { onActionClick(a.label); onClose(); }} />
               ))}
@@ -132,7 +140,17 @@ export default function Sidebar({
       </div>
 
       <div className="p-4" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--sidebar)" }}>
-        <div className={`flex items-center ${sidebarOpen ? "mb-4 gap-3" : "justify-center mb-3"}`}>
+        <button
+          type="button"
+          title="Go to Profile"
+          aria-label="Go to Profile"
+          onClick={() => { onActionClick("Profile"); onClose(); }}
+          className={cn(
+            "flex w-full cursor-pointer items-center rounded-lg p-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            expanded ? "mb-3 gap-3" : "justify-center mb-3",
+            activeAction === "Profile" && "bg-muted/60"
+          )}
+        >
           <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden" style={{ backgroundColor: "var(--muted)" }}>
             {user?.profile_image ? (
               <img src={user.profile_image} alt="Profile" className="h-full w-full object-cover" />
@@ -140,8 +158,8 @@ export default function Sidebar({
               <User className="h-5 w-5" style={{ color: "var(--muted-foreground)" }} />
             )}
           </div>
-          {sidebarOpen && (
-            <div className="min-w-0">
+          {expanded && (
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate leading-tight" style={{ color: "var(--card-foreground)" }}>{displayName}</p>
               <div className="flex items-center gap-1" style={{ color: "var(--muted-foreground)" }}>
                 <Shield className="h-3 w-3" />
@@ -149,27 +167,28 @@ export default function Sidebar({
               </div>
             </div>
           )}
-        </div>
+        </button>
 
         <Button
-          variant={sidebarOpen ? "default" : "ghost"}
-          size={sidebarOpen ? "default" : "icon"}
+          variant={expanded ? "default" : "ghost"}
+          size={expanded ? "default" : "icon"}
           onClick={isAuthenticated ? logout : () => navigate("/login")}
           className="w-full"
         >
           {isAuthenticated ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-          {sidebarOpen && <span>{isAuthenticated ? "Logout" : "Login"}</span>}
+          {expanded && <span>{isAuthenticated ? "Logout" : "Login"}</span>}
         </Button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <>
       <motion.aside initial={false} animate={sidebarOpen ? "expanded" : "collapsed"}
         variants={sidebarVariants}
         className="sticky top-0 hidden h-full shrink-0 md:block">
-        {SidebarContent}
+        {SidebarContent(false)}
       </motion.aside>
       <AnimatePresence>
         {open && (
@@ -181,7 +200,7 @@ export default function Sidebar({
             <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed inset-y-0 left-0 z-[70] w-full max-w-[280px] md:hidden">
-              {SidebarContent}
+              {SidebarContent(true)}
             </motion.div>
           </>
         )}

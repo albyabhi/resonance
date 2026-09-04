@@ -48,7 +48,7 @@ export default function LoginPage({ onLogin = () => {} }) {
       if (redirectUrl) {
         navigate(redirectUrl, { replace: true });
       } else {
-        navigate("/dashboard", { replace: true });
+        navigate("/?scroll=competitions", { replace: true });
       }
     } catch (err) {
       toast.error(err.message);

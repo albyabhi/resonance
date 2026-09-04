@@ -311,7 +311,7 @@ function ManageParticipants() {
         )}
 
         <Card className="mb-4">
-          <CardContent className="p-1 flex gap-1" role="tablist" aria-label="Participant management views">
+          <CardContent className="p-1.5 flex gap-1 overflow-x-auto" role="tablist" aria-label="Participant management views">
             {tabs.map((tab) => (
               <Button
                 key={tab.key}
@@ -322,7 +322,7 @@ function ManageParticipants() {
                 variant={activeTab === tab.key ? "default" : "ghost"}
                 disabled={tab.disabled}
                 onClick={() => switchTab(tab.key)}
-                className={activeTab === tab.key ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}
+                className={`shrink-0 min-h-10 whitespace-nowrap ${activeTab === tab.key ? "bg-accent-amber text-white hover:bg-accent-amber/90" : ""}`}
               >
                 {tab.label}
               </Button>
@@ -332,11 +332,11 @@ function ManageParticipants() {
 
         {activeTab === "all" && (
           <section id="panel-all" role="tabpanel" aria-labelledby="tab-all" className="space-y-3">
-            <div className="flex flex-wrap gap-2 mb-3 items-end">
-              <div className="w-48">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2 mb-3 lg:items-end">
+              <div className="w-full sm:w-auto lg:w-48">
                 <Label htmlFor="filter-group" className="sr-only">Filter by {groupLabel}</Label>
                 <Select value={filterGroup} onValueChange={setFilterGroup}>
-                  <SelectTrigger id="filter-group">
+                  <SelectTrigger id="filter-group" className="min-h-11">
                     <SelectValue placeholder={`Filter by ${groupLabel}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -347,14 +347,14 @@ function ManageParticipants() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-40">
+              <div className="w-full sm:w-auto lg:w-40">
                 <Label htmlFor="filter-class" className="sr-only">Filter by class</Label>
-                <Input id="filter-class" type="text" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} placeholder="Filter by class" />
+                <Input id="filter-class" type="text" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} placeholder="Filter by class" className="min-h-11" />
               </div>
-              <div className="w-40">
+              <div className="w-full sm:w-auto lg:w-40">
                 <Label htmlFor="filter-status" className="sr-only">Filter by status</Label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger id="filter-status">
+                  <SelectTrigger id="filter-status" className="min-h-11">
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -366,18 +366,25 @@ function ManageParticipants() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-48">
+              <div className="w-full sm:w-auto lg:w-48 sm:col-span-2 lg:col-span-1">
                 <Label htmlFor="search" className="sr-only">Search participants</Label>
-                <Input id="search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
+                <Input id="search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="min-h-11" />
               </div>
-              <Button variant="outline" onClick={handleDeselectAll}>Clear Selection</Button>
-              <Button variant="outline" onClick={handleSelectAll}>Select All</Button>
-              <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
-                <Download className="h-4 w-4 mr-1" /> Export
-              </Button>
-              <Button variant="destructive" disabled={!selectedIds.length} onClick={() => setDeleteTarget({ type: "bulk" })}>
-                Bulk Delete
-              </Button>
+              {selectedIds.length > 0 && (
+                <p className="text-xs font-medium text-muted-foreground w-full lg:w-auto lg:pb-3" aria-live="polite">
+                  {selectedIds.length} selected
+                </p>
+              )}
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full lg:w-auto">
+                <Button variant="outline" className="min-h-10" onClick={handleDeselectAll}>Clear</Button>
+                <Button variant="outline" className="min-h-10" onClick={handleSelectAll}>Select All</Button>
+                <Button variant="outline" className="min-h-10" onClick={() => setExportDialogOpen(true)}>
+                  <Download className="h-4 w-4 mr-1" /> Export
+                </Button>
+                <Button variant="destructive" className="min-h-10 col-span-2" disabled={!selectedIds.length} onClick={() => setDeleteTarget({ type: "bulk" })}>
+                  Delete{selectedIds.length ? ` (${selectedIds.length})` : ""}
+                </Button>
+              </div>
             </div>
 
             <ul className="space-y-2 sm:hidden" aria-label="Participants list">
@@ -416,8 +423,7 @@ function ManageParticipants() {
                   </div>
                 </li>
               ))}
-              {loading && <li className="text-center text-sm text-muted-foreground py-2">Loading…</li>}
-            </ul>
+           </ul>
 
             <Card className="hidden sm:block overflow-x-auto">
               <Table>
@@ -468,7 +474,6 @@ function ManageParticipants() {
                   ))}
                 </TableBody>
               </Table>
-              {loading && <div className="px-3 py-2 text-muted-foreground text-center text-sm">Loading…</div>}
             </Card>
           </section>
         )}
@@ -546,11 +551,7 @@ function ManageParticipants() {
 
         {activeTab === "import" && isSuperAdmin && (
           <section id="panel-import" role="tabpanel" aria-labelledby="tab-import">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <ImportParticipants groups={groups} groupLabel={groupLabel} onDone={() => { switchTab("all"); fetchParticipants(); }} />
-              </CardContent>
-            </Card>
+            <ImportParticipants groups={groups} groupLabel={groupLabel} onDone={() => { switchTab("all"); fetchParticipants(); }} />
           </section>
         )}
 
@@ -598,7 +599,7 @@ function ManageParticipants() {
       </div>
 
       <AlertDialog open={!!statusChangeTarget} onOpenChange={(open) => { if (!open) { setStatusChangeTarget(null); setStatusChangeValue(""); setStatusChangeReason(""); } }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90dvh] overflow-y-auto w-[calc(100%-2rem)] sm:w-full">
           <AlertDialogHeader>
             <AlertDialogTitle>Change Participant Status</AlertDialogTitle>
             <AlertDialogDescription>
@@ -608,7 +609,7 @@ function ManageParticipants() {
           </AlertDialogHeader>
           <div className="space-y-3 py-2">
             <Select value={statusChangeValue} onValueChange={setStatusChangeValue}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-11">
                 <SelectValue placeholder="Select new status" />
               </SelectTrigger>
               <SelectContent>
@@ -621,13 +622,13 @@ function ManageParticipants() {
             {(statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && (
               <div>
                 <Label htmlFor="status-reason">Reason *</Label>
-                <Input id="status-reason" type="text" value={statusChangeReason} onChange={(e) => setStatusChangeReason(e.target.value)} placeholder="Reason for status change" />
+                <Input id="status-reason" type="text" value={statusChangeReason} onChange={(e) => setStatusChangeReason(e.target.value)} placeholder="Reason for status change" className="mt-1 min-h-11" />
               </div>
             )}
           </div>
-          <div className="flex justify-end gap-2">
-            <AlertDialogCancel onClick={() => { setStatusChangeTarget(null); setStatusChangeValue(""); setStatusChangeReason(""); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={!statusChangeValue || ((statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && !statusChangeReason.trim())} onClick={handleStatusChange} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="min-h-11" onClick={() => { setStatusChangeTarget(null); setStatusChangeValue(""); setStatusChangeReason(""); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={!statusChangeValue || ((statusChangeValue === "withdrawn" || statusChangeValue === "disqualified") && !statusChangeReason.trim())} onClick={handleStatusChange} className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Change Status
             </AlertDialogAction>
           </div>
@@ -635,7 +636,7 @@ function ManageParticipants() {
       </AlertDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[90dvh] overflow-y-auto w-[calc(100%-2rem)] sm:w-full">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
             <AlertDialogDescription>
@@ -644,10 +645,12 @@ function ManageParticipants() {
                 : "Delete this participant? This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete
-          </AlertDialogAction>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="min-h-11" onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 

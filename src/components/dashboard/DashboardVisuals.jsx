@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import useDashboardData from "../../hooks/useDashboardData";
 import { useAuth } from "../AuthContext";
 import { Calendar, Trophy, AlertCircle, CheckCircle, Activity, TrendingUp, Medal, ClipboardCheck, Flag, ClipboardList } from "lucide-react";
@@ -231,6 +232,7 @@ function ResultProgress({ results = [] }) {
 }
 
 export default function DashboardVisuals() {
+  const navigate = useNavigate();
   const { data, loading, error } = useDashboardData();
   const { role, user, token } = useAuth();
   const { hasAnyRole, hasRole } = usePermission();
@@ -258,18 +260,7 @@ export default function DashboardVisuals() {
     fetchJudgeData();
   }, [token, role]);
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full lg:grid-cols-12">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="lg:col-span-3 h-32 animate-pulse rounded-lg bg-muted"></div>
-        ))}
-        <div className="lg:col-span-7 h-[300px] animate-pulse rounded-lg bg-muted"></div>
-        <div className="lg:col-span-5 h-[300px] animate-pulse rounded-lg bg-muted"></div>
-        <div className="lg:col-span-12 h-[320px] animate-pulse rounded-lg bg-muted"></div>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   if (error) {
     return (
@@ -281,7 +272,7 @@ export default function DashboardVisuals() {
     );
   }
 
-  const { scoreboard, events, results, schedules, participantStats, systemStats } = data;
+  const { scoreboard, events, results, schedules, participantStats } = data;
   const normalizedScoreboard = normalizeScoreboard(scoreboard);
   const liveEvents = events.filter((e) => LIVE_STATUSES.includes(e.status));
   const completedEvents = events.filter((e) => e.status === "completed");
@@ -307,7 +298,7 @@ export default function DashboardVisuals() {
     );
   }
 
-  if (!hasAnyRole("super_admin", "organizer", "event_coordinator", "judge")) {
+  if (!hasAnyRole("super_admin", "organizer", "event_coordinator", "judge", "house_captain")) {
     return (
       <div className="flex w-full flex-col gap-6">
         <FadeIn delay={0.1}>
@@ -319,7 +310,6 @@ export default function DashboardVisuals() {
     );
   }
 
-  const houseTeamsCount = systemStats?.byHouse?.find((h) => getId(h.house_id) === userGroupId)?.count || 0;
   const currentGroup = normalizedScoreboard.find((h) => getScoreboardId(h) === userGroupId);
   const pendingCount = results.filter((r) => r.status === "pending").length;
   const coordinatorEvents = events.filter((e) => {
@@ -351,7 +341,7 @@ export default function DashboardVisuals() {
           <StatCard title="Submitted Scores" value={submittedSheets} subtitle="Awaiting aggregation" icon={CheckCircle} variant="emerald" delay={0.3} />
         </div>
         {assignedEvents.length > 0 ? (
-          <SectionCard title="My Assigned Events" description="Events you need to score" className="w-full">
+          <SectionCard title="My Assigned Events" description="Select an event to open its judging briefing" className="w-full">
             <div className="space-y-2">
               {assignedEvents.map((evt) => {
                 const eid = String(evt._id || evt.event_id);
@@ -361,17 +351,20 @@ export default function DashboardVisuals() {
                 const submitted = eventSheets.filter((s) => ["submitted", "confirmed", "published"].includes(s.status)).length;
                 const draft = eventSheets.filter((s) => s.status === "draft").length;
                 return (
-                  <div
+                  <button
                     key={eid}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    type="button"
+                    onClick={() => navigate(`/dashboard/judge-dashboard?event=${eid}`)}
+                    className="w-full text-left flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border transition-colors hover:bg-muted/50 min-h-[56px]"
                     style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-divider)" }}
+                    aria-label={`Open judging for ${evt.name || evt.title}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: "var(--card-fg)" }}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate" style={{ color: "var(--card-fg)" }}>
                         {evt.name || evt.title}
                       </p>
-                      <p className="text-xs" style={{ color: "var(--chart-axis)" }}>
-                        {evt.rounds} round(s) · {submitted} submitted · {draft} draft
+                      <p className="text-xs truncate" style={{ color: "var(--chart-axis)" }}>
+                        {evt.rounds} round(s) · {submitted} submitted · {draft} draft · tap to judge
                       </p>
                     </div>
                     <Badge variant={
@@ -381,7 +374,7 @@ export default function DashboardVisuals() {
                     }>
                       {evt.status?.replace(/_/g, " ")}
                     </Badge>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -450,7 +443,7 @@ export default function DashboardVisuals() {
       case CHART:
         return (
           <SectionCard title={`${groupLabel} performance`} description="Standings and points" className="w-full min-w-0">
-            <div className="w-full h-64">
+            <div className="w-full h-56 sm:h-64">
               <HousePerformanceChart data={normalizedScoreboard} userHouseId={userGroupId} />
             </div>
           </SectionCard>
@@ -496,7 +489,7 @@ export default function DashboardVisuals() {
         { widget: CHART, span: 12 },
       ],
       stats: [
-        { title: "Registered teams", value: houseTeamsCount, icon: Activity, variant: "indigo", delay: 0.1 },
+        { title: "Total events", value: events.length, subtitle: `${nextEvents.length} open or upcoming`, icon: Activity, variant: "indigo", delay: 0.1 },
         { title: "Available events", value: nextEvents.length, icon: Calendar, variant: "violet", delay: 0.2 },
         { title: "Group points", value: currentGroup ? getScoreboardPoints(currentGroup) : 0, icon: Trophy, variant: "amber", delay: 0.3 },
         { title: "Current rank", value: currentGroup ? `#${currentGroup.rank}` : "-", icon: TrendingUp, variant: "emerald", delay: 0.4 },
@@ -538,32 +531,32 @@ export default function DashboardVisuals() {
     if (!layout) return null;
 
     return (
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full lg:grid-cols-12">
-        {layout.stats.map((card, i) => (
-          <div key={`stat-${i}`} className={colSpan(layout.statSpan)}>
-            <StatCard {...card} />
+      <div className="flex w-full flex-col gap-4 sm:gap-6">
+        {layout.stats.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 w-full lg:grid-cols-12">
+            {layout.stats.map((card, i) => (
+              <div key={`stat-${i}`} className={colSpan(layout.statSpan)}>
+                <StatCard {...card} />
+              </div>
+            ))}
           </div>
-        ))}
-        {layout.grid.map((item, i) => (
-          <div key={`widget-${i}`} className={colSpan(item.span)}>
-            {sectionWidget(item.widget, item)}
-          </div>
-        ))}
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full lg:grid-cols-12">
+          {layout.grid.map((item, i) => (
+            <div key={`widget-${i}`} className={`${colSpan(item.span)} min-w-0`}>
+              {sectionWidget(item.widget, item)}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="flex w-full flex-col gap-4 sm:gap-6">
       <FadeIn delay={0.1}>
         {renderDashboardByRole(dashboardKind)}
       </FadeIn>
-
-      {dashboardKind !== "guest" && dashboardKind !== "admin" && dashboardKind !== "judge" && (
-        <FadeIn delay={0.5} className="w-full max-w-sm">
-          <TopHouses scoreboard={normalizedScoreboard} />
-        </FadeIn>
-      )}
     </div>
   );
 }

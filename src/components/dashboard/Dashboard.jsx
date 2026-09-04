@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { roleConfig, normalizeRole, getUserActions } from "./roleConfig";
 import Sidebar from "./Sidebar";
@@ -8,11 +8,12 @@ import { useAuth } from "../AuthContext";
 import DashboardVisuals from "./DashboardVisuals";
 import { FadeIn } from "../AnimateReveal";
 import { Button } from "../ui/button";
-import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays, Users, UserPlus, Calendar, Hash, ClipboardList, CheckCircle } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Trophy, CalendarDays } from "lucide-react";
 import { useCompetition } from "../../context/CompetitionContext";
 import useDashboardData from "../../hooks/useDashboardData";
 import OnboardingChecklist from "./OnboardingChecklist";
 import usePermission from "../../hooks/usePermission";
+import { VeilPanel } from "../loading/RouteTransitionVeil";
 
 import ManageUsers from "../actions/ManageUser";
 import ManageHouse from "../actions/ManageHouse";
@@ -66,7 +67,7 @@ export default function Dashboard({
   sidebarOpen = true,
 }) {
   const { role: contextRole } = useAuth();
-  const { competition, groupLabel, groupLabelPlural } = useCompetition();
+  const { groupLabel, groupLabelPlural } = useCompetition();
   const { hasAnyRole } = usePermission();
   const safeRoleKey = normalizeRole(contextRole);
   const cfg = roleConfig[safeRoleKey] ?? roleConfig.viewer;
@@ -74,12 +75,92 @@ export default function Dashboard({
     return getUserActions(safeRoleKey);
   }, [safeRoleKey]);
 
+  const toDynamicLabel = (label) =>
+    String(label || "")
+      .replace("Houses", groupLabelPlural || "Houses")
+      .replace("Groups", groupLabelPlural || "Groups")
+      .replace("House", groupLabel || "House")
+      .replace("Group", groupLabel || "Group");
+
+  // Mobile bottom bar: Home + up to 2-3 primary route actions.
+  // Captain order in roleConfig is My House -> Event Registration so both survive here.
+  const mobileQuickActions = useMemo(() => {
+    const shortLabels = {
+      "Manage Users": "Users",
+      "Manage Events": "Manage",
+      "Manage Participants": "Participants",
+      "Manage Competition": "Comp",
+      "Result Submissions": "Results",
+      "Activity Logs": "Logs",
+      "Manage Venues": "Venues",
+      "Export Report": "Reports",
+      "Event Participants": "Participants",
+      "Assign Chest Numbers": "Chest #",
+      "Judge Dashboard": "Judging",
+      "My Scores": "Scores",
+      "Events": "Register",
+      "Event Registration": "Register",
+      "My Events": "My Events",
+      "My House": "My House",
+      "Manage House Logo": "Logo",
+    };
+    return userActions
+      .filter((a) => {
+        if (!actionComponents[a.label]) return false;
+        // Drop legacy Department tabs only — keep House/Group actions (captain needs them)
+        if (/department/i.test(a.label)) return false;
+        return true;
+      })
+      .slice(0, 2)
+      .map((a) => {
+        const dynamicLabel = toDynamicLabel(a.label);
+        return {
+          ...a,
+          dynamicLabel,
+          slug: dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          shortLabel: shortLabels[a.label] || dynamicLabel,
+        };
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userActions, groupLabel, groupLabelPlural]);
+
   const standingsRef = useRef(null);
   const eventsRef = useRef(null);
   const contentRef = useRef(null);
-  
+
   // Need dashboard data to check if checklist should be shown
   const { data: dashData, loading: dashLoading } = useDashboardData();
+
+  const [showDashboardLoader, setShowDashboardLoader] = useState(true);
+  const hasLoadedRef = useRef(false);
+  const mountStartedAtRef = useRef(0);
+  const loaderHideTimerRef = useRef(null);
+  const MIN_LOADER_MS = 600;
+
+  useEffect(() => {
+    mountStartedAtRef.current = performance.now();
+    return () => {
+      if (loaderHideTimerRef.current) {
+        clearTimeout(loaderHideTimerRef.current);
+        loaderHideTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (dashLoading) return;
+    if (hasLoadedRef.current) {
+      if (showDashboardLoader) setShowDashboardLoader(false);
+      return;
+    }
+    hasLoadedRef.current = true;
+    const elapsed = performance.now() - mountStartedAtRef.current;
+    const delay = Math.max(0, MIN_LOADER_MS - elapsed);
+    loaderHideTimerRef.current = setTimeout(() => {
+      setShowDashboardLoader(false);
+      loaderHideTimerRef.current = null;
+    }, delay);
+  }, [dashLoading, showDashboardLoader]);
 
   useEffect(() => {
     // Captain group data is now populated from auth context (user.house = captainGroup)
@@ -133,32 +214,20 @@ export default function Dashboard({
         onClose={handleCloseSidebar}
         sidebarOpen={sidebarOpen}
         onActionClick={handleActionClick}
-        activeAction={["settings", "profile"].includes(activeAction) ? "Profile" : (userActions.find((a) => a.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || null)}
+        activeAction={["settings", "profile"].includes(activeAction) ? "Profile" : (userActions.find((a) => toDynamicLabel(a.label).toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction)?.label || (activeAction === "events" && safeRoleKey === "house_captain" ? "Event Registration" : null))}
 
         onSectionClick={handleSectionClick}
         activeSection={activeAction ? null : "home"}
       />
 
-      <main ref={contentRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-20 sm:px-6 md:py-6">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
-          <FadeIn delay={0.1}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 flex flex-col items-start gap-1">
-                {competition?.logoUrl && (
-                  <button type="button" onClick={() => navigate("/dashboard")} className="cursor-pointer">
-                    <img src={competition.logoUrl} alt="Competition Logo" className="h-16 w-auto object-contain mb-2" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </FadeIn>
-
+      <main ref={contentRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-3 pt-3 pb-24 sm:px-6 md:py-6">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 sm:gap-6">
           <Routes>
             <Route
               path=":actionSlug"
               element={
-                <div>
-                  <Button variant="outline" onClick={handleGoBack} className="mb-6 rounded-full">
+                <div className="min-w-0">
+                  <Button variant="outline" onClick={handleGoBack} className="mb-4 min-h-[44px] rounded-full sm:mb-6">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </Button>
                   {(() => {
@@ -167,12 +236,17 @@ export default function Dashboard({
                     }
                     const slugObj = userActions.find((a) => {
                       const dynamicLabel = a.label
-                        .replace('House', groupLabel || 'House')
                         .replace('Houses', groupLabelPlural || 'Houses')
-                        .replace('Group', groupLabel || 'Group')
-                        .replace('Groups', groupLabelPlural || 'Groups');
+                        .replace('Groups', groupLabelPlural || 'Groups')
+                        .replace('House', groupLabel || 'House')
+                        .replace('Group', groupLabel || 'Group');
                       return dynamicLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeAction;
-                    });
+                    }) || (
+                      // Legacy alias: old captain "Events" slug now lives at Event Registration
+                      activeAction === "events" && safeRoleKey === "house_captain"
+                        ? { label: "Event Registration" }
+                        : null
+                    );
                     
                     if (slugObj?.label === "Event Registration" && safeRoleKey === "participant") {
                       return <ParticipantRegister />;
@@ -193,8 +267,9 @@ export default function Dashboard({
                       return <EditHouse onUpdated={handleHouseUpdated} />;
                     }
 
+                    // Pages own their Card styling — avoid nested card-premium wrappers
                     return (
-                      <div className="card-premium p-4 sm:p-6 md:p-8">
+                      <div className="w-full min-w-0">
                         <MappedComponent />
                       </div>
                     );
@@ -205,15 +280,17 @@ export default function Dashboard({
             <Route
               path=""
               element={
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4 sm:gap-6">
                   {hasAnyRole("super_admin", "organizer", "event_coordinator") && (
                     <DashboardStatusWidget summary={dashData?.statusSummary} loading={dashLoading} />
                   )}
-                  <DashboardVisuals />
+                  <div ref={standingsRef} className="scroll-mt-20 min-w-0">
+                    <DashboardVisuals />
+                  </div>
 
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                  <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
                     {cfg.modules.events && (
-                      <div ref={eventsRef} className="max-w-full overflow-hidden lg:col-span-12">
+                      <div ref={eventsRef} className="max-w-full scroll-mt-20 overflow-hidden lg:col-span-12">
                         <RecentEvents />
                       </div>
                     )}
@@ -239,129 +316,77 @@ export default function Dashboard({
         )}
 
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg pb-safe" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-          <div className="flex h-16 justify-around items-center px-2">
-            <button onClick={() => handleSectionClick("home")}
-              className="flex flex-col items-center justify-center w-full h-full space-y-1"
+          <div className="flex h-16 justify-around items-stretch px-1">
+            <button onClick={() => handleSectionClick("home")} aria-label="Dashboard home"
+              className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
               style={{ color: !activeAction ? "var(--primary)" : "var(--muted-foreground)" }}>
               <LayoutDashboard className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Dashboard</span>
+              <span className="text-[10px] font-medium leading-tight">Home</span>
             </button>
+            {safeRoleKey === "house_captain" ? (
+              <>
+                {/* Captain IA: Home | My House | Register | Profile — no duplicate scroll tabs */}
+                {mobileQuickActions.map((action) => {
+                  const Icon = action.icon;
+                  const isActive = activeAction === action.slug;
+                  return (
+                    <button key={action.label} onClick={() => handleActionClick(action.dynamicLabel)}
+                      aria-label={action.shortLabel}
+                      className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
+                      style={{ color: isActive ? "var(--primary)" : "var(--muted-foreground)" }}>
+                      {Icon && <Icon className="w-5 h-5" />}
+                      <span className="text-[10px] font-medium leading-tight truncate max-w-full">{action.shortLabel}</span>
+                    </button>
+                  );
+                })}
+                <button onClick={() => handleActionClick("Profile")} aria-label="Profile"
+                  className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
+                  style={{ color: activeAction === "profile" ? "var(--primary)" : "var(--muted-foreground)" }}>
+                  <LayoutDashboard className="w-5 h-5 hidden" />
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold" style={{ borderColor: "currentColor" }}>Me</span>
+                  <span className="text-[10px] font-medium leading-tight">Profile</span>
+                </button>
+              </>
+            ) : (
+              <>
             {cfg.modules.standings && (
               <button onClick={() => handleSectionClick("standings")}
-                className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
                 style={{ color: "var(--muted-foreground)" }}>
                 <Trophy className="w-5 h-5" />
-                <span className="text-[10px] font-medium">Standings</span>
+                <span className="text-[10px] font-medium leading-tight">Standings</span>
               </button>
             )}
             {cfg.modules.events && (
               <button onClick={() => handleSectionClick("events")}
-                className="flex flex-col items-center justify-center w-full h-full space-y-1"
+                className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
                 style={{ color: "var(--muted-foreground)" }}>
                 <CalendarDays className="w-5 h-5" />
-                <span className="text-[10px] font-medium">Events</span>
+                <span className="text-[10px] font-medium leading-tight">Events</span>
               </button>
             )}
 
-            {/* Role-specific quick actions */}
-            {safeRoleKey === "super_admin" && (
-              <>
-                <button onClick={() => handleActionClick("Manage Users")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Users className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Users</span>
+            {/* Role-specific quick actions — working options only (no Department old-version tabs) */}
+            {mobileQuickActions.map((action) => {
+              const Icon = action.icon;
+              const isActive = activeAction === action.slug;
+              return (
+                <button key={action.label} onClick={() => handleActionClick(action.dynamicLabel)}
+                  className="flex min-h-[56px] flex-col items-center justify-center w-full h-full space-y-1 px-1"
+                  style={{ color: isActive ? "var(--primary)" : "var(--muted-foreground)" }}>
+                  {Icon && <Icon className="w-5 h-5" />}
+                  <span className="text-[10px] font-medium leading-tight truncate max-w-full">{action.shortLabel}</span>
                 </button>
-                <button onClick={() => handleActionClick("Manage Houses")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <UserPlus className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">{groupLabelPlural || "Groups"}</span>
-                </button>
+              );
+            })}
               </>
             )}
-            {safeRoleKey === "organizer" && (
-              <>
-                <button onClick={() => handleActionClick("Manage Events")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Events</span>
-                </button>
-                <button onClick={() => handleActionClick("Manage Participants")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Users className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Participants</span>
-                </button>
-              </>
-            )}
-            {safeRoleKey === "event_coordinator" && (
-              <>
-                <button onClick={() => handleActionClick("Manage Events")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">My Events</span>
-                </button>
-                <button onClick={() => handleActionClick("Assign Chest Numbers")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Hash className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Chest #</span>
-                </button>
-              </>
-            )}
-            {safeRoleKey === "judge" && (
-              <>
-                <button onClick={() => handleActionClick("Judge Dashboard")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <ClipboardList className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Judging</span>
-                </button>
-                <button onClick={() => handleActionClick("My Scores")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">My Scores</span>
-                </button>
-              </>
-            )}
-            {safeRoleKey === "house_captain" && (
-              <>
-                <button onClick={() => handleActionClick("Events")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Events</span>
-                </button>
-                <button onClick={() => handleActionClick("My House")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Users className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">My {groupLabel || "Group"}</span>
-                </button>
-              </>
-            )}
-            {safeRoleKey === "participant" && (
-              <>
-                <button onClick={() => handleActionClick("Event Registration")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <UserPlus className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">Register</span>
-                </button>
-                <button onClick={() => handleActionClick("My Events")}
-                  className="flex flex-col items-center justify-center w-full h-full space-y-1"
-                  style={{ color: "var(--muted-foreground)" }}>
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">My Events</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+         </div>
+       </div>
+
+      {showDashboardLoader && (
+        <VeilPanel caption="Tuning the hall" instant />
+      )}
       </>
     );
   }

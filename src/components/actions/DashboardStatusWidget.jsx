@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 const DASHBOARD_STATUS_GROUPS = [
@@ -15,22 +14,7 @@ export default function DashboardStatusWidget({ summary = null, loading = false 
     ? Object.values(summary).reduce((a, b) => a + b, 0)
     : 0;
 
-  if (loading && !summary) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Status Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading...
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  if (loading && !summary) return null;
   if (!summary) return null;
 
   return (

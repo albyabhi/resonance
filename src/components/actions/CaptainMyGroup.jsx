@@ -163,14 +163,14 @@ export default function CaptainMyGroup() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-card-foreground">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-card-foreground">
             My {groupLabel}
           </h2>
           {groupInfo && (
-            <p className="text-sm mt-1 text-muted-foreground">
+            <p className="text-sm mt-1 text-muted-foreground truncate">
               {groupInfo.name} &middot; {participants.length} participant{participants.length !== 1 ? "s" : ""}
             </p>
           )}
@@ -178,7 +178,7 @@ export default function CaptainMyGroup() {
         {canCreateParticipants && (
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="gap-2"
+            className="gap-2 min-h-[44px] w-full sm:w-auto"
           >
             {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showAddForm ? "Cancel" : "Add Participant"}
@@ -210,7 +210,7 @@ export default function CaptainMyGroup() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label>
                     Name <span className="text-accent-red">*</span>
@@ -220,6 +220,7 @@ export default function CaptainMyGroup() {
                     value={addForm.name}
                     onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="Full name"
+                    className="min-h-[44px] text-base sm:text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -231,6 +232,7 @@ export default function CaptainMyGroup() {
                     value={addForm.class}
                     onChange={(e) => setAddForm((f) => ({ ...f, class: e.target.value }))}
                     placeholder="e.g. 10A"
+                    className="min-h-[44px] text-base sm:text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -240,6 +242,7 @@ export default function CaptainMyGroup() {
                     value={addForm.admission_no}
                     onChange={(e) => setAddForm((f) => ({ ...f, admission_no: e.target.value }))}
                     placeholder="Optional"
+                    className="min-h-[44px] text-base sm:text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -249,6 +252,7 @@ export default function CaptainMyGroup() {
                     value={addForm.phone}
                     onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
                     placeholder="Optional"
+                    className="min-h-[44px] text-base sm:text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -258,6 +262,7 @@ export default function CaptainMyGroup() {
                     value={addForm.email}
                     onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
                     placeholder="Optional"
+                    className="min-h-[44px] text-base sm:text-sm"
                   />
                 </div>
                 <div className="space-y-2">
@@ -277,18 +282,19 @@ export default function CaptainMyGroup() {
                   </Select>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddForm(false)}
+                  className="min-h-[44px] w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] w-full sm:w-auto"
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -303,6 +309,7 @@ export default function CaptainMyGroup() {
         </Card>
       )}
 
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -310,18 +317,17 @@ export default function CaptainMyGroup() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={`Search participants by name, ID, or class...`}
-          className="pl-10"
+          className="pl-10 min-h-[44px] text-base sm:text-sm"
         />
       </div>
+      {!loading && filteredParticipants.length > 0 && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Showing {filteredParticipants.length} of {participants.length}
+        </p>
+      )}
+      </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-accent-blue" />
-          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            Loading participants...
-          </p>
-        </div>
-      ) : filteredParticipants.length === 0 ? (
+      {loading ? null : filteredParticipants.length === 0 ? (
         <Card className="text-center py-20">
           <CardContent>
             <Users className="h-14 w-14 mx-auto mb-4 text-muted-foreground" />
@@ -403,21 +409,24 @@ export default function CaptainMyGroup() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-base truncate text-card-foreground">
+                      <p className="font-bold text-base leading-snug text-card-foreground break-words">
                         {p.name}
-                        <Badge variant={getParticipantStatusMeta(p.status).badge} className="ml-2 text-[10px]">
-                          {getParticipantStatusMeta(p.status).label}
-                        </Badge>
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <div className="mt-1">
+                      <Badge variant={getParticipantStatusMeta(p.status).badge} className="text-[10px]">
+                        {getParticipantStatusMeta(p.status).label}
+                      </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {p.class}
                         {p.unique_id && <span> &middot; {p.unique_id}</span>}
                       </p>
                     </div>
                     <span
-                      className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-bold ml-2 ${
+                      title="Event registrations"
+                      className={`inline-flex shrink-0 items-center justify-center h-9 w-9 rounded-full text-sm font-bold ml-2 ${
                         p.event_registrations > 0
                           ? "bg-accent-green/10 text-accent-green"
                           : "bg-muted text-muted-foreground"
@@ -433,7 +442,7 @@ export default function CaptainMyGroup() {
                     <p className="text-xs mb-3 text-muted-foreground">{p.email}</p>
                   )}
                   {canCreateParticipants && (
-                    <div className="flex gap-3 pt-2 border-t border-border">
+                    <div className="flex gap-2.5 pt-3 mt-1 border-t border-border">
                       <Button
                         variant="outline"
                         onClick={() => startEdit(p)}
@@ -463,10 +472,12 @@ export default function CaptainMyGroup() {
                 <TableHead className="text-xs font-bold uppercase tracking-wider">Name</TableHead>
                 <TableHead className="text-xs font-bold uppercase tracking-wider">Status</TableHead>
                 <TableHead className="text-xs font-bold uppercase tracking-wider">Class</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider hidden sm:table-cell">ID</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider hidden md:table-cell">Email</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider hidden lg:table-cell">ID</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider hidden xl:table-cell">Email</TableHead>
                 <TableHead className="text-center text-xs font-bold uppercase tracking-wider">Events</TableHead>
+                {canCreateParticipants && (
                 <TableHead className="text-right text-xs font-bold uppercase tracking-wider">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -519,25 +530,27 @@ export default function CaptainMyGroup() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-card-foreground">{p.class}</TableCell>
-                      <TableCell className="text-sm hidden sm:table-cell">
+                      <TableCell className="text-sm hidden lg:table-cell">
                         <code className="text-xs px-2 py-0.5 rounded bg-muted text-card-foreground">{p.unique_id || "-"}</code>
                       </TableCell>
-                      <TableCell className="text-sm hidden md:table-cell text-card-foreground">{p.email || "-"}</TableCell>
+                      <TableCell className="text-sm hidden xl:table-cell text-card-foreground max-w-[180px] truncate">{p.email || "-"}</TableCell>
                       <TableCell className="text-center">
                         <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${p.event_registrations > 0 ? "bg-accent-green/10 text-accent-green" : "bg-muted text-muted-foreground"}`}>
                           {p.event_registrations}
                         </span>
                       </TableCell>
+                      {canCreateParticipants && (
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" onClick={() => startEdit(p)} className="h-8 w-8 p-0" title="Edit">
+                          <Button variant="ghost" onClick={() => startEdit(p)} className="h-9 w-9 p-0" title="Edit" aria-label={`Edit ${p.name}`}>
                             <Edit className="h-4 w-4 text-accent-blue" />
                           </Button>
-                          <Button variant="ghost" onClick={() => setDeleteTarget(p)} className="h-8 w-8 p-0" title="Delete">
+                          <Button variant="ghost" onClick={() => setDeleteTarget(p)} className="h-9 w-9 p-0" title="Delete" aria-label={`Delete ${p.name}`}>
                             <Trash2 className="h-4 w-4 text-accent-red" />
                           </Button>
                         </div>
                       </TableCell>
+                      )}
                     </>
                   )}
                 </TableRow>

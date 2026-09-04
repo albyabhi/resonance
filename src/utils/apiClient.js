@@ -336,6 +336,7 @@ export const API_ROUTES = {
     START_SESSION: (eventId) => `/api/judge/session/${eventId}/start`,
     SCORE: (eventId) => `/api/judge/session/${eventId}/score`,
     NAVIGATE: (eventId) => `/api/judge/session/${eventId}/navigate`,
+    DISQUALIFY: (eventId) => `/api/judge/session/${eventId}/disqualify`,
     COMPLETE: (eventId) => `/api/judge/session/${eventId}/complete`,
     RANKING: (eventId, roundNo) => `/api/judge/session/${eventId}/ranking${roundNo ? `?round_no=${roundNo}` : ''}`,
     ABANDON: (eventId, roundNo) => `/api/judge/session/${eventId}${roundNo ? `?round_no=${roundNo}` : ''}`,

@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
-import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/dashboard/Dashboard';
 import CaptainMyDetails from './components/actions/CaptainMyDetails';
+import AppShell from './components/AppShell';
+import Dashboard from './components/dashboard/Dashboard';
+import RouteTransitionVeil from './components/loading/RouteTransitionVeil';
 import { useAuth } from './components/AuthContext';
 import WelcomePage from './pages/WelcomePage';
 import SignupPage from './pages/entry/SignupPage';
@@ -67,84 +68,98 @@ function TokenRedirect() {
   );
 }
 
-export default function App() {
-  const { role, isAuthenticated, competition, loading, isAuthReady, logout } = useAuth();
+/**
+ * DashboardGate — dashboard-only entry gate.
+ *
+ * Public routes render instantly without waiting for auth. Only this gate
+ * holds for auth, and once auth resolves it renders the dashboard directly.
+ */
+function DashboardGate() {
+  const { isAuthenticated, competition, isAuthReady, logout } = useAuth();
   const { hasRole } = usePermission();
 
-  if (loading || !isAuthReady) return <div>Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (isAuthReady && !competition && !hasRole("super_admin")) {
+    return <Navigate to="/setup" replace />;
+  }
 
   return (
-    <Routes>
-      {/* Landing page at "/" */}
-      <Route path="/" element={<WelcomePage />} />
+    <AppShell onLogout={logout}>
+      {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
+        <Dashboard
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          onCloseSidebar={onCloseSidebar}
+          sidebarOpen={sidebarOpen}
+        />
+      )}
+   </AppShell>
+  );
+}
 
-      {/* Entry Flows */}
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/setup" replace /> : <SignupPage />} />
-      <Route path="/setup" element={<SetupPage />} />
-      <Route path="/join" element={<JoinPage />} />
-      <Route path="/invite/:token" element={<InvitePage />} />
-      <Route path="/view/:slug" element={<PublicViewPage />} />
-      <Route path="/view/token/:token" element={<TokenRedirect />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-      <Route path="/setup-password/:token" element={<SetupPasswordPage />} />
-      <Route path="/participant-setup-password/:token" element={<ParticipantSetupPasswordPage />} />
-      <Route path="/participate/:eventId" element={<ParticipateRedirectPage />} />
-      <Route path="/participant-login" element={<ParticipantLoginPage />} />
+export default function App() {
+  const { role, isAuthenticated, isAuthReady, logout } = useAuth();
+  const { hasRole } = usePermission();
 
-      {/* Dashboard wrapper pattern for action-based routes */}
-      <Route
-        path="/dashboard/*"
-        element={
-          isAuthenticated ? (
-            (competition || hasRole("super_admin")) ? (
+  return (
+    <>
+      <Routes>
+        {/* Landing page at "/" */}
+        <Route path="/" element={<WelcomePage />} />
+
+        {/* Entry Flows */}
+        <Route path="/signup" element={isAuthenticated ? <Navigate to="/setup" replace /> : <SignupPage />} />
+        <Route path="/setup" element={<SetupPage />} />
+        <Route path="/join" element={<JoinPage />} />
+        <Route path="/invite/:token" element={<InvitePage />} />
+        <Route path="/view/:slug" element={<PublicViewPage />} />
+        <Route path="/view/token/:token" element={<TokenRedirect />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/setup-password/:token" element={<SetupPasswordPage />} />
+        <Route path="/participant-setup-password/:token" element={<ParticipantSetupPasswordPage />} />
+        <Route path="/participate/:eventId" element={<ParticipateRedirectPage />} />
+        <Route path="/participant-login" element={<ParticipantLoginPage />} />
+
+        {/* Dashboard wrapper pattern for action-based routes.
+            Public routes above render instantly; DashboardGate handles
+            auth/competition guards before mounting the dashboard. */}
+        <Route path="/dashboard/*" element={<DashboardGate />} />
+
+        {/* Captain My Details — dashboard-only by design.
+            Renders nothing until auth resolves to avoid a redirect flash. */}
+        <Route
+          path="/my-details"
+          element={
+            !isAuthReady ? null : isAuthenticated && hasRole('house_captain') ? (
               <AppShell role={role} onLogout={logout}>
-                {({ mobileOpen, setMobileOpen, onCloseSidebar, sidebarOpen }) => (
-                  <Dashboard
-                    role={role}
-                    mobileOpen={mobileOpen}
-                    setMobileOpen={setMobileOpen}
-                    onCloseSidebar={onCloseSidebar}
-                    sidebarOpen={sidebarOpen}
-                  />
-                )}
-              </AppShell>
+                <CaptainMyDetails />
+             </AppShell>
             ) : (
-              <Navigate to="/setup" replace />
+              <Navigate to="/" replace />
             )
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+          }
+        />
 
-      {/* Captain My Details */}
-      <Route
-        path="/my-details"
-        element={
-          isAuthenticated && hasRole('house_captain') ? (
-            <AppShell role={role} onLogout={logout}>
-              <CaptainMyDetails />
-            </AppShell>
-          ) : (
-            <Navigate to="/" replace />
-          )
-        }
-      />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <LoginPage />
+            )
+          }
+        />
 
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/" replace />
-          ) : (
-            <LoginPage />
-          )
-        }
-      />
+        {/* Catch-all -> "/" */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+     </Routes>
 
-      {/* Catch-all -> "/" */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      {/* Route transition veil — 2s minimum, theme-matched, on every
+          route change. Sibling of <Routes> (not a tree transition) so
+          pages still swap instantly underneath per AGENTS.md. */}
+      <RouteTransitionVeil />
+    </>
   );
 }

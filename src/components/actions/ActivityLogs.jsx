@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../AuthContext";
-import { RefreshCw, Undo as UndoIcon, Repeat as RedoIcon, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { useCompetition } from "../../context/CompetitionContext";
+import { RefreshCw, Undo as UndoIcon, Repeat as RedoIcon, Search as SearchIcon } from 'lucide-react';
 import { apiJson } from "../../utils/apiClient";
 import { useRealtime } from "../../context/RealtimeContext";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
@@ -17,6 +18,8 @@ const roles = ["super_admin", "organizer", "event_coordinator", "judge", "partic
 
 export default function ActivityLogs() {
   const { token } = useAuth();
+  const { competition } = useCompetition() || {};
+  const competitionId = competition?._id || competition?.id || competition?.competition_id;
   const { lastUpdate } = useRealtime() || {};
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
@@ -50,6 +53,7 @@ export default function ActivityLogs() {
       const params = new URLSearchParams();
       params.set("page", page);
       params.set("limit", perPage);
+      if (competitionId) params.set("competition_id", competitionId);
       if (roleFilter) params.set("role", roleFilter);
       if (resourceFilter) params.set("resource_type", resourceFilter);
       if (userSearch) params.set("user", userSearch);
@@ -86,7 +90,7 @@ export default function ActivityLogs() {
   useEffect(() => {
     if (token) fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, page, roleFilter, resourceFilter, userSearch, lastUpdate]);
+  }, [token, page, roleFilter, resourceFilter, userSearch, lastUpdate, competitionId]);
 
   const resourceTypes = useMemo(() => {
     const set = new Set();
@@ -220,13 +224,6 @@ export default function ActivityLogs() {
         {toast && (
           <div className={`mb-4 p-3 rounded ${toast.type === 'error' ? 'bg-destructive/10 text-destructive border border-destructive/20' : toast.type === 'success' ? 'bg-accent-green/10 text-accent-green border border-accent-green/20' : 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'}`}>
             {toast.text}
-          </div>
-        )}
-
-        {/* Loading banner */}
-        {loading && (
-          <div className="mb-4 p-3 rounded bg-accent-amber/10 text-accent-amber border border-accent-amber/20 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         )}
 

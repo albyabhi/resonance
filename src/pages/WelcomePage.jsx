@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Trophy, Users, LayoutDashboard, Target, LogOut, ArrowRight, Loader2, Building2, Calendar, Award } from 'lucide-react';
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ import img3 from '../assets/3.png';
 import img4 from '../assets/4.png';
 import img5 from '../assets/5.png';
 import MandalaBackground from '../components/MandalaBackground';
+import { SlideReveal } from '../components/AnimateReveal';
 import { useAuth } from '../components/AuthContext';
 import { apiFetch } from '../utils/apiClient';
 import { normalizeRole, roleConfig } from '../components/dashboard/roleConfig';
@@ -19,6 +20,7 @@ import { normalizeRole, roleConfig } from '../components/dashboard/roleConfig';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, login, logout, token, refreshToken } = useAuth();
   
   // Theme is forced to light by ThemeContext when pathname === '/' — no manual override needed
@@ -67,6 +69,52 @@ export default function WelcomePage() {
     fetchUserCompetitions();
   }, [isAuthenticated, backendUrl]);
 
+  // One-time auto-scroll to the competitions section right after a fresh login.
+  // Triggered only by `/?scroll=competitions` (set by LoginPage / ParticipantLoginPage).
+  // Stays at top when the user has zero competitions. Param is stripped via
+  // history.replaceState so refresh / later visits don't re-scroll.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("scroll") !== "competitions") return;
+    if (!isAuthenticated) return;
+    if (loadingComps) return;
+
+    const hasComps = adminCompetitions.length > 0 || participantCompetitions.length > 0;
+    const cleanUrl = () => {
+      window.history.replaceState(null, "", location.pathname);
+    };
+
+    // No competitions -> section never renders, stay at top per requirement.
+    if (!hasComps) {
+      cleanUrl();
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId;
+    let attempts = 0;
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = document.getElementById("continue-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        cleanUrl();
+      } else if (attempts < 10) {
+        attempts += 1;
+        timeoutId = setTimeout(tryScroll, 150);
+      } else {
+        cleanUrl();
+      }
+    };
+
+    timeoutId = setTimeout(tryScroll, 100);
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [location.search, location.pathname, isAuthenticated, loadingComps, adminCompetitions, participantCompetitions]);
+
   const handleSelectCompetition = async (compId) => {
     try {
       const res = await apiFetch(`${backendUrl}/api/auth/competition/select`, {
@@ -88,9 +136,11 @@ export default function WelcomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground selection:bg-accent-blue-tint">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 w-full" style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+    <div className="min-h-screen flex flex-col bg-background font-sans text-foreground selection:bg-accent-blue-tint overflow-x-clip">
+      {/* Navbar container — whole bar (stripe + bg + border) slides down on page load.
+          Sticky positioning lives on the outer wrapper so the slide transform never breaks stickiness. */}
+      <div className="sticky top-0 z-50 w-full">
+      <SlideReveal as="nav" direction="down" distance={32} duration={0.7} delay={0} className="w-full" style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
         <div className="accent-stripe" />
         <div className="mx-auto flex max-w-7xl items-center justify-between" style={{ padding: "20px 7%" }}>
           <div className="flex items-center gap-2">
@@ -135,24 +185,29 @@ export default function WelcomePage() {
             )}
           </div>
         </div>
-      </nav>
+        </SlideReveal>
+      </div>
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative" style={{ minHeight: "520px", padding: "76px 7% 64px" }}>
+        <section className="relative overflow-x-clip" style={{ minHeight: "520px", padding: "76px 7% 64px" }}>
           <div className="mx-auto max-w-7xl relative z-10">
             <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_1.3fr]">
               <div style={{ maxWidth: "555px" }}>
-                <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wider uppercase mb-6"
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--destructive)", backgroundColor: "var(--accent-amber-tint)" }}>
-                  &#10022; Competitions, with soul
-                </span>
-                <h1 className="mb-6" style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "clamp(47px, 6vw, 76px)", lineHeight: 0.94, letterSpacing: "-0.03em", color: "var(--foreground)" }}>
-                  Streamline Every <br />
-                  <span style={{ color: "var(--destructive)" }}>Competition</span>
-                </h1>
+                <SlideReveal direction="down" distance={16} duration={0.6} delay={0.1}>
+                  <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wider uppercase mb-6"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--destructive)", backgroundColor: "var(--accent-amber-tint)" }}>
+                    &#10022; Competitions, with soul
+                  </span>
+                </SlideReveal>
+                <SlideReveal direction="left" distance={32} duration={0.75} delay={0.15}>
+                  <h1 className="mb-6" style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "clamp(47px, 6vw, 76px)", lineHeight: 0.94, letterSpacing: "-0.03em", color: "var(--foreground)" }}>
+                    Streamline Every <br />
+                    <span style={{ color: "var(--destructive)" }}>Competition</span>
+                  </h1>
+                </SlideReveal>
                    
-                <div className="block lg:hidden my-8 mx-auto w-full max-w-lg">
+                <SlideReveal direction="up" distance={28} duration={0.7} delay={0.25} className="block lg:hidden my-8 mx-auto w-full max-w-lg">
                   <div className="relative aspect-[4/3] w-full">
                     <MandalaBackground currentIndex={currentIndex} />
                     <AnimatePresence mode="wait">
@@ -169,11 +224,14 @@ export default function WelcomePage() {
                       />
                     </AnimatePresence>
                   </div>
-                </div>
+                </SlideReveal>
 
-                <p className="mb-8 text-lg leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
-                  The all-in-one platform for schools and colleges to manage competitions, teams, scores, and results with ease and transparency.
-                </p>
+                <SlideReveal direction="left" distance={32} duration={0.7} delay={0.25}>
+                  <p className="mb-8 text-lg leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+                    The all-in-one platform for schools and colleges to manage competitions, teams, scores, and results with ease and transparency.
+                  </p>
+                </SlideReveal>
+                <SlideReveal direction="up" distance={24} duration={0.7} delay={0.35}>
                 {isAuthenticated ? (
                   <div className="flex flex-col gap-4 sm:flex-row items-center w-full sm:w-auto">
                     {(adminCompetitions.length > 0 || participantCompetitions.length > 0) ? (
@@ -207,8 +265,9 @@ export default function WelcomePage() {
                     </Link>
                   </div>
                 )}
+                </SlideReveal>
               </div>
-              <div className="hidden lg:block relative mx-auto w-full max-w-xl lg:max-w-none">
+              <SlideReveal direction="right" distance={48} duration={0.9} delay={0.2} scaleFrom={0.96} className="hidden lg:block relative mx-auto w-full max-w-xl lg:max-w-none">
                 <div className="relative aspect-[4/3] w-full">
                   <MandalaBackground currentIndex={currentIndex} />
                   <AnimatePresence mode="wait">
@@ -225,7 +284,7 @@ export default function WelcomePage() {
                     />
                   </AnimatePresence>
                 </div>
-              </div>
+              </SlideReveal>
             </div>
           </div>
 
@@ -235,7 +294,7 @@ export default function WelcomePage() {
         {isAuthenticated && (loadingComps || adminCompetitions.length > 0 || participantCompetitions.length > 0) && (
           <section id="continue-section" className="py-20 scroll-mt-20" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--accent-amber-tint)" }}>
             <div className="mx-auto max-w-7xl px-6">
-              <div className="mb-12 max-w-2xl">
+              <SlideReveal direction="up" distance={28} duration={0.6} trigger="scroll" className="mb-12 max-w-2xl">
                 <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wider uppercase mb-4"
                   style={{ fontFamily: "var(--font-mono)", color: "var(--secondary)", backgroundColor: "var(--accent-purple-tint)" }}>
                   Welcome back
@@ -246,7 +305,7 @@ export default function WelcomePage() {
                 <p className="mt-4" style={{ color: "var(--muted-foreground)" }}>
                   Select a competition workspace below to manage events, submit/approve scores, or track live leaderboards.
                 </p>
-              </div>
+              </SlideReveal>
 
               {loadingComps ? (
                 <div className="flex items-center justify-center py-12">
@@ -264,17 +323,26 @@ export default function WelcomePage() {
                       : "Staff Workspaces";
                     return (
                     <div>
-                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-                        <Building2 className="h-5 w-5" style={{ color: "var(--primary)" }} />
-                        {sectionTitle}
-                      </h3>
+                      <SlideReveal direction="left" distance={24} duration={0.6} trigger="scroll">
+                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                          <Building2 className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                          {sectionTitle}
+                        </h3>
+                      </SlideReveal>
                       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {adminCompetitions.map((comp) => {
+                        {adminCompetitions.map((comp, idx) => {
                           const roleKey = normalizeRole(comp.membership_role);
                           const roleTitle = roleConfig[roleKey]?.title || comp.membership_role || "Staff";
                           return (
-                          <div
+                          <SlideReveal
                             key={comp._id}
+                            direction="up"
+                            distance={24}
+                            duration={0.6}
+                            delay={Math.min(idx * 0.08, 0.4)}
+                            trigger="scroll"
+                          >
+                          <div
                             onClick={() => handleSelectCompetition(comp._id)}
                             className="group relative cursor-pointer overflow-hidden rounded-2xl p-6 transition-all hover:-translate-y-1 animate-fade-in"
                             style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
@@ -304,6 +372,7 @@ export default function WelcomePage() {
                               </span>
                             </div>
                           </div>
+                          </SlideReveal>
                           );
                         })}
                       </div>
@@ -314,14 +383,23 @@ export default function WelcomePage() {
                   {/* Participant Competitions */}
                   {participantCompetitions.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
-                        <Award className="h-5 w-5" style={{ color: "var(--secondary)" }} />
-                        Joined as Participant
-                      </h3>
+                      <SlideReveal direction="right" distance={24} duration={0.6} trigger="scroll">
+                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                          <Award className="h-5 w-5" style={{ color: "var(--secondary)" }} />
+                          Joined as Participant
+                        </h3>
+                      </SlideReveal>
                       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {participantCompetitions.map((comp) => (
-                          <div
+                        {participantCompetitions.map((comp, idx) => (
+                          <SlideReveal
                             key={comp._id}
+                            direction="up"
+                            distance={24}
+                            duration={0.6}
+                            delay={Math.min(idx * 0.08, 0.4)}
+                            trigger="scroll"
+                          >
+                          <div
                             onClick={() => handleSelectCompetition(comp._id)}
                             className="group relative cursor-pointer overflow-hidden rounded-2xl p-6 transition-all hover:-translate-y-1 animate-fade-in"
                             style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
@@ -351,6 +429,7 @@ export default function WelcomePage() {
                               </span>
                             </div>
                           </div>
+                          </SlideReveal>
                         ))}
                       </div>
                     </div>
@@ -362,8 +441,8 @@ export default function WelcomePage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--card)" }} className="py-12">
+      {/* Footer container — whole bar (bg + border + content) rises on page load */}
+      <SlideReveal as="footer" direction="up" distance={28} duration={0.7} delay={0.5} trigger="load" className="py-12" style={{ borderTop: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
         <div className="mx-auto max-w-7xl px-6 flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div className="flex items-center gap-2">
             <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
@@ -379,7 +458,7 @@ export default function WelcomePage() {
             <a href="#" className="text-sm transition-colors" style={{ color: "var(--muted-foreground)" }}>Help</a>
           </div>
         </div>
-      </footer>
+      </SlideReveal>
     </div>
   );
 }
