@@ -8,6 +8,26 @@ import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 
+export function Wordmark({ size = "sm", className = "" }) {
+  const fontSize =
+    size === "lg"
+      ? "clamp(32px, 6vw, 56px)"
+      : "clamp(18px, 2.4vw, 25px)";
+  return (
+    <span
+      className={`font-bold tracking-tight ${className}`}
+      style={{
+        fontFamily: "var(--font-heading)",
+        fontSize,
+        letterSpacing: "-0.03em",
+        color: "var(--foreground)",
+      }}
+    >
+      Reson<span style={{ color: "var(--destructive)" }}>ance</span>
+   </span>
+  );
+}
+
 function Header({
   onMenuClick = () => {},
   sidebarOpen = true,
@@ -51,11 +71,9 @@ function Header({
               {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
             </Button>
 
-            <button type="button" onClick={() => navigate("/dashboard")} className="flex min-w-0 items-center gap-3 cursor-pointer">
-              <span className="text-[20px] font-bold tracking-tight sm:text-[25px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-heading)" }}>
-                Reson<span style={{ color: "var(--destructive)" }}>ance</span>
-              </span>
-            </button>
+            <button type="button" onClick={() => navigate("/")} className="flex min-w-0 items-center gap-3 cursor-pointer">
+              <Wordmark size="sm" />
+           </button>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">

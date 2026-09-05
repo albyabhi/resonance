@@ -521,12 +521,26 @@
 }
 
 /* ── Route transition veil ─────────────────────────────── */
-.route-veil-tick {
-  transition: background-color 120ms ease;
+@keyframes veil-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.veil-progress {
+  display: block;
+  width: 56px;
+  height: 1px;
+  margin-top: 18px;
+  background: var(--primary);
+  transform-origin: left center;
+  animation: veil-progress 800ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .route-veil-tick { transition: none; }
+  .veil-progress {
+    animation: none;
+    transform: scaleX(1);
+  }
 }
 
 /* ── Custom Scrollbars ───────────────────────────────── */

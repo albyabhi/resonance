@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useMobileMode } from "../utils/useMobileMode";
 import {
   Trophy, Users, User, CheckCircle, Plus, Search, X,
-  Info, AlertCircle, UserPlus, Loader2, PartyPopper,
+  Info, AlertCircle, UserPlus, Loader2, PartyPopper, Trash2,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogFooter,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
 import EventStatusBadge from "../EventStatusBadge";
@@ -49,6 +50,8 @@ export default function CaptainEventRegister() {
   const [eventSearch, setEventSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [submitting, setSubmitting] = useState(false);
+  const [revokingId, setRevokingId] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -129,7 +132,30 @@ export default function CaptainEventRegister() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, eventSearch, eventFilter, registrationsByEvent]);
 
+  // Canonical team-size limits: min/max_participants with legacy fallback.
+  const getTeamLimits = (event) => {
+    if (!event) return { min: 1, max: 1 };
+    if (event.event_type === "individual") return { min: 1, max: 1 };
+    const rawMin = event.min_participants ?? event.min_team_size ?? 1;
+    const rawMax = event.max_participants ?? event.max_team_size ?? 1;
+    const min = Number.isFinite(Number(rawMin)) ? Math.max(1, Math.floor(Number(rawMin))) : 1;
+    const max = Number.isFinite(Number(rawMax)) ? Math.max(min, Math.floor(Number(rawMax))) : min;
+    return { min, max };
+  };
+
+  const isRegistrableStatus = (event) => (event?.status || "") === "registration_open";
+
   const openRegistrationModal = (event) => {
+    if (!isRegistrableStatus(event)) {
+      toast.error(`Registration is not open (status: ${event?.status || "unknown"})`);
+      return;
+    }
+    const existing = registrationsByEvent[event._id || event.event_id]?.length || 0;
+    const maxPerGroup = event.max_per_group || 1;
+    if (existing >= maxPerGroup) {
+      toast.error(`Group limit reached (${maxPerGroup} per group for this event)`);
+      return;
+    }
     setSelectedEvent(event);
     setSelectedParticipantIds([]);
     setTeamName("");
@@ -154,14 +180,20 @@ export default function CaptainEventRegister() {
   const toggleParticipantSelection = (id) => {
     if (!selectedEvent) return;
 
-    const cap = selectedEvent.event_type === "team"
-      ? (selectedEvent.max_team_size || Infinity)
-      : remainingSlots;
+    const { max: teamMax } = getTeamLimits(selectedEvent);
+    const isTeam = selectedEvent.event_type === "team";
+    // Team: one team of up to teamMax members. Individual: up to remainingSlots single entries.
+    const cap = isTeam ? teamMax : remainingSlots;
+
+    if (!isTeam && remainingSlots <= 0) {
+      toast.error("Group limit reached for this event");
+      return;
+    }
 
     setSelectedParticipantIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= cap) {
-        if (selectedEvent.event_type === "team") {
+        if (isTeam) {
           toast.error(`Maximum ${cap} members allowed for this event`);
         } else {
           toast.error(`Maximum ${cap} registration${cap !== 1 ? "s" : ""} per group for this event`);
@@ -170,6 +202,11 @@ export default function CaptainEventRegister() {
       }
       return [...prev, id];
     });
+  };
+
+  const isGenderIneligible = (participant, event) => {
+    if (!event?.gender_filter || event.gender_filter === "all") return false;
+    return participant?.gender && participant.gender !== event.gender_filter;
   };
 
   const isAlreadyRegistered = (participantId, eventId) => {
@@ -183,13 +220,46 @@ export default function CaptainEventRegister() {
   const handleSubmitRegistration = async () => {
     if (!selectedEvent) return;
 
+    if (!isRegistrableStatus(selectedEvent)) {
+      toast.error("Event registration is not open");
+      return;
+    }
+
+    if (remainingSlots <= 0) {
+      toast.error("Group limit reached for this event");
+      return;
+    }
+
     if (!selectedParticipantIds.length) {
       toast.error("Please select at least one participant");
       return;
     }
 
-    if (selectedEvent.event_type === "team" && !teamName.trim()) {
-      toast.error("Please provide a team name");
+    if (selectedEvent.event_type === "team") {
+      if (!teamName.trim()) {
+        toast.error("Please provide a team name");
+        return;
+      }
+      const { min, max } = getTeamLimits(selectedEvent);
+      if (selectedParticipantIds.length > max) {
+        toast.error(`Team too large: maximum ${max} members`);
+        return;
+      }
+      if (selectedParticipantIds.length < min) {
+        toast.error(`Team too small: minimum ${min} members required`);
+        return;
+      }
+    } else if (selectedParticipantIds.length > remainingSlots) {
+      toast.error(`Only ${remainingSlots} slot${remainingSlots !== 1 ? "s" : ""} left for your group`);
+      return;
+    }
+
+    // Fail-fast gender guard (backend remains source of truth for age/DOB).
+    const genderBlocked = selectedParticipantIds
+      .map((pid) => groupParticipants.find((x) => x._id === pid))
+      .filter((p) => isGenderIneligible(p, selectedEvent));
+    if (genderBlocked.length > 0) {
+      toast.error(`Gender restriction: this event is ${selectedEvent.gender_filter}-only`);
       return;
     }
 
@@ -244,6 +314,32 @@ export default function CaptainEventRegister() {
       toast.error(err.message || "Registration failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Revoke is allowed only while the event is still open for registration.
+  const isRevocable = (reg) => {
+    const status = reg.event_id?.status;
+    return status === "registration_open";
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!confirmTarget) return;
+    const { teamId, eventId, eventTitle } = confirmTarget;
+    try {
+      setRevokingId(teamId);
+      await apiCall("/api/captain/unregister-from-event", {
+        method: "DELETE",
+        body: JSON.stringify({ event_id: eventId, team_id: teamId }),
+      });
+      setGroupRegistrations((prev) => prev.filter((r) => r._id !== teamId));
+      toast.success(`Entry revoked from ${eventTitle || "event"}`);
+      setConfirmTarget(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.message || "Failed to revoke entry");
+    } finally {
+      setRevokingId(null);
     }
   };
 
@@ -378,6 +474,9 @@ export default function CaptainEventRegister() {
               const id = e._id || e.event_id;
               const registered = hasRegistrationForEvent(id);
               const count = registrationCountForEvent(id);
+              const open = isRegistrableStatus(e);
+              const full = count >= (e.max_per_group || 1);
+              const registerDisabled = !open || full;
 
               return (
                 <Card
@@ -463,10 +562,16 @@ export default function CaptainEventRegister() {
                     <div className="mt-4">
                       <Button
                         onClick={() => openRegistrationModal(e)}
-                        className="w-full min-h-[44px] gap-2 text-xs uppercase tracking-widest"
+                        disabled={registerDisabled}
+                        title={!open ? `Registration ${e.status || "not open"}` : full ? "Group limit reached" : "Register participants"}
+                        className="w-full min-h-[44px] gap-2 text-xs uppercase tracking-widest disabled:opacity-50"
                       >
                         <UserPlus className="h-4 w-4" />
-                        {registered ? `Registered (${count}) — Add More` : "Register Participants"}
+                        {!open
+                          ? `Registration ${e.status === "draft" ? "Not Open" : "Closed"}`
+                          : full
+                            ? "Group Limit Reached"
+                            : registered ? `Registered (${count}) — Add More` : "Register Participants"}
                       </Button>
                     </div>
                   </CardContent>
@@ -499,10 +604,12 @@ export default function CaptainEventRegister() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {groupRegistrations.map((reg) => {
                 const evt = reg.event_id || {};
+                const revocable = isRevocable(reg);
+                const revoking = revokingId === reg._id;
                 return (
                   <Card key={reg._id} className="p-5 sm:p-6">
                     <div className="flex justify-between items-start gap-4">
-                      <div>
+                      <div className="min-w-0">
                         <Badge variant="success" className="text-[10px] font-black uppercase tracking-widest">
                           Confirmed Entry
                         </Badge>
@@ -515,6 +622,28 @@ export default function CaptainEventRegister() {
                           </div>
                         )}
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!revocable || revoking}
+                        title={revocable ? "Revoke this entry" : "Entries can only be revoked while registration is open"}
+                        aria-label={`Revoke entry for ${evt.title || evt.name || "event"}`}
+                        onClick={() => setConfirmTarget({
+                          teamId: reg._id,
+                          eventId: evt._id || reg.event_id,
+                          eventTitle: evt.title || evt.name || "event",
+                          teamName: reg.name,
+                          members: reg.members || [],
+                        })}
+                        className="shrink-0 min-h-[44px] min-w-[44px] gap-1.5 text-accent-red hover:text-accent-red hover:bg-accent-red/10 disabled:opacity-40"
+                      >
+                        {revoking ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        <span className="hidden sm:inline text-xs font-bold">Revoke</span>
+                      </Button>
                     </div>
 
                     {reg.members && reg.members.length > 0 && (
@@ -534,6 +663,11 @@ export default function CaptainEventRegister() {
                           ))}
                         </div>
                       </div>
+                    )}
+                    {!revocable && (
+                      <p className="mt-4 text-[11px] font-semibold text-muted-foreground">
+                        Revocation is available only while registration is open.
+                      </p>
                     )}
                   </Card>
                 );
@@ -558,14 +692,16 @@ export default function CaptainEventRegister() {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedEvent?.event_type === "individual" && (
+          {selectedEvent && (
             <div className="mt-3 flex items-center justify-between gap-3 p-3 border rounded-lg bg-muted border-border">
               <div className="text-xs font-bold text-card-foreground shrink-0">
                 Slots
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                 <div className="text-xs text-muted-foreground truncate">
-                  {selectedParticipantIds.length} selected &middot; {remainingSlots} left
+                  {selectedEvent.event_type === "team"
+                    ? `${remainingSlots} team slot${remainingSlots !== 1 ? "s" : ""} left · size ${getTeamLimits(selectedEvent).min}-${getTeamLimits(selectedEvent).max}`
+                    : `${selectedParticipantIds.length} selected · ${remainingSlots} left`}
                 </div>
                 <div className="h-2 w-20 sm:w-24 shrink-0 bg-border rounded-full overflow-hidden">
                   <div
@@ -623,15 +759,24 @@ export default function CaptainEventRegister() {
                   filteredParticipants.map((p) => {
                     const isSelected = selectedParticipantIds.includes(p._id);
                     const alreadyReg = isAlreadyRegistered(p._id, selectedEvent?._id || selectedEvent?.event_id);
+                    const genderBlocked = isGenderIneligible(p, selectedEvent);
+                    const blocked = alreadyReg || genderBlocked;
 
                     return (
                       <div
                         key={p._id}
-                        onClick={() => !alreadyReg && toggleParticipantSelection(p._id)}
+                        onClick={() => {
+                          if (alreadyReg) return;
+                          if (genderBlocked) {
+                            toast.error(`Gender restriction: this event is ${selectedEvent.gender_filter}-only`);
+                            return;
+                          }
+                          toggleParticipantSelection(p._id);
+                        }}
                         className={`flex items-center justify-between transition-colors ${
                           isMobile ? "px-4 py-4 min-h-[56px]" : "px-4 py-3"
                         } ${
-                          alreadyReg
+                          blocked
                             ? "opacity-40 cursor-not-allowed"
                             : isSelected
                             ? "bg-accent-blue/5"
@@ -662,11 +807,15 @@ export default function CaptainEventRegister() {
                             </div>
                           </div>
                         </div>
-                        {alreadyReg && (
+                        {alreadyReg ? (
                           <Badge variant="success" className="text-[9px] font-black uppercase tracking-widest">
                             Registered
                           </Badge>
-                        )}
+                        ) : genderBlocked ? (
+                          <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">
+                            Ineligible
+                          </Badge>
+                        ) : null}
                       </div>
                     );
                   })
@@ -698,21 +847,30 @@ export default function CaptainEventRegister() {
               </div>
             )}
 
-            {selectedEvent?.event_type === "team" && (
-              <div className="p-3.5 border rounded-lg space-y-1.5 text-xs bg-muted border-border">
-                <div className="font-bold text-card-foreground">
-                  Team Requirements:
+            {selectedEvent?.event_type === "team" && (() => {
+              const { min, max } = getTeamLimits(selectedEvent);
+              return (
+                <div className="p-3.5 border rounded-lg space-y-1.5 text-xs bg-muted border-border">
+                  <div className="font-bold text-card-foreground">
+                    Team Requirements:
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <CheckCircle className={`h-3.5 w-3.5 ${selectedParticipantIds.length >= min ? "text-accent-green" : "text-muted-foreground"}`} />
+                    Min team size: {min}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <CheckCircle className={`h-3.5 w-3.5 ${selectedParticipantIds.length <= max ? "text-accent-green" : "text-muted-foreground"}`} />
+                    Max team size: {max}
+                  </div>
+                  {remainingSlots <= 0 && (
+                    <div className="flex items-center gap-1.5 text-accent-red font-semibold">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      Group limit reached for this event
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <CheckCircle className={`h-3.5 w-3.5 ${selectedParticipantIds.length >= (selectedEvent.min_team_size || 1) ? "text-accent-green" : "text-muted-foreground"}`} />
-                  Min team size: {selectedEvent.min_team_size || 1}
-                </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <CheckCircle className={`h-3.5 w-3.5 ${selectedParticipantIds.length <= (selectedEvent.max_team_size || Infinity) ? "text-accent-green" : "text-muted-foreground"}`} />
-                  Max team size: {selectedEvent.max_team_size || 1}
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           <div className="sticky bottom-0 border-t border-border bg-background px-5 py-4 sm:px-6">
@@ -733,7 +891,16 @@ export default function CaptainEventRegister() {
               </Button>
               <Button
                 onClick={handleSubmitRegistration}
-                disabled={submitting || !selectedParticipantIds.length}
+                disabled={(() => {
+                  if (submitting || !selectedParticipantIds.length) return true;
+                  if (!selectedEvent || !isRegistrableStatus(selectedEvent)) return true;
+                  if (remainingSlots <= 0) return true;
+                  if (selectedEvent.event_type === "team") {
+                    const { min, max } = getTeamLimits(selectedEvent);
+                    if (selectedParticipantIds.length < min || selectedParticipantIds.length > max) return true;
+                  } else if (selectedParticipantIds.length > remainingSlots) return true;
+                  return false;
+                })()}
                 className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2 w-full sm:w-auto"
               >
                 {submitting ? (
@@ -754,6 +921,58 @@ export default function CaptainEventRegister() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmTarget} onOpenChange={(open) => { if (!open) setConfirmTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revoke this entry?</DialogTitle>
+            <DialogDescription>
+              This removes the entry{confirmTarget?.teamName ? ` "${confirmTarget.teamName}"` : ""} from{" "}
+              {confirmTarget?.eventTitle || "the event"}. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmTarget?.members?.length > 0 && (
+            <div className="flex flex-wrap gap-2 py-1">
+              {confirmTarget.members.map((m) => (
+                <span
+                  key={m._id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs bg-muted text-card-foreground border-border"
+                >
+                  <User className="h-3 w-3 shrink-0" />
+                  {m.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmTarget(null)}
+              className="min-h-[48px] sm:min-h-0 sm:h-10"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={revokingId === confirmTarget?.teamId}
+              onClick={handleConfirmRevoke}
+              className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2"
+            >
+              {revokingId === confirmTarget?.teamId ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Revoking...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Revoke Entry
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

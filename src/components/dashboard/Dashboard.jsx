@@ -385,7 +385,7 @@ export default function Dashboard({
        </div>
 
       {showDashboardLoader && (
-        <VeilPanel caption="Tuning the hall" instant />
+        <VeilPanel instant />
       )}
       </>
     );

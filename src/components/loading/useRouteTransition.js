@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-const MIN_MS = 500;
+const MIN_MS = 600;
 
 function isDashboardPath(pathname) {
   return pathname.startsWith("/dashboard");

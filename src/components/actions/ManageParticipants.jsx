@@ -24,9 +24,25 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
   AlertDialogAction, AlertDialogCancel,
 } from "../ui/alert-dialog";
-import { Pencil, Trash2, AlertTriangle, XCircle, ArrowLeftCircle, Download, Copy } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Download, Copy, Link2, KeyRound } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { getParticipantStatusMeta } from "../../utils/participantStatus";
+import * as XLSX from "xlsx";
+
+// Derived credential state from list payload (backend strips hashes and
+// adds setup_status/has_password/setup_expires — see participantService).
+function getCredentialMeta(stu) {
+  if (stu?.has_password || stu?.setup_status === "active") {
+    return { label: "Active", badge: "success", hint: "Password set — can log in" };
+  }
+  if (stu?.setup_status === "pending") {
+    return { label: "Link pending", badge: "outline", hint: "Setup link shared, not used yet" };
+  }
+  if (stu?.setup_status === "expired") {
+    return { label: "Expired", badge: "error", hint: "Link expired — regenerate" };
+  }
+  return { label: "No link", badge: "outline", hint: "Generate a setup link" };
+}
 
 function ManageParticipants() {
   const { token } = useAuth();
@@ -57,6 +73,9 @@ function ManageParticipants() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [bulkLinks, setBulkLinks] = useState(null);
+  const [bulkLinksOpen, setBulkLinksOpen] = useState(false);
+  const [linksLoading, setLinksLoading] = useState(false);
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -145,6 +164,75 @@ function ManageParticipants() {
       () => toast.success(`${label} copied to clipboard`),
       () => toast.error("Failed to copy")
     );
+  };
+
+  // ── Bulk setup-link manager (minimal patch: manual share only) ──
+  // Backend always mints FRESH links (old raw unrecoverable) — toast warns
+  // when rotation happens so admin knows to re-share.
+  const handleBulkLinks = async () => {
+    if (!selectedIds.length) return;
+    setLinksLoading(true);
+    setError("");
+    try {
+      const res = await apiCall(API_ROUTES.PARTICIPANTS.SETUP_LINKS_BULK, {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      setBulkLinks(res);
+      setBulkLinksOpen(true);
+      if (res?.skippedActive > 0) {
+        toast(`Skipped ${res.skippedActive} with password already set`, { icon: "ℹ️" });
+      } else {
+        toast.success(`Generated ${res?.links?.length || 0} setup links`);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLinksLoading(false);
+    }
+  };
+
+  const handleRegenerateSingle = async (stu) => {
+    setLinksLoading(true);
+    try {
+      const res = await apiCall(API_ROUTES.PARTICIPANTS.SETUP_LINK_REGENERATE(stu._id), {
+        method: "POST",
+      });
+      setBulkLinks({ links: [{ participant_id: res.participant_id, name: res.name, email: res.email, setup_link: res.setup_link, expires: res.expires }], skippedActive: 0, requested: 1 });
+      setBulkLinksOpen(true);
+      fetchParticipants();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLinksLoading(false);
+    }
+  };
+
+  const copyAllBulkLinks = () => {
+    if (!bulkLinks?.links?.length) return;
+    const text = bulkLinks.links
+      .map((l) => `${l.name} <${l.email || "no-email"}>\n${l.setup_link}`)
+      .join("\n\n");
+    // Clipboard can reject very long payloads for 100s of rows — fall back to Excel.
+    if (text.length > 18000) {
+      toast.error("Too many links for clipboard — use Download Excel instead");
+      return;
+    }
+    copyToClipboard(text, `${bulkLinks.links.length} links`);
+  };
+
+  const downloadBulkLinksExcel = () => {
+    if (!bulkLinks?.links?.length) return;
+    const wsData = [["Name", "Email", "Admission No", "Setup Link"]];
+    bulkLinks.links.forEach((l) => {
+      wsData.push([l.name, l.email || "", l.admission_no || "", l.setup_link]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = [{ wch: 25 }, { wch: 30 }, { wch: 16 }, { wch: 60 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Setup Links");
+    XLSX.writeFile(wb, `Participant_Setup_Links.xlsx`);
+    toast.success("Excel downloaded — share manually (no auto-send)");
   };
 
   const handleEditStart = (stu) => {
@@ -381,11 +469,18 @@ function ManageParticipants() {
                 <Button variant="outline" className="min-h-10" onClick={() => setExportDialogOpen(true)}>
                   <Download className="h-4 w-4 mr-1" /> Export
                 </Button>
+                <Button variant="outline" className="min-h-10 col-span-1" disabled={!selectedIds.length || linksLoading} onClick={handleBulkLinks} title="Generate copyable setup links for selected participants (rotates old links)">
+                  <Link2 className="h-4 w-4 mr-1" /> Links{selectedIds.length ? ` (${selectedIds.length})` : ""}
+                </Button>
                 <Button variant="destructive" className="min-h-10 col-span-2" disabled={!selectedIds.length} onClick={() => setDeleteTarget({ type: "bulk" })}>
                   Delete{selectedIds.length ? ` (${selectedIds.length})` : ""}
                 </Button>
               </div>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              No link to share? Participants can self-serve at <span className="font-medium text-card-foreground">Participant Login → Claim</span> with competition slug + admission no + imported email. Or select rows → <span className="font-medium">Links</span> to copy/download fresh links (rotates old ones, 7-day expiry).
+            </p>
 
             <ul className="space-y-2 sm:hidden" aria-label="Participants list">
               {participants.map((stu) => (
@@ -396,6 +491,11 @@ function ManageParticipants() {
                         {stu.name}
                         <Badge variant={getParticipantStatusMeta(stu.status).badge} className="ml-2 text-[10px]">
                           {getParticipantStatusMeta(stu.status).label}
+                        </Badge>
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <Badge variant={getCredentialMeta(stu).badge} className="text-[10px]" title={getCredentialMeta(stu).hint}>
+                          <KeyRound className="h-3 w-3 mr-1" />{getCredentialMeta(stu).label}
                         </Badge>
                       </p>
                       <p className="text-xs text-muted-foreground">Class: <span className="font-medium text-card-foreground">{stu.class}</span></p>
@@ -413,6 +513,9 @@ function ManageParticipants() {
                   <div className="mt-3 flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditStart(stu)}>
                       Edit
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRegenerateSingle(stu)} disabled={linksLoading} title="Generate fresh setup link (rotates old link)">
+                      Link
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => { setStatusChangeTarget(stu); setStatusChangeValue(""); setStatusChangeReason(""); }}>
                       Status
@@ -432,6 +535,7 @@ function ManageParticipants() {
                     <TableHead className="w-10" />
                     <TableHead>Name</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Access</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>{groupLabel}</TableHead>
                     <TableHead>Participant ID</TableHead>
@@ -454,6 +558,11 @@ function ManageParticipants() {
                           {getParticipantStatusMeta(stu.status).label}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <Badge variant={getCredentialMeta(stu).badge} title={getCredentialMeta(stu).hint}>
+                          {getCredentialMeta(stu).label}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-card-foreground">{stu.class}</TableCell>
                       <TableCell className="text-card-foreground">{getGroupName(stu.group_id?._id || stu.group_id)}</TableCell>
                       <TableCell className="text-card-foreground">{stu.unique_id}</TableCell>
@@ -461,6 +570,9 @@ function ManageParticipants() {
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => handleEditStart(stu)} title="Edit">
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleRegenerateSingle(stu)} title="Generate fresh setup link (rotates old link)">
+                            <Link2 className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => { setStatusChangeTarget(stu); setStatusChangeValue(""); setStatusChangeReason(""); }} title="Change Status">
                             <AlertTriangle className="h-4 w-4" />
@@ -650,6 +762,45 @@ function ManageParticipants() {
             <AlertDialogAction onClick={handleConfirmDelete} className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkLinksOpen} onOpenChange={(open) => { if (!open) { setBulkLinksOpen(false); } }}>
+        <AlertDialogContent className="max-h-[90dvh] overflow-y-auto w-[calc(100%-2rem)] sm:max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Setup links ({bulkLinks?.links?.length || 0})</AlertDialogTitle>
+            <AlertDialogDescription>
+              Fresh one-time links — old links for these participants no longer work. Links expire in 7 days.
+              Share manually (copy, Excel, or via house captain). Participants without a link can also self-serve
+              at Participant Login → Claim with slug + admission no + email.
+              {bulkLinks?.skippedActive > 0 && ` Skipped ${bulkLinks.skippedActive} with password already set.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col sm:flex-row gap-2 py-2">
+            <Button variant="outline" className="min-h-10 flex-1" onClick={copyAllBulkLinks}>
+              <Copy className="h-4 w-4 mr-1" /> Copy all
+            </Button>
+            <Button variant="outline" className="min-h-10 flex-1" onClick={downloadBulkLinksExcel}>
+              <Download className="h-4 w-4 mr-1" /> Download Excel
+            </Button>
+          </div>
+          <ul className="space-y-2 max-h-[40dvh] overflow-y-auto pr-1">
+            {(bulkLinks?.links || []).map((l) => (
+              <li key={String(l.participant_id)} className="rounded-lg border border-border p-2.5">
+                <p className="text-sm font-medium text-card-foreground truncate">{l.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{l.email || "no-email"}</p>
+                <div className="mt-1.5 flex items-center gap-2 rounded-md bg-muted px-2 py-1.5">
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={l.setup_link}>{l.setup_link}</span>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(l.setup_link, `Link for ${l.name}`)}>
+                    <Copy className="h-3 w-3 mr-1" /> Copy
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <AlertDialogCancel className="min-h-11" onClick={() => setBulkLinksOpen(false)}>Done</AlertDialogCancel>
           </div>
         </AlertDialogContent>
       </AlertDialog>

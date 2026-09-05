@@ -193,6 +193,7 @@ export const API_ROUTES = {
     PARTICIPANT_SELECT_COMPETITION: '/api/auth/participant-select-competition',
     PARTICIPANT_CLAIM_OTP: '/api/auth/participant-claim-otp',
     PARTICIPANT_CLAIM: '/api/auth/participant-claim',
+    PARTICIPANT_CLAIM_CODE: '/api/auth/participant-claim-code',
     SELECT_COMPETITION: '/api/auth/competition/select',
   },
 
@@ -209,6 +210,8 @@ export const API_ROUTES = {
     UPDATE: (id) => `/api/participants/${id}`,
     DELETE: (id) => `/api/participants/${id}`,
     BULK_DELETE: '/api/participants/bulk',
+    SETUP_LINKS_BULK: '/api/participants/setup-links/bulk',
+    SETUP_LINK_REGENERATE: (id) => `/api/participants/${id}/setup-link/regenerate`,
     STATUS: (id) => `/api/participants/${id}/status`,
     IMPORT: {
       VALIDATE: '/api/participants/import/validate',
@@ -325,6 +328,7 @@ export const API_ROUTES = {
     GROUP_PARTICIPANTS: '/api/captain/group-participants',
     CREATE_PARTICIPANT: '/api/captain/create-participant',
     REGISTER_FOR_EVENT: '/api/captain/register-for-event',
+    UNREGISTER_FROM_EVENT: '/api/captain/unregister-from-event',
     GROUP_EVENT_REGISTRATIONS: '/api/captain/group-event-registrations',
     BULK_REGISTER: '/api/captain/bulk-register',
   },
@@ -422,6 +426,10 @@ export const API_ROUTES = {
   // Export
   EXPORT: {
     BASE: '/api/export',
+    REPORT: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return `/api/export/report${q ? `?${q}` : ''}`;
+    },
     PARTICIPANTS: '/api/export/participants',
     RESULTS: '/api/export/results',
     SCOREBOARD: '/api/export/scoreboard',

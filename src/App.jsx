@@ -156,9 +156,10 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
      </Routes>
 
-      {/* Route transition veil — 2s minimum, theme-matched, on every
-          route change. Sibling of <Routes> (not a tree transition) so
-          pages still swap instantly underneath per AGENTS.md. */}
+      {/* Route transition veil — 600ms minimum, brand-only (wordmark +
+          hairline progress), fires only when entering /dashboard from
+          outside. Sibling of <Routes> (not a tree transition) so pages
+          still swap instantly underneath per AGENTS.md. */}
       <RouteTransitionVeil />
     </>
   );

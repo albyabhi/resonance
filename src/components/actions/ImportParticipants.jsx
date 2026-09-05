@@ -72,6 +72,8 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
   // Review toolbar state (client-side only — no API change)
   const [reviewFilter, setReviewFilter] = useState("all");
   const [reviewSearch, setReviewSearch] = useState("");
+  // Done-step link manager state (minimal patch — no API change)
+  const [doneSearch, setDoneSearch] = useState("");
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     if (!token) throw new Error("No auth token available");
@@ -264,6 +266,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
     setResult(null);
     setReviewFilter("all");
     setReviewSearch("");
+    setDoneSearch("");
   };
 
   const previewCounts = () => {
@@ -298,6 +301,26 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
       () => toast.error("Failed to copy")
     );
   };
+
+  const copyAllDoneLinks = () => {
+    if (!result?.credentials?.length) return;
+    const text = result.credentials
+      .map((c) => `${c.name} <${c.email}>\n${c.setup_link}`)
+      .join("\n\n");
+    if (text.length > 18000) {
+      toast.error("Too many links for clipboard — use Download Excel instead");
+      return;
+    }
+    copyLink(text);
+  };
+
+  const filteredCredentials = useMemo(() => {
+    const q = doneSearch.trim().toLowerCase();
+    if (!q) return result?.credentials || [];
+    return (result?.credentials || []).filter((c) =>
+      `${c.name || ""} ${c.email || ""}`.toLowerCase().includes(q)
+    );
+  }, [result?.credentials, doneSearch]);
 
   const downloadCredentialsExcel = () => {
     if (!result?.credentials?.length) return;
@@ -938,9 +961,33 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                 <h4 className="text-sm font-semibold mb-2 text-card-foreground">
                   Setup links ({result.credentials.length})
                 </h4>
+                {/* Sticky bulk bar: copy-all + search (minimal patch for 100s) */}
+                <div className="mb-2 flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="min-h-9" onClick={copyAllDoneLinks}>
+                      <Copy className="h-3.5 w-3.5 mr-1" aria-hidden /> Copy all
+                    </Button>
+                    <Button variant="outline" size="sm" className="min-h-9" onClick={downloadCredentialsExcel}>
+                      <Download className="h-3.5 w-3.5 mr-1" aria-hidden /> Excel
+                    </Button>
+                  </div>
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    <Input
+                      value={doneSearch}
+                      onChange={(e) => setDoneSearch(e.target.value)}
+                      placeholder="Search name or email…"
+                      className="pl-9 min-h-9"
+                      aria-label="Search setup links"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs mb-2 text-muted-foreground">
+                  Tip: no need to share every link — participants can self-serve at Participant Login → Claim with competition slug + admission no + email.
+                </p>
                 {/* Mobile cards */}
                 <ul className="space-y-2 md:hidden">
-                  {result.credentials.map((c, i) => (
+                  {filteredCredentials.map((c, i) => (
                     <li key={i} className="rounded-xl border border-border p-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="min-w-0 flex-1 truncate text-sm font-medium text-card-foreground">{c.name}</p>
@@ -975,7 +1022,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {result.credentials.map((c, i) => (
+                      {filteredCredentials.map((c, i) => (
                         <TableRow key={i} className="border-b border-border">
                           <TableCell className="text-xs">{c.name}</TableCell>
                           <TableCell className="text-xs">{c.email}</TableCell>
@@ -995,6 +1042,11 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                     </TableBody>
                   </Table>
                 </div>
+                {filteredCredentials.length === 0 && (
+                  <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                    No links match “{doneSearch}”.
+                  </p>
+                )}
                 <p className="text-xs mb-4 text-muted-foreground">
                   Each participant has a one-time setup link. Share it so they can set their password.
                   The link expires once used.

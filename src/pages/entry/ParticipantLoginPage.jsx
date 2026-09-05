@@ -273,7 +273,37 @@ export default function ParticipantLoginPage() {
     }
   };
 
+  // Claim-code + email self-service (bulk-import fallback, no admin link needed)
+  const [claimCodeEmail, setClaimCodeEmail] = useState("");
+  const [claimCodeLoading, setClaimCodeLoading] = useState(false);
+  const [claimCodeLink, setClaimCodeLink] = useState("");
   const [bgIndex, setBgIndex] = useState(0);
+
+  const handleClaimCode = async (e) => {
+    e.preventDefault();
+    if (!competitionSlug.trim() || !claimAdmissionNo.trim() || !claimCodeEmail.trim()) {
+      toast.error("Enter competition slug, admission number and imported email");
+      return;
+    }
+    setClaimCodeLoading(true);
+    try {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-claim-code`, {
+        method: "POST",
+        body: JSON.stringify({
+          competition_slug: competitionSlug.trim(),
+          admission_no: claimAdmissionNo.trim(),
+          email: claimCodeEmail.trim(),
+        }),
+      });
+      setClaimCodeLink(data.setup_link || "");
+      toast.success("Verified — open your one-time setup link");
+    } catch (err) {
+      setClaimCodeLink("");
+      toast.error(err.message);
+    } finally {
+      setClaimCodeLoading(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -594,6 +624,43 @@ export default function ParticipantLoginPage() {
                         {loading ? 'Sending OTP...' : <><Shield className="h-4 w-4" /><span>Send OTP</span></>}
                       </Button>
                     </form>
+                  )}
+
+                  {claimStep === "admission" && (
+                    <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+                        No phone / bulk import? Use email instead
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                        Enter the same admission number + imported email from your organizer sheet to get a one-time setup link. No admin sharing needed.
+                      </p>
+                      <form onSubmit={handleClaimCode} className="space-y-3">
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
+                          <input type="email" required placeholder="Imported email (e.g. john@school.edu)"
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimCodeEmail}
+                            onChange={(e) => { setClaimCodeEmail(e.target.value); setClaimCodeLink(""); }}
+                          />
+                        </div>
+                        <Button type="submit" disabled={claimCodeLoading} variant="outline" size="lg" className="w-full">
+                          {claimCodeLoading ? 'Verifying...' : <><KeyRound className="h-4 w-4" /><span>Get setup link via email</span></>}
+                        </Button>
+                      </form>
+                      {claimCodeLink && (
+                        <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}>
+                          <p className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>Your one-time link (expires in 7 days):</p>
+                          <p className="text-xs break-all" style={{ color: "var(--muted-foreground)" }}>{claimCodeLink}</p>
+                          <div className="flex gap-2">
+                            <Button type="button" size="sm" className="flex-1" onClick={() => { navigator.clipboard?.writeText(claimCodeLink).then(() => toast.success("Link copied"), () => toast.error("Copy failed")); }}>
+                              Copy link
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => window.open(claimCodeLink, "_blank", "noopener")}>
+                              Open link <ArrowRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {claimStep === "otp" && (
