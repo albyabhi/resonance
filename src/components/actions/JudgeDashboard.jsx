@@ -1510,12 +1510,7 @@ const JudgeDashboard = () => {
             <div className="text-center mb-4">
               <p className="text-4xl font-bold text-card-foreground tracking-tight">
                 Chest #{meta.chest}
-              </p>
-              {meta.group && (
-                <p className="text-sm mt-1 text-muted-foreground">
-                  {meta.group}{meta.team ? ` — ${meta.team}` : ""}
-                </p>
-              )}
+             </p>
               {sessionMeta?.event?.enable_blind_judging && (
                 <p className="text-xs mt-1 text-muted-foreground">Blind judging — identities hidden</p>
               )}

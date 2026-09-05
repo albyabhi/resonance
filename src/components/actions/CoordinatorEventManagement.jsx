@@ -1,50 +1,59 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
-import { useCompetition } from "../../context/CompetitionContext";
-import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import {
-  Calendar,
+  AlertTriangle,
   Hash,
-  Users,
-  CheckCircle,
-  X,
-  ChevronRight,
-  Search,
+  Loader2,
   RefreshCw,
   Save,
-  Edit3,
-  Loader2,
-  AlertTriangle,
+  Users,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
-const STATUS_BADGE = (status) => {
-  const map = {
-    draft: "bg-muted text-muted-foreground border-border",
-    registration_open: "bg-accent-green/10 text-accent-green border-accent-green/20",
-    registration_closed: "bg-accent-amber/10 text-accent-amber border-accent-amber/20",
-    ongoing: "bg-accent-blue/10 text-accent-blue border-accent-blue/20",
-    completed: "bg-muted text-muted-foreground border-border",
-  };
-  return map[status] || "bg-muted text-muted-foreground border-border";
-};
+import { Skeleton } from "../ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import useAssignedEvents from "./coordinator/useAssignedEvents";
+import AssignedEventList from "./coordinator/AssignedEventList";
+import AssignedEventHeader from "./coordinator/AssignedEventHeader";
+import TeamEntryCard from "./coordinator/TeamEntryCard";
+import EditTeamModal from "./coordinator/EditTeamModal";
+import RevokeEntryDialog from "./coordinator/RevokeEntryDialog";
+import { API_ROUTES, buildUrl } from "../../utils/apiClient";
+import { getCoordinatorTeamId } from "./coordinator/coordinatorGuards";
 
 export default function CoordinatorEventManagement() {
   const { token } = useAuth();
-  const { competition } = useCompetition();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [teams, setTeams] = useState([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const {
+    apiCall,
+    events,
+    filteredEvents,
+    counts,
+    selectedEvent,
+    selectedEventId,
+    setSelectedEventId,
+    selectedTeams,
+    teamsLoading,
+    loading,
+    refreshing,
+    error,
+    setError,
+    searchQuery,
+    setSearchQuery,
+    typeFilter,
+    setTypeFilter,
+    reload,
+    refreshTeams,
+  } = useAssignedEvents({ token });
+
   const [actionLoading, setActionLoading] = useState(false);
   const [chestPrefix, setChestPrefix] = useState("");
   const [prefixSaving, setPrefixSaving] = useState(false);
@@ -52,106 +61,52 @@ export default function CoordinatorEventManagement() {
   const [autoPrefix, setAutoPrefix] = useState("");
   const [editingChest, setEditingChest] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [revokeTarget, setRevokeTarget] = useState(null);
+  const [revokingId, setRevokingId] = useState(null);
+  const [autoConfirmOpen, setAutoConfirmOpen] = useState(false);
 
-  // Compute events needing chest numbers (status = judging or result_pending without chest numbers)
-  const eventsNeedingChestNumbers = useMemo(() => {
-    return events.filter((evt) => {
-      const status = evt.status;
-      if (!["judging", "result_pending"].includes(status)) return false;
-      const hasChestConfig = evt.chest_prefix?.trim().length > 0;
-      return !hasChestConfig;
-    });
-  }, [events]);
-
-  const apiCall = useCallback(async (endpoint, options = {}) => {
-    if (!token) throw new Error("No auth token");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
-      method: options.method || "GET",
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      body: options.body,
-    });
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-    const loadEvents = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const compId = competition?._id || competition?.id || competition?.competition_id;
-        const query = compId ? `?competition_id=${encodeURIComponent(compId)}` : "";
-        const { events: evts } = await apiCall(`/api/event${query}`);
-        setEvents(evts || []);
-        if ((evts || []).length > 0) {
-          const firstId = evts[0]._id || evts[0].event_id;
-          setSelectedEventId(firstId);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadEvents();
-  }, [token, apiCall, competition?._id, competition?.id, competition?.competition_id]);
-
-  useEffect(() => {
-    if (!selectedEventId) return;
-    const loadTeams = async () => {
-      try {
-        setTeamsLoading(true);
-        const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
-        setTeams(data || []);
-      } catch {
-        setTeams([]);
-      } finally {
-        setTeamsLoading(false);
-      }
-    };
-    loadTeams();
-  }, [selectedEventId, token, apiCall]);
-
-  const selectedEvent = useMemo(() => {
-    return events.find((e) => (e._id || e.event_id) === selectedEventId);
-  }, [events, selectedEventId]);
+  const eventsNeedingChestNumbers = useMemo(
+    () =>
+      events.filter((evt) => {
+        if (!["judging", "result_pending"].includes(evt.status)) return false;
+        return !evt.chest_prefix?.trim();
+      }),
+    [events]
+  );
 
   useEffect(() => {
     if (selectedEvent) {
       setChestPrefix(selectedEvent.chest_prefix || "");
       setAutoPrefix(selectedEvent.chest_prefix || "");
+      setEditingChest(null);
+      setEditValue("");
     }
-  }, [selectedEvent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEventId]);
 
-  const filteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return events;
-    const q = searchQuery.toLowerCase();
-    return events.filter((e) => {
-      const title = (e.title || e.name || "").toLowerCase();
-      const cat = (e.category || "").toLowerCase();
-      const sub = (e.subcategory || "").toLowerCase();
-      return title.includes(q) || cat.includes(q) || sub.includes(q);
-    });
-  }, [events, searchQuery]);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+  };
 
-  const hasChestConfig = selectedEvent?.chest_prefix?.trim().length > 0;
-  const assignedCount = useMemo(() => teams.filter((t) => t.chest_no).length, [teams]);
-  const unassignedCount = teams.length - assignedCount;
+  const assignedCount = useMemo(
+    () => selectedTeams.filter((t) => t.chest_no).length,
+    [selectedTeams]
+  );
+  const unassignedCount = selectedTeams.length - assignedCount;
 
   const savePrefix = async () => {
     if (!selectedEvent) return;
     const eventId = selectedEvent._id || selectedEvent.event_id;
     try {
       setPrefixSaving(true);
-      await apiCall(`/api/event/${eventId}`, {
+      await apiCall(buildUrl(API_ROUTES.EVENTS.UPDATE(eventId)), {
         method: "PUT",
         body: JSON.stringify({ chest_prefix: chestPrefix.trim() }),
       });
       toast.success("Chest prefix saved");
-      setEvents((prev) =>
-        prev.map((e) =>
-          (e._id || e.event_id) === eventId ? { ...e, chest_prefix: chestPrefix.trim() } : e
-        )
-      );
+      reload();
     } catch (err) {
       toast.error(err.message || "Failed to save chest prefix");
     } finally {
@@ -166,14 +121,9 @@ export default function CoordinatorEventManagement() {
       toast.error("Enter a prefix or start number");
       return;
     }
-    const confirmed = window.confirm(
-      `Assign chest numbers ${autoPrefix.trim() ? `"${autoPrefix.trim()}-${autoStart}..." ` : `${autoStart}... `}to ${unassignedCount} unassigned team(s)?`
-    );
-    if (!confirmed) return;
-
     try {
       setActionLoading(true);
-      const resp = await apiCall("/api/team/bulk-chest", {
+      const resp = await apiCall(buildUrl(API_ROUTES.TEAMS.BULK_CHEST), {
         method: "POST",
         body: JSON.stringify({
           event_id: eventId,
@@ -182,29 +132,28 @@ export default function CoordinatorEventManagement() {
         }),
       });
       if (resp.success) {
-        toast.success(`Assigned chest numbers to ${resp.data.total} team(s)`);
-        const { data } = await apiCall(`/api/team?event_id=${eventId}`);
-        setTeams(data || []);
+        toast.success(`Assigned chest numbers to ${resp.data.total} entr${resp.data.total !== 1 ? "ies" : "y"}`);
+        await refreshTeams();
       }
     } catch (err) {
       toast.error(err.message || "Auto-assign failed");
     } finally {
       setActionLoading(false);
+      setAutoConfirmOpen(false);
     }
   };
 
-  const assignSingleChest = async (teamId, chest_no) => {
+  const assignSingleChest = async () => {
+    if (!editingChest || !editValue.trim()) return;
     try {
       setActionLoading(true);
-      const resp = await apiCall(`/api/team/${teamId}/chest`, {
+      const resp = await apiCall(buildUrl(API_ROUTES.TEAMS.CHEST(editingChest)), {
         method: "PATCH",
-        body: JSON.stringify({ chest_no }),
+        body: JSON.stringify({ chest_no: editValue.trim() }),
       });
       if (resp.success) {
         toast.success("Chest number saved");
-        setTeams((prev) =>
-          prev.map((t) => (t._id === teamId ? { ...t, chest_no } : t))
-        );
+        await refreshTeams();
       }
     } catch (err) {
       toast.error(err.message || "Failed to assign chest number");
@@ -215,41 +164,77 @@ export default function CoordinatorEventManagement() {
     }
   };
 
-  const startEditChest = (team) => {
-    setEditingChest(team._id);
-    setEditValue(team.chest_no || "");
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    const teamId = getCoordinatorTeamId(revokeTarget);
+    try {
+      setRevokingId(teamId);
+      setActionLoading(true);
+      await apiCall(buildUrl(API_ROUTES.TEAMS.DELETE(teamId)), { method: "DELETE" });
+      toast.success(`Entry "${revokeTarget.name || "Individual"}" revoked`);
+      setRevokeTarget(null);
+      await refreshTeams();
+    } catch (err) {
+      toast.error(err.message || "Failed to revoke entry");
+    } finally {
+      setRevokingId(null);
+      setActionLoading(false);
+    }
   };
 
-  const cancelEditChest = () => {
-    setEditingChest(null);
-    setEditValue("");
-  };
-
-  const confirmEditChest = () => {
-    if (!editingChest || !editValue.trim()) return;
-    assignSingleChest(editingChest, editValue.trim());
-  };
-
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="w-full shrink-0 lg:w-80 xl:w-96">
+          <Card className="overflow-hidden">
+            <div className="space-y-2 p-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-11 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2 p-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          </Card>
+        </div>
+        <div className="min-w-0 flex-1">
+          <Card>
+            <div className="space-y-2 p-4">
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-28 w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {error && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center">
+          <span className="flex-1">{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setError(""); reload(); }}
+            className="min-h-[44px] w-full sm:w-auto"
+          >
+            <RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry
+          </Button>
         </div>
       )}
 
       {eventsNeedingChestNumbers.length > 0 && (
-        <div className="rounded-lg border border-accent-amber/20 bg-accent-amber/10 px-4 py-3 text-sm flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-accent-amber mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium text-accent-amber mb-1">Chest Numbers Required</p>
+        <div className="flex items-start gap-3 rounded-lg border border-accent-amber/20 bg-accent-amber/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent-amber" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-accent-amber">Chest Numbers Required</p>
             <p className="text-xs text-accent-amber/80">
-              {eventsNeedingChestNumbers.length} event{eventsNeedingChestNumbers.length !== 1 ? "s" : ""} in "judging" or "result_pending" status need chest numbers before judging can proceed.
-            </p>
-            <p className="text-xs text-accent-amber/70 mt-1">
-              Click an event below to assign chest numbers in the detail panel.
+              {eventsNeedingChestNumbers.length} event{eventsNeedingChestNumbers.length !== 1 ? "s" : ""} in
+              judging or result-pending need chest numbers before judging can proceed.
             </p>
           </div>
         </div>
@@ -257,88 +242,37 @@ export default function CoordinatorEventManagement() {
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="w-full shrink-0 lg:w-80 xl:w-96">
-          <Card>
-            <div className="border-b border-border p-4">
-              <CardTitle className="text-sm font-semibold">My Events</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">{events.length} event{events.length !== 1 ? "s" : ""} assigned</p>
-              <div className="relative mt-3">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search events..."
-                  className="w-full rounded-lg pl-9"
-                />
-              </div>
-            </div>
-            <div className="max-h-[500px] overflow-y-auto">
-              {filteredEvents.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center">
-                  <Calendar className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No events assigned</p>
-                </div>
-              ) : (
-                filteredEvents.map((evt) => {
-                  const id = evt._id || evt.event_id;
-                  const isSelected = id === selectedEventId;
-                  const title = evt.title || evt.name || "Untitled";
-                  return (
-                    <Button
-                      key={id}
-                      variant="ghost"
-                      onClick={() => setSelectedEventId(id)}
-                      className={`w-full justify-between rounded-none px-4 py-3 h-auto hover:bg-muted ${
-                        isSelected ? "bg-primary/10 border-l-[3px] border-accent-amber" : "border-l-[3px] border-transparent"
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-sm font-medium text-card-foreground">{title}</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-xs capitalize text-muted-foreground">{evt.category}</span>
-                          <Badge variant="outline" className={STATUS_BADGE(evt.status)}>
-                            {evt.status?.replace(/_/g, " ")}
-                          </Badge>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </Button>
-                  );
-                })
-              )}
-            </div>
-          </Card>
+          <AssignedEventList
+            title="My Events"
+            events={events}
+            filteredEvents={filteredEvents}
+            counts={counts}
+            selectedEventId={selectedEventId}
+            onSelect={setSelectedEventId}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            typeFilter={typeFilter}
+            onFilterChange={setTypeFilter}
+            loading={false}
+            onClearFilters={clearFilters}
+          />
         </div>
 
         <div className="min-w-0 flex-1">
-          <Card>
+          <Card className="overflow-hidden">
             {selectedEvent ? (
               <>
-                <CardHeader className="border-b border-border">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <CardTitle className="text-sm font-semibold">
-                        {selectedEvent.title || selectedEvent.name}
-                      </CardTitle>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {teams.length} team{teams.length !== 1 ? "s" : ""}
-                        {hasChestConfig ? ` \u00B7 ${assignedCount} with chest numbers` : ""}
-                        {unassignedCount > 0 ? ` \u00B7 ${unassignedCount} unassigned` : ""}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {hasChestConfig && (
-                        <Badge variant="outline" className="inline-flex items-center gap-1 bg-accent-amber/10 text-accent-amber border-accent-amber/20">
-                          <Hash className="h-3 w-3" />
-                          {selectedEvent.chest_prefix}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                <AssignedEventHeader event={selectedEvent} teams={selectedTeams} />
+                {refreshing && (
+                  <p className="border-b border-border bg-muted/50 px-4 py-1.5 text-[11px] text-muted-foreground">
+                    Refreshing…
+                  </p>
+                )}
 
-                  <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted p-3">
+                <div className="space-y-3 border-b border-border p-3 sm:p-4">
+                  <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted p-3 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Chest Number Prefix
                       </label>
                       <Input
@@ -347,14 +281,14 @@ export default function CoordinatorEventManagement() {
                         onChange={(e) => setChestPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                         placeholder="e.g. GD, SD, MT"
                         maxLength={10}
-                        className="w-full font-mono"
+                        className="min-h-[44px] w-full font-mono sm:min-h-[40px]"
                       />
                     </div>
                     <Button
                       variant="outline"
                       onClick={savePrefix}
                       disabled={prefixSaving}
-                      className="flex items-center gap-1.5"
+                      className="min-h-[44px] w-full gap-1.5 sm:w-auto"
                       size="sm"
                     >
                       {prefixSaving ? (
@@ -366,9 +300,9 @@ export default function CoordinatorEventManagement() {
                     </Button>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted p-3">
-                    <div className="w-24">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted p-3 sm:flex-row sm:items-end">
+                    <div className="w-full sm:w-24">
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Start #
                       </label>
                       <Input
@@ -376,11 +310,11 @@ export default function CoordinatorEventManagement() {
                         value={autoStart}
                         onChange={(e) => setAutoStart(Math.max(1, parseInt(e.target.value, 10) || 1))}
                         min={1}
-                        className="w-full"
+                        className="min-h-[44px] w-full sm:min-h-[40px]"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Prefix for auto-assign
                       </label>
                       <Input
@@ -389,13 +323,13 @@ export default function CoordinatorEventManagement() {
                         onChange={(e) => setAutoPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                         placeholder={chestPrefix || "Optional prefix"}
                         maxLength={10}
-                        className="w-full font-mono"
+                        className="min-h-[44px] w-full font-mono sm:min-h-[40px]"
                       />
                     </div>
                     <Button
-                      onClick={handleAutoAssign}
+                      onClick={() => setAutoConfirmOpen(true)}
                       disabled={actionLoading || unassignedCount === 0}
-                      className="flex items-center gap-1.5 bg-accent-amber hover:bg-accent-amber/90 text-white"
+                      className="min-h-[44px] w-full gap-1.5 bg-accent-amber text-white hover:bg-accent-amber/90 sm:w-auto"
                       size="sm"
                     >
                       {actionLoading ? (
@@ -406,101 +340,55 @@ export default function CoordinatorEventManagement() {
                       {actionLoading ? "Assigning..." : `Auto-Assign (${unassignedCount})`}
                     </Button>
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-4">
-                  {teamsLoading ? null : teams.length === 0 ? (
+                <CardContent className="p-3 sm:p-4">
+                  {teamsLoading ? (
+                    <div className="space-y-3">
+                      {[0, 1].map((i) => (
+                        <Skeleton key={i} className="h-28 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  ) : selectedTeams.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-10 text-center">
                       <Users className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">No teams registered for this event</p>
+                      <p className="text-sm text-muted-foreground">No entries registered for this event</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {teams.map((team) => (
-                        <Card key={team._id} className="bg-muted border-border">
-                          <CardContent className="p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-semibold text-card-foreground">
-                                    {team.name || "Individual"}
-                                  </p>
-                                  {team.chest_no && (
-                                    <Badge variant="outline" className="inline-flex items-center gap-1 bg-accent-amber/10 text-accent-amber border-accent-amber/20 text-xs font-bold">
-                                      <Hash className="h-3 w-3" />
-                                      {team.chest_no}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {team.group_id?.name || "No group"}
-                                </p>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                {editingChest === team._id ? (
-                                  <div className="flex items-center gap-1">
-                                    <Input
-                                      type="text"
-                                      value={editValue}
-                                      onChange={(e) => setEditValue(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
-                                      placeholder={autoPrefix ? `${autoPrefix}-?` : "Chest #"}
-                                      maxLength={20}
-                                      className="w-28 text-xs font-mono"
-                                      autoFocus
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") confirmEditChest();
-                                        if (e.key === "Escape") cancelEditChest();
-                                      }}
-                                    />
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={confirmEditChest}
-                                      disabled={actionLoading || !editValue.trim()}
-                                      className="text-accent-green hover:bg-accent-green/10"
-                                    >
-                                      <CheckCircle className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={cancelEditChest}
-                                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                    >
-                                      <X className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => startEditChest(team)}
-                                    className="gap-1.5 text-muted-foreground hover:bg-accent-amber/10 hover:text-accent-amber"
-                                  >
-                                    <Edit3 className="h-3.5 w-3.5" />
-                                    {team.chest_no ? "Edit" : "Assign"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            {team.members && team.members.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-1.5">
-                                {team.members.map((m) => (
-                                  <Badge
-                                    key={m._id}
-                                    variant="outline"
-                                    className="bg-card text-muted-foreground text-xs"
-                                  >
-                                    {m.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
+                      {selectedTeams.map((team) => (
+                        <TeamEntryCard
+                          key={team._id}
+                          team={team}
+                          event={selectedEvent}
+                          actionLoading={actionLoading}
+                          showChest
+                          chestEditingId={editingChest}
+                          chestValue={editValue}
+                          onStartChest={(t) => {
+                            setEditingChest(t._id);
+                            setEditValue(t.chest_no || "");
+                          }}
+                          onChestChange={setEditValue}
+                          onConfirmChest={assignSingleChest}
+                          onCancelChest={() => {
+                            setEditingChest(null);
+                            setEditValue("");
+                          }}
+                          onEdit={setEditingTeam}
+                          onRevoke={(t) =>
+                            setRevokeTarget({
+                              ...t,
+                              eventTitle: selectedEvent.title || selectedEvent.name,
+                            })
+                          }
+                          onDeleteMember={undefined}
+                        />
                       ))}
+                      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Hash className="h-3 w-3" />
+                        Tip: manage names and rosters with Edit, withdraw with Revoke. Chest edits stay available after registration closes.
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -514,6 +402,45 @@ export default function CoordinatorEventManagement() {
           </Card>
         </div>
       </div>
+
+      <EditTeamModal
+        open={!!editingTeam}
+        team={editingTeam}
+        event={selectedEvent}
+        onClose={() => setEditingTeam(null)}
+        onSaved={refreshTeams}
+      />
+
+      <RevokeEntryDialog
+        target={revokeTarget ? { team: revokeTarget, eventTitle: revokeTarget.eventTitle } : null}
+        revoking={!!revokingId}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={handleRevoke}
+      />
+
+      <Dialog open={autoConfirmOpen} onOpenChange={setAutoConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Auto-assign chest numbers?</DialogTitle>
+            <DialogDescription>
+              Assign {autoPrefix.trim() ? `"${autoPrefix.trim()}-${autoStart}..." ` : `${autoStart}... `}to{" "}
+              {unassignedCount} unassigned entr{unassignedCount !== 1 ? "ies" : "y"}? Existing numbers are kept.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => setAutoConfirmOpen(false)} className="min-h-[44px]">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAutoAssign}
+              disabled={actionLoading}
+              className="min-h-[44px] bg-accent-amber text-white hover:bg-accent-amber/90"
+            >
+              {actionLoading ? "Assigning..." : "Auto-Assign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

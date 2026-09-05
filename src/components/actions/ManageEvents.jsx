@@ -5,7 +5,6 @@ import { useCompetition } from "../../context/CompetitionContext";
 import { useRealtime } from "../../context/RealtimeContext";
 import ManageJudges from "./ManageJudges";
 import { Button } from "../ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { useEvents } from "./events/useEvents";
 import { useEventForm } from "./events/useEventForm";
 import EventFilters from "./events/EventFilters";
@@ -17,6 +16,7 @@ import {
   VenueDialog,
   DelayResumeDialog,
 } from "./events/EventDialogs";
+import EventRegistrationsDialog from "./events/EventRegistrationsDialog";
 
 const ManageEvents = () => {
   const { token, competition, role } = useAuth();
@@ -24,6 +24,7 @@ const ManageEvents = () => {
   const { lastUpdate } = useRealtime() || {};
   const [activeTab, setActiveTab] = useState("manage");
   const [sharingEvent, setSharingEvent] = useState(null);
+  const [viewingRegistrations, setViewingRegistrations] = useState(null);
   const [managingJudges, setManagingJudges] = useState(null);
   const [delayResume, setDelayResume] = useState(null);
   const [showCreateVenue, setShowCreateVenue] = useState(false);
@@ -68,8 +69,14 @@ const ManageEvents = () => {
     },
   });
 
-  const canAdd = role !== "event_coordinator";
-  const showFormTab = role !== "event_coordinator" || form.editingEventId;
+  const isCoordinator = role === "event_coordinator";
+  const canAdd = !isCoordinator;
+  // Coordinators: edit + open/close registration only. No create/delete,
+  // no delay/resume, no judge management (all 403 on the backend).
+  const canDelete = !isCoordinator;
+  const canDelayResume = !isCoordinator;
+  const canManageJudges = !isCoordinator;
+  const showFormTab = !isCoordinator || form.editingEventId;
 
   const startAdd = () => {
     form.startAdd();
@@ -89,14 +96,6 @@ const ManageEvents = () => {
   const cancelForm = () => {
     form.resetForms();
     setActiveTab("manage");
-  };
-
-  const onTabChange = (v) => {
-    if (v === "manage") {
-      cancelForm();
-    } else {
-      startAdd();
-    }
   };
 
   const refreshEditedStatus = async () => {
@@ -144,50 +143,39 @@ const ManageEvents = () => {
           </div>
         )}
 
-        <Tabs
-          value={activeTab === "manage" ? "manage" : "form"}
-          onValueChange={onTabChange}
-          className="mb-4"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="manage" className="min-h-[40px] flex-1">
-              Manage Events
-            </TabsTrigger>
-            {showFormTab && (
-              <TabsTrigger value="form" className="min-h-[40px] flex-1">
-                {form.editingEventId ? "Edit Event" : "Add Event"}
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          <TabsContent value="manage" className="mt-4 space-y-4">
-            <EventFilters
-              filter={filter}
-              onChange={setFilter}
-              onAdd={startAdd}
-              canAdd={canAdd}
-              resultCount={filteredEvents.length}
-              totalCount={events.length}
-              activeFilterCount={activeFilterCount}
-            />
-            <EventList
-              events={filteredEvents}
-              usageByEventId={usageByEventId}
-              loading={loading}
-              groupLabel={groupLabel}
-              onEdit={startEdit}
-              onShare={setSharingEvent}
-              onManageJudges={setManagingJudges}
-              onStatusChange={changeStatus}
-              onDelay={(id) => setDelayResume({ action: "delay", eventId: id })}
-              onResume={(id) => setDelayResume({ action: "resume", eventId: id })}
-              onDelete={handleDeleteClick}
-              onAdd={startAdd}
-              canAdd={canAdd}
-            />
-          </TabsContent>
-
-          <TabsContent value="form" className="mt-4">
+        <div className="mb-4 space-y-4">
+          {activeTab === "manage" ? (
+            <>
+              <EventFilters
+                filter={filter}
+                onChange={setFilter}
+                onAdd={startAdd}
+                canAdd={canAdd}
+                resultCount={filteredEvents.length}
+                totalCount={events.length}
+                activeFilterCount={activeFilterCount}
+              />
+              <EventList
+                events={filteredEvents}
+                usageByEventId={usageByEventId}
+                loading={loading}
+                groupLabel={groupLabel}
+                onEdit={startEdit}
+                onShare={setSharingEvent}
+                onViewRegistrations={setViewingRegistrations}
+                onManageJudges={canManageJudges ? setManagingJudges : undefined}
+                onStatusChange={changeStatus}
+                onDelay={canDelayResume ? (id) => setDelayResume({ action: "delay", eventId: id }) : undefined}
+                onResume={canDelayResume ? (id) => setDelayResume({ action: "resume", eventId: id }) : undefined}
+                onDelete={canDelete ? handleDeleteClick : undefined}
+                onAdd={startAdd}
+                canAdd={canAdd}
+                canManageJudges={canManageJudges}
+                canDelete={canDelete}
+                canDelayResume={canDelayResume}
+              />
+            </>
+          ) : showFormTab ? (
             <EventFormWizard
               form={form}
               coordinators={coordinators}
@@ -200,8 +188,8 @@ const ManageEvents = () => {
                 setShowCreateVenue(true);
               }}
             />
-          </TabsContent>
-        </Tabs>
+          ) : null}
+        </div>
 
         {/* Mobile FAB for quick create */}
         {canAdd && activeTab === "manage" && (
@@ -219,15 +207,27 @@ const ManageEvents = () => {
           onClose={() => setSharingEvent(null)}
         />
 
-        <DeleteEventDialog
-          openEventId={deleteConfirmId}
-          deletionImpact={deletionImpact}
-          deletionLoading={deletionLoading}
-          deletionConfirmText={deletionConfirmText}
-          setDeletionConfirmText={setDeletionConfirmText}
-          onCancel={closeDeleteDialog}
-          onConfirm={executeDelete}
+        <EventRegistrationsDialog
+          event={viewingRegistrations}
+          open={!!viewingRegistrations}
+          onClose={() => setViewingRegistrations(null)}
+          apiCall={apiCall}
+          competitionId={
+            competition?._id || competition?.id || competition?.competition_id
+          }
         />
+
+        {canDelete && (
+          <DeleteEventDialog
+            openEventId={deleteConfirmId}
+            deletionImpact={deletionImpact}
+            deletionLoading={deletionLoading}
+            deletionConfirmText={deletionConfirmText}
+            setDeletionConfirmText={setDeletionConfirmText}
+            onCancel={closeDeleteDialog}
+            onConfirm={executeDelete}
+          />
+        )}
 
         <VenueDialog
           open={showCreateVenue}
@@ -238,17 +238,19 @@ const ManageEvents = () => {
           onCreate={handleVenueCreate}
         />
 
-        <DelayResumeDialog
-          mode={delayResume}
-          onClose={() => setDelayResume(null)}
-          onConfirm={(remarks) =>
-            delayResume?.action === "delay"
-              ? delayEvent(delayResume.eventId, remarks)
-              : resumeEvent(delayResume.eventId, remarks)
-          }
-        />
+        {canDelayResume && (
+          <DelayResumeDialog
+            mode={delayResume}
+            onClose={() => setDelayResume(null)}
+            onConfirm={(remarks) =>
+              delayResume?.action === "delay"
+                ? delayEvent(delayResume.eventId, remarks)
+                : resumeEvent(delayResume.eventId, remarks)
+            }
+          />
+        )}
 
-        {managingJudges && (
+        {canManageJudges && managingJudges && (
           <ManageJudges
             event={managingJudges}
             onClose={() => setManagingJudges(null)}

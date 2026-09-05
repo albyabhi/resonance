@@ -11,7 +11,7 @@ export const useLiveScore = (identifier, onUpdate) => {
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'RESULT_APPROVED' || data.type === 'BULK_RESULTS_APPROVED' || data.type === 'SCOREBOARD_UPDATED' || data.type === 'EVENT_STATUS_CHANGED') {
+        if (data.type === 'RESULT_APPROVED' || data.type === 'BULK_RESULTS_APPROVED' || data.type === 'RESULT_PUBLISHED' || data.type === 'BULK_RESULTS_PUBLISHED' || data.type === 'RESULT_LOCKED' || data.type === 'BULK_RESULTS_LOCKED' || data.type === 'SCOREBOARD_UPDATED' || data.type === 'EVENT_STATUS_CHANGED') {
           if (onUpdate) onUpdate(data);
         }
       } catch (err) {

@@ -38,6 +38,13 @@ import EventStatusBadge from "../EventStatusBadge";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
+const getRegistrationErrorMessage = (err, fallback = "Registration failed") => {
+  const code = err?.code || err?.payload?.code;
+  if (code === "COMPETITION_MISMATCH") return "This event belongs to a different competition. Switch competition to register.";
+  if (code === "ORG_MISMATCH") return "This event belongs to a different competition or organization. Switch competition or log out and back in, then retry.";
+  return err?.message || fallback;
+};
+
 export default function ParticipantRegister() {
   const { token, user, competition } = useAuth();
   const { groupLabel, groupLabelPlural } = useCompetition();
@@ -150,7 +157,7 @@ export default function ParticipantRegister() {
       }
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error(err.message || "Registration failed");
+      toast.error(getRegistrationErrorMessage(err));
     }
   }, [apiCall, fetchData]);
 
@@ -252,7 +259,7 @@ export default function ParticipantRegister() {
         throw new Error(resp.error || "Registration failed");
       }
     } catch (err) {
-      toast.error(err.message || "Failed to submit team registration");
+      toast.error(getRegistrationErrorMessage(err, "Failed to submit team registration"));
     } finally {
       setSubmittingTeam(false);
     }
@@ -333,7 +340,7 @@ export default function ParticipantRegister() {
       }
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error(err.message || "Failed to join team");
+      toast.error(getRegistrationErrorMessage(err, "Failed to join team"));
     }
   };
 

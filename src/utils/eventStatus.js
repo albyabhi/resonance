@@ -139,3 +139,12 @@ export const CAN_MANAGE_STATUS = ["super_admin", "organizer", "event_coordinator
 export const LIVE_STATUSES = ["ongoing", "judging"];
 
 export const SCOREBOARD_STATUSES = ["completed", "published", "locked"];
+
+// Canonical predicates — Event.status === "completed" is the single source of
+// truth (backend auto-completes on full publish). isEventFinished treats
+// transient "published" as finished for display so dashboards never lag the
+// publish → completed hop or a missed SSE tick.
+export const FINISHED_STATUSES = ["published", "completed"];
+export const isEventCompleted = (event) => (event?.status || "") === "completed";
+export const isEventFinished = (event) => FINISHED_STATUSES.includes(event?.status || "");
+export const isEventPublic = (event) => ["published", "completed"].includes(event?.status || "");

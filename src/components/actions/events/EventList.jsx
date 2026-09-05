@@ -44,11 +44,12 @@ function EmptyState({ onAdd, canAdd }) {
 }
 
 function DetailGrid({ event, usage, groupLabel }) {
+  const registeredLabel = `${usage?.totalTeams ?? 0} team${(usage?.totalTeams ?? 0) !== 1 ? "s" : ""} · ${usage?.totalParticipants ?? 0} participant${(usage?.totalParticipants ?? 0) !== 1 ? "s" : ""}`;
   const items = [
     { label: "Rounds", value: event.rounds ?? 1 },
     { label: `Max / ${groupLabel}`, value: event.max_per_group ?? "—" },
     { label: "Participants", value: formatParticipants(event) },
-    { label: "Registered", value: usage?.totalTeams ?? 0 },
+    { label: "Registered", value: registeredLabel },
     {
       label: "Gender",
       value:
@@ -90,6 +91,7 @@ function MobileCard({
   groupLabel,
   expanded,
   onToggle,
+  onViewRegistrations,
   actionProps,
 }) {
   return (
@@ -111,10 +113,18 @@ function MobileCard({
             )}
             <span className="mt-2 flex flex-wrap items-center gap-1.5">
               <EventStatusBadge status={event.status || "draft"} size="sm" />
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewRegistrations?.(event);
+                }}
+                className="inline-flex items-center gap-1 rounded text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                aria-label={`View registrations for ${event.title || event.name || "event"}`}
+              >
                 <Users className="h-3.5 w-3.5" />
                 {usage?.totalTeams ?? 0} registered
-              </span>
+              </button>
             </span>
           </span>
           <ChevronDown
@@ -143,6 +153,7 @@ export default function EventList({
   groupLabel = "House",
   onEdit,
   onShare,
+  onViewRegistrations,
   onManageJudges,
   onStatusChange,
   onDelay,
@@ -150,6 +161,9 @@ export default function EventList({
   onDelete,
   onAdd,
   canAdd,
+  canManageJudges = true,
+  canDelete = true,
+  canDelayResume = true,
 }) {
   const [expandedId, setExpandedId] = useState(null);
 
@@ -163,10 +177,14 @@ export default function EventList({
     onEdit,
     onManageJudges,
     onShare,
+    onViewRegistrations,
     onStatusChange,
     onDelay,
     onResume,
     onDelete,
+    canManageJudges,
+    canDelete,
+    canDelayResume,
   };
 
   return (
@@ -183,6 +201,7 @@ export default function EventList({
               groupLabel={groupLabel}
               expanded={expandedId === id}
               onToggle={() => setExpandedId((cur) => (cur === id ? null : id))}
+              onViewRegistrations={onViewRegistrations}
               actionProps={actionProps}
             />
           );
@@ -206,7 +225,7 @@ export default function EventList({
           <TableBody>
             {events.map((e) => {
               const id = getEventId(e);
-              const usage = usageByEventId[id] || { totalTeams: 0 };
+              const usage = usageByEventId[id] || { totalTeams: 0, totalParticipants: 0 };
               const expanded = expandedId === id;
               return (
                 <Fragment key={id}>
@@ -237,7 +256,18 @@ export default function EventList({
                       {e.rounds ?? 1} round{(e.rounds ?? 1) !== 1 ? "s" : ""}
                     </TableCell>
                     <TableCell className="font-semibold">
-                      {usage.totalTeams}
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          onViewRegistrations?.(e);
+                        }}
+                        className="underline-offset-2 hover:underline"
+                        title={`View registrations — ${usage.totalTeams} team${usage.totalTeams !== 1 ? "s" : ""} · ${usage.totalParticipants ?? 0} participant${(usage.totalParticipants ?? 0) !== 1 ? "s" : ""}`}
+                        aria-label={`View registrations for ${e.title || e.name || "event"}`}
+                      >
+                        {usage.totalTeams}
+                      </button>
                     </TableCell>
                     <TableCell className="text-[13px] capitalize text-muted-foreground">
                       {e.event_type || "—"} · {e.mode || "—"}

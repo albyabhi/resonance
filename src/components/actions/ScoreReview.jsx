@@ -280,6 +280,8 @@ const ScoreReview = () => {
       });
       if (res?.data?.transitionError) {
         toast.warning(res.data.message || "Results finalized but event status transition failed");
+      } else if (res?.data?.event_status === "completed") {
+        toast.success("Results published — event marked completed");
       } else {
         toast.success(res?.data?.message || "Results finalized — points published to overall standings");
       }

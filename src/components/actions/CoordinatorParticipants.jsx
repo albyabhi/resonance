@@ -1,114 +1,93 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState } from "react";
 import { useAuth } from "../AuthContext";
-import { useCompetition } from "../../context/CompetitionContext";
-import { apiJson } from "../../utils/apiClient";
-import { Calendar, Users, X, Trash2, UserMinus, ChevronRight, Search, AlertTriangle, ArrowLeftCircle } from "lucide-react";
-import { getTeamStatusMeta, getParticipantStatusMeta } from "../../utils/participantStatus";
 import toast from "react-hot-toast";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { RefreshCw, Users } from "lucide-react";
+import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, AlertDialogFooter } from "../ui/alert-dialog";
-
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
-const STATUS_VARIANT = (status) => {
-  const map = {
-    draft: "secondary",
-    registration_open: "success",
-    registration_closed: "outline",
-    ongoing: "default",
-    completed: "secondary",
-  };
-  return map[status] || "secondary";
-};
+import { Skeleton } from "../ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
+import useAssignedEvents from "./coordinator/useAssignedEvents";
+import AssignedEventList from "./coordinator/AssignedEventList";
+import AssignedEventHeader from "./coordinator/AssignedEventHeader";
+import TeamEntryCard from "./coordinator/TeamEntryCard";
+import EditTeamModal from "./coordinator/EditTeamModal";
+import RevokeEntryDialog from "./coordinator/RevokeEntryDialog";
+import { API_ROUTES, buildUrl } from "../../utils/apiClient";
+import { getCoordinatorTeamId } from "./coordinator/coordinatorGuards";
 
 export default function CoordinatorParticipants() {
   const { token } = useAuth();
-  const { competition } = useCompetition();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [teams, setTeams] = useState([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
+  const {
+    apiCall,
+    events,
+    filteredEvents,
+    counts,
+    selectedEvent,
+    selectedEventId,
+    setSelectedEventId,
+    selectedTeams,
+    teamsLoading,
+    loading,
+    refreshing,
+    error,
+    setError,
+    searchQuery,
+    setSearchQuery,
+    typeFilter,
+    setTypeFilter,
+    reload,
+    refreshTeams,
+  } = useAssignedEvents({ token });
+
   const [actionLoading, setActionLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: "", description: "", onConfirm: null });
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [revokeTarget, setRevokeTarget] = useState(null);
+  const [revokingId, setRevokingId] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
-  const apiCall = useCallback(async (endpoint, options = {}) => {
-    if (!token) throw new Error("No auth token");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
-      method: options.method || "GET",
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-      body: options.body,
-    });
-  }, [token]);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+  };
 
-  const loadEvents = useCallback(async () => {
-    if (!token) return;
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    const teamId = getCoordinatorTeamId(revokeTarget);
     try {
-      setLoading(true);
-      setError("");
-      const competitionId = competition?._id || competition?.id || competition?.competition_id;
-      const query = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
-      const { events: evts } = await apiCall(`/api/event${query}`);
-      setEvents(evts || []);
-      if ((evts || []).length > 0) {
-        setSelectedEventId(evts[0]._id || evts[0].event_id);
-      }
+      setRevokingId(teamId);
+      setActionLoading(true);
+      await apiCall(buildUrl(API_ROUTES.TEAMS.DELETE(teamId)), { method: "DELETE" });
+      toast.success(`Entry "${revokeTarget.name || "Individual"}" revoked`);
+      setRevokeTarget(null);
+      await refreshTeams();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to revoke entry");
     } finally {
-      setLoading(false);
+      setRevokingId(null);
+      setActionLoading(false);
     }
-  }, [competition, token, apiCall]);
+  };
 
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
-
-  const loadTeams = useCallback(async () => {
-    if (!selectedEventId) return;
-    try {
-      setTeamsLoading(true);
-      const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
-      setTeams(data || []);
-    } catch {
-      setTeams([]);
-    } finally {
-      setTeamsLoading(false);
-    }
-  }, [selectedEventId, apiCall]);
-
-  useEffect(() => {
-    loadTeams();
-  }, [loadTeams]);
-
-  const filteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return events;
-    const q = searchQuery.toLowerCase();
-    return events.filter((e) => {
-      const title = (e.title || e.name || "").toLowerCase();
-      const cat = (e.category || "").toLowerCase();
-      const sub = (e.subcategory || "").toLowerCase();
-      return title.includes(q) || cat.includes(q) || sub.includes(q);
-    });
-  }, [events, searchQuery]);
-
-  const selectedEvent = useMemo(() => {
-    return events.find((e) => (e._id || e.event_id) === selectedEventId);
-  }, [events, selectedEventId]);
-
-  const removeMember = async (teamId, participantId) => {
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return;
+    const { team, member } = removeTarget;
     try {
       setActionLoading(true);
-      await apiCall(`/api/team/${teamId}/members/${participantId}`, { method: "DELETE" });
-      toast.success("Participant removed");
-      const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
-      setTeams(data || []);
+      await apiCall(buildUrl(API_ROUTES.TEAMS.REMOVE_MEMBER(team._id, member._id)), {
+        method: "DELETE",
+      });
+      toast.success(`${member.name} removed`);
+      setRemoveTarget(null);
+      await refreshTeams();
     } catch (err) {
       toast.error(err.message || "Failed to remove participant");
     } finally {
@@ -116,201 +95,130 @@ export default function CoordinatorParticipants() {
     }
   };
 
-  const deleteTeam = async (teamId) => {
-    try {
-      setActionLoading(true);
-      await apiCall(`/api/team/${teamId}`, { method: "DELETE" });
-      toast.success("Team deleted");
-      const { data } = await apiCall(`/api/team?event_id=${selectedEventId}`);
-      setTeams(data || []);
-    } catch (err) {
-      toast.error(err.message || "Failed to delete team");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const promptConfirm = (title, description, onConfirm) => {
-    setConfirmDialog({ open: true, title, description, onConfirm });
-  };
-
-  if (loading) return null;
-
-  return (
-    <div className="flex flex-col gap-6">
-      {error && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4 lg:flex-row">
-        {/* LEFT: Event list */}
-        <div className="w-full shrink-0 lg:w-80 xl:w-96">
-          <Card>
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <div className="w-full">
+          <Card className="overflow-hidden">
             <div className="border-b border-border p-4">
-              <CardTitle className="text-sm">Assigned Events</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">{events.length} event{events.length !== 1 ? "s" : ""}</p>
-              <div className="relative mt-3">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search events..."
-                  className="pl-9"
-                />
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="mt-2 h-4 w-48 rounded-lg" />
+              <Skeleton className="mt-3 h-9 w-full rounded-lg" />
+              <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-9 w-20 rounded-full" />
+                ))}
               </div>
             </div>
-            <div className="max-h-[500px] overflow-y-auto">
-              {filteredEvents.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center">
-                  <Calendar className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No events assigned</p>
-                </div>
-              ) : (
-                filteredEvents.map((evt) => {
-                  const id = evt._id || evt.event_id;
-                  const isSelected = id === selectedEventId;
-                  const title = evt.title || evt.name || "Untitled";
-                  return (
-                    <Button
-                      key={id}
-                      variant="ghost"
-                      asChild
-                    >
-                      <div
-                        onClick={() => setSelectedEventId(id)}
-                        className={`flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted ${isSelected ? 'bg-accent-blue/10 border-l-[3px] border-l-accent-amber' : 'border-l-[3px] border-l-transparent'}`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-card-foreground">{title}</p>
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="text-xs capitalize text-muted-foreground">{evt.category}</span>
-                            <Badge variant={STATUS_VARIANT(evt.status)} className="text-xs px-2 py-0.5">
-                              {evt.status?.replace(/_/g, " ")}
-                            </Badge>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      </div>
-                    </Button>
-                  );
-                })
-              )}
+            <div className="space-y-2 p-3">
+              {[0, 1].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
             </div>
           </Card>
         </div>
+      </div>
+    );
+  }
 
-        {/* RIGHT: Participants for selected event */}
-        <div className="min-w-0 flex-1">
-          <Card>
+  return (      <div className="flex flex-col gap-4 sm:gap-6">
+      {selectedEvent && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/95 p-3 sm:p-4">
+          <p className="text-xs text-muted-foreground">
+            Showing entries for <span className="font-semibold text-foreground">{selectedEvent.title || selectedEvent.name || "this event"}</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            {counts.withEntries !== undefined && (
+              <span className="inline-flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                <span>{counts.withEntries} of {counts.total} assigned events have entries</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center">
+          <span className="flex-1">{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setError(""); reload(); }}
+            className="min-h-[44px] w-full sm:w-auto"
+          >
+            <RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <div className="w-full">
+          <AssignedEventList
+            title="Assigned Events"
+            events={events}
+            filteredEvents={filteredEvents}
+            counts={counts}
+            selectedEventId={selectedEventId}
+            onSelect={setSelectedEventId}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            typeFilter={typeFilter}
+            onFilterChange={setTypeFilter}
+            loading={false}
+            onClearFilters={clearFilters}
+          />
+        </div>
+
+        <div className="w-full">
+          <Card className="overflow-hidden">
             {selectedEvent ? (
               <>
-                <div className="border-b border-border p-4">
-                  <CardTitle className="text-sm">
-                    {selectedEvent.title || selectedEvent.name}
-                  </CardTitle>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {teams.length} team{teams.length !== 1 ? "s" : ""} registered
+                <AssignedEventHeader event={selectedEvent} teams={selectedTeams} />
+                {refreshing && (
+                  <p className="border-b border-border bg-muted/50 px-4 py-1.5 text-[11px] text-muted-foreground">
+                    Refreshing…
                   </p>
-                </div>
-
-                <CardContent className="p-4">
-                  {teamsLoading ? null : teams.length === 0 ? (
+                )}
+                <CardContent className="p-3 sm:p-4">
+                  {teamsLoading ? (
+                    <div className="space-y-3">
+                      {[0, 1, 2].map((i) => (
+                        <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                      ))}
+                    </div>
+                  ) : selectedTeams.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-10 text-center">
                       <Users className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">No teams registered for this event</p>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No entries registered for this event
+                      </p>
+                      <p className="max-w-xs text-xs text-muted-foreground">
+                        Entries appear here once groups register. Use Revoke to withdraw
+                        an entry while registration is open.
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {teams.map((team) => (
-                        <div
+                    <div className="space-y-3">
+                      {selectedTeams.map((team) => (
+                        <TeamEntryCard
                           key={team._id}
-                          className="rounded-xl border border-border bg-muted p-4"
-                        >
-                          <div className="mb-3 flex items-center justify-between">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-semibold text-card-foreground">
-                                  {team.name || "Individual"}
-                                </p>
-                                {team.status && team.status !== "active" && (
-                                  <Badge variant={getTeamStatusMeta(team.status).badge} className="text-[10px]">
-                                    {getTeamStatusMeta(team.status).label}
-                                  </Badge>
-                                )}
-                                {team.chest_no && (
-                                  <Badge variant="outline" className="bg-accent-amber/10 text-accent-amber border-transparent text-xs px-2 py-0.5">
-                                    #{team.chest_no}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                {team.group_id?.name || "No group"}
-                              </p>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={actionLoading}
-                              onClick={() => promptConfirm("Delete Team", `Delete team "${team.name || "Individual"}" and all its members?`, () => deleteTeam(team._id, team.name || "Individual"))}
-                              className="hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-
-                          {team.members && team.members.length > 0 && (
-                            <div className="space-y-1.5">
-                              {team.members.map((m) => (
-                                <div
-                                  key={m._id}
-                                  className="flex items-center justify-between rounded-lg bg-card px-3 py-2"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarFallback className="text-xs font-bold bg-accent-blue/10 text-accent-blue">
-                                        {(m.name || "?").charAt(0).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium text-card-foreground">
-                                        {m.name}
-                                        {m.status && m.status !== "active" && (
-                                          <Badge variant={getParticipantStatusMeta(m.status).badge} className="ml-1 text-[9px]">
-                                            {getParticipantStatusMeta(m.status).label}
-                                          </Badge>
-                                        )}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {m.unique_id || m.class || ""}
-                                        {m.class ? ` · ${m.class}` : ""}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={actionLoading}
-                                    onClick={() => promptConfirm("Remove Participant", `Remove ${m.name} from this team?`, () => removeMember(team._id, m._id, m.name))}
-                                    className="hover:bg-destructive/10 hover:text-destructive"
-                                  >
-                                    <UserMinus className="h-3.5 w-3.5 mr-1" />
-                                    Remove
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {(!team.members || team.members.length === 0) && (
-                            <p className="py-2 text-center text-xs text-muted-foreground">
-                              No members in this team
-                            </p>
-                          )}
-                        </div>
+                          team={team}
+                          event={selectedEvent}
+                          actionLoading={actionLoading}
+                          showChest={false}
+                          onEdit={setEditingTeam}
+                          onRevoke={(t) =>
+                            setRevokeTarget({
+                              ...t,
+                              eventTitle: selectedEvent.title || selectedEvent.name,
+                            })
+                          }
+                          onDeleteMember={(t, m) => setRemoveTarget({ team: t, member: m })}
+                        />
                       ))}
                     </div>
                   )}
@@ -319,22 +227,51 @@ export default function CoordinatorParticipants() {
             ) : (
               <div className="flex flex-col items-center gap-2 py-16 text-center">
                 <Users className="h-10 w-10 text-muted-foreground" />
-                <p className="text-sm font-medium text-muted-foreground">Select an event to view participants</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Select an event to view entries
+                </p>
               </div>
             )}
           </Card>
         </div>
       </div>
 
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+      <EditTeamModal
+        open={!!editingTeam}
+        team={editingTeam}
+        event={selectedEvent}
+        onClose={() => setEditingTeam(null)}
+        onSaved={refreshTeams}
+      />
+
+      <RevokeEntryDialog
+        target={revokeTarget ? { team: revokeTarget, eventTitle: revokeTarget.eventTitle } : null}
+        revoking={!!revokingId}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={handleRevoke}
+      />
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(v) => { if (!v) setRemoveTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+            <AlertDialogTitle>Remove participant?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove {removeTarget?.member?.name} from “{removeTarget?.team?.name || "Individual"}”?
+              This is blocked once chest numbers, scores, results, or an active appeal exist.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { confirmDialog.onConfirm?.(); }}>Continue</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setRemoveTarget(null)} className="min-h-[44px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="outline"
+              onClick={(e) => { e.preventDefault(); handleRemoveMember(); }}
+              disabled={actionLoading}
+              className="min-h-[44px]"
+            >
+              Remove
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

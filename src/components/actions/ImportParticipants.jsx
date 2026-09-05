@@ -34,6 +34,7 @@ const TARGET_FIELDS = [
   { key: "email", label: "Email *", short: "Email", required: true },
   { key: "admission_no", label: "Admission No", short: "Admission No", required: false },
   { key: "phone", label: "Phone", short: "Phone", required: false },
+  { key: "gender", label: "Gender", short: "Gender", required: false },
 ];
 
 // Consolidated 4-step wizard (was 6: Upload / Map / Validate / Preview / Import / Summary).
@@ -114,7 +115,8 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
             t.key === hl || hl.includes(t.key) || t.key.includes(hl) ||
             (t.key === "admission_no" && (hl === "admission" || hl === "admissionno" || hl === "admission number" || hl === "admission_number")) ||
             (t.key === "email" && (hl === "e-mail" || hl === "email address" || hl === "emailaddress")) ||
-            (t.key === "phone" && (hl === "phone number" || hl === "phonenumber" || hl === "contact" || hl === "mobile"))
+            (t.key === "phone" && (hl === "phone number" || hl === "phonenumber" || hl === "contact" || hl === "mobile")) ||
+            (t.key === "gender" && (hl === "sex" || hl === "m/f"))
           );
           if (match && !Object.values(autoMap).includes(match.key)) {
             autoMap[h] = match.key;
@@ -234,6 +236,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
         email: r.email,
         admission_no: r.admission_no,
         phone: r.phone,
+        gender: r.gender,
       }));
 
     try {
@@ -288,7 +291,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
       if (reviewFilter === "valid" && !(r.status !== "duplicate" && r.status !== "error")) return false;
       if (reviewFilter === "attention" && !(r.status === "duplicate" || r.status === "error")) return false;
       if (q) {
-        const hay = `${r.name || ""} ${r.email || ""} ${r.class || ""}`.toLowerCase();
+        const hay = `${r.name || ""} ${r.email || ""} ${r.class || ""} ${r.gender || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -495,15 +498,15 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                   {/* Mobile: stacked examples (no horizontal scroll) */}
                   <ul className="space-y-2 sm:hidden">
                     {[
-                      { n: "John Doe", c: "10A", e: "john@school.edu" },
-                      { n: "Jane Smith", c: "10B", e: "jane@school.edu" },
+                      { n: "John Doe", c: "10A", e: "john@school.edu", g: "male" },
+                      { n: "Jane Smith", c: "10B", e: "jane@school.edu", g: "female" },
                     ].map((r) => (
                       <li key={r.e} className="rounded-lg bg-muted/40 p-2.5 text-xs">
-                        <p className="font-semibold text-card-foreground">{r.n} <span className="font-normal text-muted-foreground">• {r.c}</span></p>
+                        <p className="font-semibold text-card-foreground">{r.n} <span className="font-normal text-muted-foreground">• {r.c} • {r.g}</span></p>
                         <p className="truncate text-muted-foreground">{r.e}</p>
                       </li>
                     ))}
-                    <li className="text-xs text-muted-foreground">+ optional Admission No, Phone columns</li>
+                    <li className="text-xs text-muted-foreground">+ optional Admission No, Phone, Gender columns (male / female / other)</li>
                   </ul>
                   {/* Desktop: full table */}
                   <div className="hidden sm:block overflow-x-auto rounded border border-border">
@@ -515,6 +518,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                           <TableHead className="text-xs font-medium text-card-foreground">Email</TableHead>
                           <TableHead className="text-xs font-medium text-card-foreground">Admission No</TableHead>
                           <TableHead className="text-xs font-medium text-card-foreground">Phone</TableHead>
+                          <TableHead className="text-xs font-medium text-card-foreground">Gender</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -524,6 +528,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                           <TableCell className="text-xs text-card-foreground">john@school.edu</TableCell>
                           <TableCell className="text-xs text-muted-foreground">ADM2024001</TableCell>
                           <TableCell className="text-xs text-muted-foreground">9876543210</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">male</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="text-xs text-card-foreground">Jane Smith</TableCell>
@@ -531,12 +536,13 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                           <TableCell className="text-xs text-card-foreground">jane@school.edu</TableCell>
                           <TableCell className="text-xs text-muted-foreground">ADM2024002</TableCell>
                           <TableCell className="text-xs text-muted-foreground">9876543211</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">female</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
                   </div>
                   <p className="text-xs mt-2 text-muted-foreground">
-                    Headers are matched automatically — order does not matter. <strong>Name</strong>, <strong>Class</strong>, and <strong>Email</strong> are required.
+                    Headers are matched automatically — order does not matter. <strong>Name</strong>, <strong>Class</strong>, and <strong>Email</strong> are required. Gender accepts male / female / other.
                   </p>
                 </div>
               )}
@@ -774,7 +780,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                         {row.index + 1}. {row.name || "(no name)"}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {row.class || "—"} • {row.email || "—"}
+                        {row.class || "—"} • {row.gender || "—"} • {row.email || "—"}
                       </p>
                     </div>
                     {renderStatusBadge(row)}
@@ -795,6 +801,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                       <dt>Phone</dt><dd className="text-card-foreground">{row.phone || "—"}</dd>
                       <dt>Email</dt><dd className="truncate text-card-foreground">{row.email || "—"}</dd>
                       <dt>Class</dt><dd className="text-card-foreground">{row.class || "—"}</dd>
+                      <dt>Gender</dt><dd className="text-card-foreground capitalize">{row.gender || "—"}</dd>
                     </dl>
                   </details>
 
@@ -854,6 +861,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                   <TableHead className="text-xs uppercase text-muted-foreground">Email</TableHead>
                   <TableHead className="text-xs uppercase text-muted-foreground">Admission No</TableHead>
                   <TableHead className="text-xs uppercase text-muted-foreground">Phone</TableHead>
+                  <TableHead className="text-xs uppercase text-muted-foreground">Gender</TableHead>
                   <TableHead className="text-xs uppercase text-muted-foreground">Status</TableHead>
                   <TableHead className="text-xs uppercase text-muted-foreground">Action</TableHead>
                 </TableRow>
@@ -870,6 +878,7 @@ function ImportParticipants({ groups, groupLabel = "Group", onDone }) {
                       <TableCell className="text-sm text-card-foreground">{row.email || "—"}</TableCell>
                       <TableCell className="text-sm text-card-foreground">{row.admission_no || "—"}</TableCell>
                       <TableCell className="text-sm text-card-foreground">{row.phone || "—"}</TableCell>
+                      <TableCell className="text-sm capitalize text-card-foreground">{row.gender || "—"}</TableCell>
                       <TableCell>{renderStatusBadge(row)}</TableCell>
                       <TableCell>
                         {isDuplicate ? (

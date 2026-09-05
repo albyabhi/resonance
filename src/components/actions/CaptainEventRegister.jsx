@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
+import { useRealtime } from "../../context/RealtimeContext";
 import { apiJson } from "../../utils/apiClient";
 import toast from "react-hot-toast";
 import { useMobileMode } from "../utils/useMobileMode";
 import {
   Trophy, Users, User, CheckCircle, Plus, Search, X,
-  Info, AlertCircle, UserPlus, Loader2, PartyPopper, Trash2,
+  Info, AlertCircle, UserPlus, Loader2, PartyPopper, Trash2, Pencil,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -21,9 +22,33 @@ import EventStatusBadge from "../EventStatusBadge";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
+const decodeJwtPayload = (jwt) => {
+  try {
+    const parts = String(jwt || "").split(".");
+    if (parts.length !== 3) return null;
+    return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+  } catch {
+    return null;
+  }
+};
+
+const getEventCompetitionId = (event) => {
+  const raw = event?.competition_id;
+  return String(raw?._id || raw || "");
+};
+
+const getEventOrgId = (event) => {
+  const direct = event?.organization_id;
+  if (direct) return String(direct?._id || direct || "");
+  const nested = event?.competition_id?.organization_id;
+  if (nested) return String(nested?._id || nested || "");
+  return "";
+};
+
 export default function CaptainEventRegister() {
-  const { competition, token } = useAuth();
+  const { competition, token, login } = useAuth();
   const { groupLabel } = useCompetition();
+  const { lastUpdate } = useRealtime() || {};
   const { isMobile } = useMobileMode();
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
@@ -52,11 +77,19 @@ export default function CaptainEventRegister() {
   const [submitting, setSubmitting] = useState(false);
   const [revokingId, setRevokingId] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
+  const [editingReg, setEditingReg] = useState(null);
+  const [editTeamName, setEditTeamName] = useState("");
+  const [editMemberIds, setEditMemberIds] = useState([]);
+  const [editSearch, setEditSearch] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
+      // Drop stale cross-competition events before refetch so a modal can
+      // never open from the previous competition's list.
+      setEvents([]);
 
       const competitionId = competition?._id || competition?.id;
       const competitionQuery = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : "";
@@ -82,7 +115,7 @@ export default function CaptainEventRegister() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, lastUpdate]);
 
   const registrationsByEvent = useMemo(() => {
     const map = {};
@@ -217,11 +250,84 @@ export default function CaptainEventRegister() {
     return false;
   };
 
+  const submitRegisterRequest = useCallback(async (eventDoc, participantIds, name) => {
+    const isBulkIndividual = eventDoc.event_type === "individual" && participantIds.length > 1;
+    if (isBulkIndividual) {
+      return apiCall("/api/captain/bulk-register", {
+        method: "POST",
+        body: JSON.stringify({
+          event_id: eventDoc._id || eventDoc.event_id,
+          teams: participantIds.map((pid) => ({ participant_ids: [pid] })),
+        }),
+      });
+    }
+    return apiCall("/api/captain/register-for-event", {
+      method: "POST",
+      body: JSON.stringify({
+        event_id: eventDoc._id || eventDoc.event_id,
+        participant_ids: participantIds,
+        team_name: eventDoc.event_type === "team" ? name.trim() : undefined,
+      }),
+    });
+  }, [apiCall]);
+
+  const handleSwitchCompetitionAndRetry = useCallback(async (targetCompetitionId) => {
+    const confirmed = window.confirm(
+      "This event belongs to a different competition. Switch competition now and retry registration?"
+    );
+    if (!confirmed || !targetCompetitionId) return false;
+    const switchResp = await apiJson(`${API_BASE_URL}/api/auth/competition/select`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ competition_id: targetCompetitionId }),
+    });
+    if (!switchResp?.access_token || !switchResp?.competition) {
+      throw new Error("Competition switch failed");
+    }
+    login(switchResp.user, switchResp.access_token, switchResp.refresh_token, switchResp.competition);
+    const retryResp = await submitRegisterRequest(selectedEvent, selectedParticipantIds, teamName);
+    return retryResp;
+  }, [login, selectedEvent, selectedParticipantIds, teamName, token, submitRegisterRequest]);
+
   const handleSubmitRegistration = async () => {
     if (!selectedEvent) return;
 
     if (!isRegistrableStatus(selectedEvent)) {
       toast.error("Event registration is not open");
+      return;
+    }
+
+    // Competition + org sync guard: POST carries only {event_id}, backend
+    // resolves org from the JWT active competition. Fail fast with guidance.
+    // Fail-open when IDs are absent (legacy events without competition_id).
+    const activeCompetitionId = String(competition?._id || competition?.id || "");
+    const eventCompetitionId = getEventCompetitionId(selectedEvent);
+    if (activeCompetitionId && eventCompetitionId && activeCompetitionId !== eventCompetitionId) {
+      try {
+        setSubmitting(true);
+        const retryResp = await handleSwitchCompetitionAndRetry(eventCompetitionId);
+        if (retryResp?.success) {
+          toast.success("Competition switched. Registration completed!");
+          closeRegistrationModal();
+          fetchData();
+        }
+      } catch (switchErr) {
+        toast.error(switchErr.message || "Switch competition to register.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    const jwtPayload = decodeJwtPayload(token);
+    const jwtOrgId = String(jwtPayload?.organizationId || "");
+    const eventOrgId = getEventOrgId(selectedEvent);
+    if (jwtOrgId && eventOrgId && jwtOrgId !== eventOrgId && eventCompetitionId && activeCompetitionId === eventCompetitionId) {
+      // Same competition, different org: stale JWT pair from before the login
+      // invariant fix. Switching competitions cannot help — fresh login will.
+      toast.error("Session is linked to the wrong organization. Please log out and log back in, then retry.");
+      setError(
+        `Organization mismatch: session org ${jwtOrgId.slice(-6)} vs event org ${eventOrgId.slice(-6)}. Log out/in to refresh your session.`
+      );
       return;
     }
 
@@ -267,26 +373,7 @@ export default function CaptainEventRegister() {
       setSubmitting(true);
 
       const isBulkIndividual = selectedEvent.event_type === "individual" && selectedParticipantIds.length > 1;
-
-      let resp;
-      if (isBulkIndividual) {
-        resp = await apiCall("/api/captain/bulk-register", {
-          method: "POST",
-          body: JSON.stringify({
-            event_id: selectedEvent._id || selectedEvent.event_id,
-            teams: selectedParticipantIds.map((pid) => ({ participant_ids: [pid] })),
-          }),
-        });
-      } else {
-        resp = await apiCall("/api/captain/register-for-event", {
-          method: "POST",
-          body: JSON.stringify({
-            event_id: selectedEvent._id || selectedEvent.event_id,
-            participant_ids: selectedParticipantIds,
-            team_name: selectedEvent.event_type === "team" ? teamName.trim() : undefined,
-          }),
-        });
-      }
+      const resp = await submitRegisterRequest(selectedEvent, selectedParticipantIds, teamName);
 
       if (resp.success) {
         const created = resp.data?.created || resp.data?.teams?.length || selectedParticipantIds.length;
@@ -311,7 +398,36 @@ export default function CaptainEventRegister() {
         fetchData();
       }
     } catch (err) {
-      toast.error(err.message || "Registration failed");
+      const payload = err?.payload || {};
+      const rawMessage = payload?.message || err?.message || "Registration failed";
+      const code = err?.code || payload?.code;
+      if (code === "COMPETITION_MISMATCH" || payload?.requestCompetition) {
+        try {
+          setSubmitting(true);
+          const retryResp = await handleSwitchCompetitionAndRetry(getEventCompetitionId(selectedEvent));
+          if (retryResp?.success) {
+            toast.success("Competition switched. Registration completed!");
+            closeRegistrationModal();
+            fetchData();
+            return;
+          }
+        } catch (switchErr) {
+          toast.error(switchErr.message || "Switch competition to register.");
+          return;
+        } finally {
+          setSubmitting(false);
+        }
+      }
+      if (code === "ORG_MISMATCH" || rawMessage.includes("does not belong to your organization")) {
+        const sameCompetition = getEventCompetitionId(selectedEvent) && getEventCompetitionId(selectedEvent) === String(competition?._id || competition?.id || "");
+        toast.error(
+          sameCompetition
+            ? "Session is linked to the wrong organization. Log out and back in, then retry."
+            : "This event belongs to a different competition. Switch competition to register."
+        );
+      } else {
+        toast.error(err.message || "Registration failed");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -342,6 +458,122 @@ export default function CaptainEventRegister() {
       setRevokingId(null);
     }
   };
+
+  // Team entries are editable (rename + roster); individual entries stay revoke-only.
+  const isTeamReg = (reg) => (reg.event_id?.event_type || "") === "team";
+  const isEditable = (reg) => isTeamReg(reg) && isRevocable(reg);
+
+  const openEditModal = (reg) => {
+    if (!isEditable(reg)) {
+      toast.error("Entries can only be edited while registration is open");
+      return;
+    }
+    setEditingReg(reg);
+    setEditTeamName(reg.name || "");
+    setEditMemberIds((reg.members || []).map((m) => String(m._id)));
+    setEditSearch("");
+  };
+
+  const closeEditModal = () => {
+    setEditingReg(null);
+    setEditTeamName("");
+    setEditMemberIds([]);
+    setEditSearch("");
+  };
+
+  const toggleEditMember = (id) => {
+    const sid = String(id);
+    setEditMemberIds((prev) => {
+      if (prev.includes(sid)) return prev.filter((x) => x !== sid);
+      if (!editingReg) return prev;
+      const { max } = getTeamLimits(editingReg.event_id || {});
+      if (prev.length >= max) {
+        toast.error(`Maximum ${max} members allowed for this event`);
+        return prev;
+      }
+      return [...prev, sid];
+    });
+  };
+
+  const isEditDirty = () => {
+    if (!editingReg) return false;
+    const origName = (editingReg.name || "").trim();
+    const nextName = (editTeamName || "").trim();
+    const origIds = new Set((editingReg.members || []).map((m) => String(m._id)));
+    const nextIds = new Set(editMemberIds.map(String));
+    if (origName !== nextName) return true;
+    if (origIds.size !== nextIds.size) return true;
+    for (const id of nextIds) if (!origIds.has(id)) return true;
+    return false;
+  };
+
+  const handleUpdateTeam = async () => {
+    if (!editingReg) return;
+    const teamId = editingReg._id;
+    const evt = editingReg.event_id || {};
+    if (!isRevocable(editingReg)) {
+      toast.error("Event registration is not open");
+      return;
+    }
+    const trimmedName = (editTeamName || "").trim();
+    if (!trimmedName) {
+      toast.error("Please provide a team name");
+      return;
+    }
+    const { min, max } = getTeamLimits(evt);
+    if (editMemberIds.length < min) {
+      toast.error(`Team too small: minimum ${min} members required`);
+      return;
+    }
+    if (editMemberIds.length > max) {
+      toast.error(`Team too large: maximum ${max} members allowed`);
+      return;
+    }
+    if (!isEditDirty()) {
+      toast.error("No changes to save");
+      return;
+    }
+    try {
+      setSavingEdit(true);
+      await apiCall(`/api/captain/team/${teamId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ team_name: trimmedName, participant_ids: editMemberIds }),
+      });
+      toast.success(`Team "${trimmedName}" updated successfully!`);
+      closeEditModal();
+      fetchData();
+    } catch (err) {
+      toast.error(err.message || "Failed to update team");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const filteredEditParticipants = useMemo(() => {
+    const q = editSearch.toLowerCase().trim();
+    const editingEventId = editingReg?.event_id?._id || editingReg?.event_id;
+    const editingTeamId = String(editingReg?._id || "");
+    const memberEventIds = new Set();
+    for (const reg of groupRegistrations) {
+      if (String(reg._id) === editingTeamId) continue;
+      const rid = reg.event_id?._id || reg.event_id;
+      if (String(rid) !== String(editingEventId)) continue;
+      for (const m of reg.members || []) memberEventIds.add(String(m._id));
+    }
+    const list = groupParticipants.filter((p) => {
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.unique_id || "").toLowerCase().includes(q) ||
+        (p.class || "").toLowerCase().includes(q)
+      );
+    });
+    return list.map((p) => ({
+      ...p,
+      alreadyElsewhere: memberEventIds.has(String(p._id)),
+      genderBlocked: isGenderIneligible(p, editingReg?.event_id || {}),
+    }));
+  }, [editSearch, groupParticipants, groupRegistrations, editingReg]);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -605,6 +837,7 @@ export default function CaptainEventRegister() {
               {groupRegistrations.map((reg) => {
                 const evt = reg.event_id || {};
                 const revocable = isRevocable(reg);
+                const editable = isEditable(reg);
                 const revoking = revokingId === reg._id;
                 return (
                   <Card key={reg._id} className="p-5 sm:p-6">
@@ -622,6 +855,21 @@ export default function CaptainEventRegister() {
                           </div>
                         )}
                       </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                      {isTeamReg(reg) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!editable}
+                        title={editable ? "Edit team name and members" : "Teams can only be edited while registration is open"}
+                        aria-label={`Edit team for ${evt.title || evt.name || "event"}`}
+                        onClick={() => openEditModal(reg)}
+                        className="min-h-[44px] min-w-[44px] gap-1.5 disabled:opacity-40"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="hidden sm:inline text-xs font-bold">Edit</span>
+                      </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -635,7 +883,7 @@ export default function CaptainEventRegister() {
                           teamName: reg.name,
                           members: reg.members || [],
                         })}
-                        className="shrink-0 min-h-[44px] min-w-[44px] gap-1.5 text-accent-red hover:text-accent-red hover:bg-accent-red/10 disabled:opacity-40"
+                        className="min-h-[44px] min-w-[44px] gap-1.5 text-accent-red hover:text-accent-red hover:bg-accent-red/10 disabled:opacity-40"
                       >
                         {revoking ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -644,6 +892,7 @@ export default function CaptainEventRegister() {
                         )}
                         <span className="hidden sm:inline text-xs font-bold">Revoke</span>
                       </Button>
+                      </div>
                     </div>
 
                     {reg.members && reg.members.length > 0 && (
@@ -973,6 +1222,142 @@ export default function CaptainEventRegister() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingReg} onOpenChange={(open) => { if (!open) closeEditModal(); }}>
+        <DialogContent className={`${isMobile ? "max-h-[92dvh]" : "max-w-2xl max-h-[90vh]"} flex flex-col gap-0 overflow-hidden p-0`}>
+          <div className="sticky top-0 z-10 border-b border-border bg-background px-5 pt-5 pb-4 sm:px-6">
+            <DialogHeader>
+              <DialogTitle className="pr-8 text-left">Edit Team — {editingReg?.event_id?.title || editingReg?.event_id?.name}</DialogTitle>
+              <DialogDescription>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <Badge variant="outline" className="text-xs font-black uppercase tracking-wider">Team Event</Badge>
+                  <span className="text-muted-foreground text-xs">for {groupInfo?.name}</span>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            {editingReg && (() => {
+              const { min, max } = getTeamLimits(editingReg.event_id || {});
+              return (
+                <div className="mt-3 p-3 border rounded-lg bg-muted border-border text-xs text-muted-foreground">
+                  Team size {min}-{max} · {editMemberIds.length} selected{!isEditDirty() ? " · No changes yet" : ""}
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="space-y-2">
+              <Label>
+                Team Name <span className="text-accent-red">*</span>
+              </Label>
+              <Input
+                type="text"
+                value={editTeamName}
+                onChange={(e) => setEditTeamName(e.target.value)}
+                placeholder="e.g. Team Alpha"
+                className={isMobile ? "min-h-[48px] text-base" : ""}
+              />
+              <p className="text-[10px] text-muted-foreground">Must be unique across all groups for this event.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest">Select Participants</Label>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={editSearch}
+                  onChange={(e) => setEditSearch(e.target.value)}
+                  placeholder={`Search participants in your ${groupLabel.toLowerCase()}...`}
+                  className={`pl-10 ${isMobile ? "min-h-[48px] text-base" : ""}`}
+                />
+              </div>
+              <div className="border rounded-lg border-border overflow-hidden max-h-[40dvh] sm:max-h-[300px] overflow-y-auto divide-y divide-border">
+                {filteredEditParticipants.length === 0 ? (
+                  <div className="p-6 text-center text-sm font-semibold text-muted-foreground">No matching participants found</div>
+                ) : (
+                  filteredEditParticipants.map((p) => {
+                    const sid = String(p._id);
+                    const isSelected = editMemberIds.includes(sid);
+                    const blocked = !isSelected && (p.alreadyElsewhere || p.genderBlocked);
+                    return (
+                      <div
+                        key={p._id}
+                        onClick={() => {
+                          if (isSelected) { toggleEditMember(sid); return; }
+                          if (p.alreadyElsewhere) { toast.error(`${p.name} is already registered for this event`); return; }
+                          if (p.genderBlocked) { toast.error(`Gender restriction: this event is ${editingReg?.event_id?.gender_filter}-only`); return; }
+                          toggleEditMember(sid);
+                        }}
+                        className={`flex items-center justify-between transition-colors ${isMobile ? "px-4 py-4 min-h-[56px]" : "px-4 py-3"} ${blocked ? "opacity-40 cursor-not-allowed" : isSelected ? "bg-accent-blue/5" : "hover:bg-accent-blue/5 cursor-pointer"}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black ${isSelected ? "bg-accent-blue text-white" : "bg-muted"}`}>
+                            {isSelected ? <CheckCircle className="h-4 w-4" /> : <User className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold truncate text-card-foreground">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{p.unique_id && <span>ID: {p.unique_id} &middot; </span>}Class: {p.class}</div>
+                          </div>
+                        </div>
+                        {p.alreadyElsewhere ? (
+                          <Badge variant="success" className="text-[9px] font-black uppercase tracking-widest">Registered</Badge>
+                        ) : p.genderBlocked ? (
+                          <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">Ineligible</Badge>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {editMemberIds.length > 0 && (
+              <div className="p-4 border rounded-lg bg-muted border-border">
+                <div className="text-xs font-bold mb-2 text-card-foreground">
+                  Selected ({editMemberIds.length}) — tap X to remove
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {editMemberIds.map((id) => {
+                    const member = groupParticipants.find((x) => String(x._id) === String(id));
+                    return member ? (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent-blue/10 text-accent-blue"
+                      >
+                        {member.name}
+                        <button onClick={(e) => { e.stopPropagation(); toggleEditMember(id); }} aria-label={`Remove ${member.name}`} className="ml-0.5 hover:text-accent-red">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="sticky bottom-0 border-t border-border bg-background px-5 py-4 sm:px-6">
+            <div className="text-xs mb-3 text-muted-foreground">{editMemberIds.length} participant{editMemberIds.length !== 1 ? "s" : ""} selected</div>
+            <div className={`flex ${isMobile ? "flex-col" : "flex-row justify-end"} gap-2.5`}>
+              <Button variant="outline" onClick={closeEditModal} className="min-h-[48px] sm:min-h-0 sm:h-10 w-full sm:w-auto">Cancel</Button>
+              <Button
+                onClick={handleUpdateTeam}
+                disabled={(() => {
+                  if (savingEdit || !editingReg || !isEditDirty()) return true;
+                  if (!editTeamName.trim()) return true;
+                  const { min, max } = getTeamLimits(editingReg.event_id || {});
+                  if (editMemberIds.length < min || editMemberIds.length > max) return true;
+                  return false;
+                })()}
+                className="min-h-[48px] sm:min-h-0 sm:h-10 gap-2 w-full sm:w-auto"
+              >
+                {savingEdit ? (<><Loader2 className="h-4 w-4 animate-spin" />Saving...</>) : (<><CheckCircle className="h-4 w-4" />Save Changes</>)}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

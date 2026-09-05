@@ -9,7 +9,7 @@ import { apiJson } from "../../utils/apiClient";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
-import { LIVE_STATUSES } from "../../utils/eventStatus";
+import { LIVE_STATUSES, FINISHED_STATUSES } from "../../utils/eventStatus";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -172,7 +172,7 @@ function RecentWinners({ results = [] }) {
 function UpcomingEvents({ events = [], schedules = [] }) {
   const scheduleByEvent = new Map(schedules.map((schedule) => [getId(schedule.event_id || schedule.event), schedule]));
   const upcoming = events
-    .filter((event) => event.status !== "completed")
+    .filter((event) => !FINISHED_STATUSES.includes(event.status))
     .map((event) => ({ ...event, schedule: scheduleByEvent.get(getId(event._id)) }))
     .sort((a, b) => (getDateValue(a.schedule || a)?.getTime() || Number.MAX_SAFE_INTEGER) - (getDateValue(b.schedule || b)?.getTime() || Number.MAX_SAFE_INTEGER))
     .slice(0, 5);
@@ -275,8 +275,8 @@ export default function DashboardVisuals() {
   const { scoreboard, events, results, schedules, participantStats } = data;
   const normalizedScoreboard = normalizeScoreboard(scoreboard);
   const liveEvents = events.filter((e) => LIVE_STATUSES.includes(e.status));
-  const completedEvents = events.filter((e) => e.status === "completed");
-  const nextEvents = events.filter((e) => e.status !== "completed");
+  const completedEvents = events.filter((e) => FINISHED_STATUSES.includes(e.status));
+  const nextEvents = events.filter((e) => !FINISHED_STATUSES.includes(e.status));
   const leader = normalizedScoreboard[0];
   const dashboardKind = hasAnyRole("super_admin", "organizer")
     ? "admin"

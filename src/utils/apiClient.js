@@ -159,6 +159,7 @@ export const apiJson = async (url, options = {}) => {
     const error = new Error(friendlyMessage);
     error.status = response.status;
     error.payload = payload;
+    error.code = payload?.code;
     if (!isJson) error.rawBody = text;
     throw error;
   }
@@ -191,9 +192,8 @@ export const API_ROUTES = {
     PARTICIPANT_LOGIN: '/api/auth/participant-login',
     PARTICIPANT_SIGNUP: '/api/auth/participant-signup',
     PARTICIPANT_SELECT_COMPETITION: '/api/auth/participant-select-competition',
-    PARTICIPANT_CLAIM_OTP: '/api/auth/participant-claim-otp',
-    PARTICIPANT_CLAIM: '/api/auth/participant-claim',
-    PARTICIPANT_CLAIM_CODE: '/api/auth/participant-claim-code',
+    PARTICIPANT_CLAIM_VALIDATE: '/api/auth/participant-claim-validate',
+    PARTICIPANT_CLAIM_SET_PASSWORD: '/api/auth/participant-claim-set-password',
     SELECT_COMPETITION: '/api/auth/competition/select',
   },
 
@@ -257,6 +257,7 @@ export const API_ROUTES = {
     CREATE: '/api/team',
     QUICK_REGISTER: '/api/team/quick-register',
     GET: (id) => `/api/team/${id}`,
+    UPDATE: (id) => `/api/team/${id}`,
     DELETE: (id) => `/api/team/${id}`,
     CHEST: (id) => `/api/team/${id}/chest`,
     BULK_CHEST: '/api/team/bulk-chest',
@@ -331,6 +332,7 @@ export const API_ROUTES = {
     UNREGISTER_FROM_EVENT: '/api/captain/unregister-from-event',
     GROUP_EVENT_REGISTRATIONS: '/api/captain/group-event-registrations',
     BULK_REGISTER: '/api/captain/bulk-register',
+    UPDATE_TEAM: (id) => `/api/captain/team/${id}`,
   },
 
   // Judge

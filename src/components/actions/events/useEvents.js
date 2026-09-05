@@ -35,6 +35,29 @@ export function useEvents({ token, competition, lastUpdate }) {
     [token]
   );
 
+  // Registered counts are derived client-side from the team list.
+  // GET /api/event/usage returns only totals/breakdown (no per-event usage),
+  // so counting here keeps the fix frontend-only with a single extra request.
+  const buildUsageMap = useCallback((teams) => {
+    const map = {};
+    (teams || []).forEach((t) => {
+      const eventId =
+        t?.event_id?._id || t?.event_id || t?.eventId || t?.event;
+      if (!eventId) return;
+      const key = String(eventId);
+      const groupId = t?.group_id?._id || t?.group_id || t?.groupId;
+      const memberCount = Array.isArray(t?.members) ? t.members.length : 0;
+      if (!map[key]) map[key] = { totalTeams: 0, totalParticipants: 0, byHouse: {} };
+      map[key].totalTeams += 1;
+      map[key].totalParticipants += memberCount;
+      if (groupId) {
+        const gKey = String(groupId);
+        map[key].byHouse[gKey] = (map[key].byHouse[gKey] || 0) + 1;
+      }
+    });
+    return map;
+  }, []);
+
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
@@ -47,14 +70,19 @@ export function useEvents({ token, competition, lastUpdate }) {
       const [{ events: fetched }] = await Promise.all([
         apiCall(`/api/event${competitionQuery}`),
       ]);
-      setEvents(fetched || []);
+      const eventList = fetched || [];
+      setEvents(eventList);
       try {
-        const { usage } = await apiCall(`/api/event/usage${competitionQuery}`);
-        const map = {};
-        (usage || []).forEach((u) => {
-          const byHouse = {};
-          (u.byHouse || []).forEach((h) => (byHouse[h.house_id] = h.count));
-          map[u.event_id] = { totalTeams: u.totalTeams || 0, byHouse };
+        const { data: teams } = await apiCall(
+          `/api/team${competitionQuery}`
+        );
+        const map = buildUsageMap(teams);
+        // Ensure every listed event has an entry so UI renders 0 instead of undefined.
+        eventList.forEach((e) => {
+          const id = String(e?._id || e?.event_id || "");
+          if (id && !map[id]) {
+            map[id] = { totalTeams: 0, totalParticipants: 0, byHouse: {} };
+          }
         });
         setUsageByEventId(map);
       } catch {
@@ -65,7 +93,7 @@ export function useEvents({ token, competition, lastUpdate }) {
     } finally {
       setLoading(false);
     }
-  }, [competition, apiCall]);
+  }, [competition, apiCall, buildUsageMap]);
 
   useEffect(() => {
     if (token) fetchAll();

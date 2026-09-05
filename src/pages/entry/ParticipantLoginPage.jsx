@@ -46,14 +46,24 @@ export default function ParticipantLoginPage() {
   const [pClass, setPClass] = useState("");
   const [pGroupId, setPGroupId] = useState("");
 
-  // Claim account fields
-  const [claimAdmissionNo, setClaimAdmissionNo] = useState("");
-  const [claimOtp, setClaimOtp] = useState("");
+  // Claim account fields (direct slug+email, one-time, no OTP / no setup link)
   const [claimEmail, setClaimEmail] = useState("");
+  const [claimToken, setClaimToken] = useState("");
+  const [claimName, setClaimName] = useState("");
   const [claimPassword, setClaimPassword] = useState("");
-  const [claimParticipantId, setClaimParticipantId] = useState("");
-  const [claimStep, setClaimStep] = useState("admission"); // "admission" | "otp" | "password"
-  const [claimMaskedPhone, setClaimMaskedPhone] = useState("");
+  const [claimConfirm, setClaimConfirm] = useState("");
+  const [claimAlready, setClaimAlready] = useState(false);
+  const [claimStep, setClaimStep] = useState("verify"); // "verify" | "set-password"
+
+  const resetClaim = (keepSlugEmail = false) => {
+    if (!keepSlugEmail) setClaimEmail("");
+    setClaimToken("");
+    setClaimName("");
+    setClaimPassword("");
+    setClaimConfirm("");
+    setClaimAlready(false);
+    setClaimStep("verify");
+  };
 
   // Contextual loaded data
   const [groups, setGroups] = useState([]);
@@ -273,35 +283,81 @@ export default function ParticipantLoginPage() {
     }
   };
 
-  // Claim-code + email self-service (bulk-import fallback, no admin link needed)
-  const [claimCodeEmail, setClaimCodeEmail] = useState("");
-  const [claimCodeLoading, setClaimCodeLoading] = useState(false);
-  const [claimCodeLink, setClaimCodeLink] = useState("");
+  // Direct claim: slug+email verify → inline password+confirm (one-time)
   const [bgIndex, setBgIndex] = useState(0);
 
-  const handleClaimCode = async (e) => {
+  const isAlreadyClaimedError = (err) =>
+    err?.code === "ALREADY_CLAIMED" || err?.payload?.code === "ALREADY_CLAIMED" ||
+    /already claimed/i.test(err?.message || "") || /already claimed/i.test(err?.payload?.message || "");
+
+  const handleClaimVerify = async (e) => {
     e.preventDefault();
-    if (!competitionSlug.trim() || !claimAdmissionNo.trim() || !claimCodeEmail.trim()) {
-      toast.error("Enter competition slug, admission number and imported email");
+    if (!competitionSlug.trim() || !claimEmail.trim()) {
+      toast.error("Enter competition URL slug and your email");
       return;
     }
-    setClaimCodeLoading(true);
+    setLoading(true);
+    setClaimAlready(false);
     try {
-      const data = await apiJson(`${backendUrl}/api/auth/participant-claim-code`, {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-claim-validate`, {
         method: "POST",
         body: JSON.stringify({
           competition_slug: competitionSlug.trim(),
-          admission_no: claimAdmissionNo.trim(),
-          email: claimCodeEmail.trim(),
+          email: claimEmail.trim(),
         }),
       });
-      setClaimCodeLink(data.setup_link || "");
-      toast.success("Verified — open your one-time setup link");
+      setClaimToken(data.claim_token || "");
+      setClaimName(data.name || "");
+      setClaimStep("set-password");
+      toast.success(data.message || "Verified — set your password");
     } catch (err) {
-      setClaimCodeLink("");
+      if (isAlreadyClaimedError(err)) {
+        setClaimAlready(true);
+      } else {
+        setClaimAlready(false);
+      }
+      setClaimToken("");
       toast.error(err.message);
     } finally {
-      setClaimCodeLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleClaimSetPassword = async (e) => {
+    e.preventDefault();
+    if (!claimToken) {
+      toast.error("Verify your email first");
+      return;
+    }
+    if (!claimPassword || claimPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (claimPassword !== claimConfirm) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await apiJson(`${backendUrl}/api/auth/participant-claim-set-password`, {
+        method: "POST",
+        body: JSON.stringify({ claim_token: claimToken, password: claimPassword }),
+      });
+      toast.success(data.message || "Account claimed successfully! You can now log in.");
+      const claimedEmail = claimEmail.trim();
+      resetClaim();
+      setPEmail(claimedEmail);
+      setPPassword("");
+      setParticipantMode("login");
+      setSelectionToken("");
+      setCompetitionOptions([]);
+    } catch (err) {
+      if (isAlreadyClaimedError(err)) {
+        setClaimAlready(true);
+      }
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -423,13 +479,7 @@ export default function ParticipantLoginPage() {
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl transition-all"
                 onClick={() => {
                   setParticipantMode("claim");
-                  setClaimStep("admission");
-                  setClaimAdmissionNo("");
-                  setClaimOtp("");
-                  setClaimEmail("");
-                  setClaimPassword("");
-                  setClaimParticipantId("");
-                  setClaimMaskedPhone("");
+                  resetClaim(true);
                 }}
               >
                 <Fingerprint className="h-3.5 w-3.5" />
@@ -574,32 +624,8 @@ export default function ParticipantLoginPage() {
               ) : participantMode === "claim" ? (
                 /* Claim Account Form */
                 <div className="space-y-4">
-                  {claimStep === "admission" && (
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!competitionSlug.trim() || !claimAdmissionNo.trim()) {
-                        toast.error("Please enter competition slug and admission number");
-                        return;
-                      }
-                      setLoading(true);
-                      try {
-                        const data = await apiJson(`${backendUrl}/api/auth/participant-claim-otp`, {
-                          method: "POST",
-                          body: JSON.stringify({
-                            admission_no: claimAdmissionNo.trim(),
-                            competition_slug: competitionSlug.trim()
-                          }),
-                        });
-                        setClaimParticipantId(data.participant_id);
-                        setClaimMaskedPhone(data.masked_phone || "");
-                        setClaimStep("otp");
-                        toast.success("OTP sent to your registered phone number");
-                      } catch (err) {
-                        toast.error(err.message);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }} className="space-y-3.5">
+                  {claimStep === "verify" && (
+                    <form onSubmit={handleClaimVerify} className="space-y-3.5">
                       <div>
                         <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Competition URL Slug</label>
                         <div className="relative">
@@ -611,112 +637,38 @@ export default function ParticipantLoginPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Admission Number</label>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Email Address</label>
                         <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Fingerprint className="h-4.5 w-4.5" /></span>
-                          <input type="text" required placeholder="e.g. 24MCA001"
-                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimAdmissionNo}
-                            onChange={(e) => setClaimAdmissionNo(e.target.value)}
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
+                          <input type="email" required placeholder="Imported email (e.g. john@school.edu)"
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimEmail}
+                            onChange={(e) => { setClaimEmail(e.target.value); setClaimAlready(false); }}
                           />
                         </div>
                       </div>
+                      {claimAlready && (
+                        <div className="p-3 rounded-xl text-center space-y-2" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
+                          <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>Already claimed. Please log in.</p>
+                          <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => { setPEmail(claimEmail.trim()); setParticipantMode("login"); }}>
+                            Go to Login
+                          </Button>
+                        </div>
+                      )}
                       <Button type="submit" disabled={loading} size="lg" className="w-full mt-6">
-                        {loading ? 'Sending OTP...' : <><Shield className="h-4 w-4" /><span>Send OTP</span></>}
+                        {loading ? 'Verifying...' : <><Shield className="h-4 w-4" /><span>Verify & Continue</span></>}
                       </Button>
                     </form>
                   )}
 
-                  {claimStep === "admission" && (
-                    <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
-                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
-                        No phone / bulk import? Use email instead
-                      </p>
-                      <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                        Enter the same admission number + imported email from your organizer sheet to get a one-time setup link. No admin sharing needed.
-                      </p>
-                      <form onSubmit={handleClaimCode} className="space-y-3">
-                        <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
-                          <input type="email" required placeholder="Imported email (e.g. john@school.edu)"
-                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimCodeEmail}
-                            onChange={(e) => { setClaimCodeEmail(e.target.value); setClaimCodeLink(""); }}
-                          />
-                        </div>
-                        <Button type="submit" disabled={claimCodeLoading} variant="outline" size="lg" className="w-full">
-                          {claimCodeLoading ? 'Verifying...' : <><KeyRound className="h-4 w-4" /><span>Get setup link via email</span></>}
-                        </Button>
-                      </form>
-                      {claimCodeLink && (
-                        <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}>
-                          <p className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>Your one-time link (expires in 7 days):</p>
-                          <p className="text-xs break-all" style={{ color: "var(--muted-foreground)" }}>{claimCodeLink}</p>
-                          <div className="flex gap-2">
-                            <Button type="button" size="sm" className="flex-1" onClick={() => { navigator.clipboard?.writeText(claimCodeLink).then(() => toast.success("Link copied"), () => toast.error("Copy failed")); }}>
-                              Copy link
-                            </Button>
-                            <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => window.open(claimCodeLink, "_blank", "noopener")}>
-                              Open link <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {claimStep === "otp" && (
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!claimOtp.trim()) {
-                        toast.error("Please enter the OTP");
-                        return;
-                      }
-                      setLoading(true);
-                      try {
-                        await apiJson(`${backendUrl}/api/auth/participant-claim`, {
-                          method: "POST",
-                          body: JSON.stringify({
-                            participant_id: claimParticipantId,
-                            otp: claimOtp.trim(),
-                            email: claimEmail.trim(),
-                            password: claimPassword.trim(),
-                          }),
-                        });
-                        toast.success("Account claimed successfully! You can now log in.");
-                        setParticipantMode("login");
-                        setClaimStep("admission");
-                      } catch (err) {
-                        toast.error(err.message);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }} className="space-y-3.5">
-                      {claimMaskedPhone && (
+                  {claimStep === "set-password" && (
+                    <form onSubmit={handleClaimSetPassword} className="space-y-3.5">
+                      {claimName && (
                         <div className="p-3 rounded-xl text-center" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
-                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>OTP sent to</p>
-                          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{claimMaskedPhone}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--muted-foreground)" }}>Verified account</p>
+                          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{claimName}</p>
+                          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{claimEmail}</p>
                         </div>
                       )}
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Enter OTP</label>
-                        <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Shield className="h-4.5 w-4.5" /></span>
-                          <input type="text" required placeholder="6-digit OTP"
-                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimOtp}
-                            onChange={(e) => setClaimOtp(e.target.value)}
-                            maxLength={6}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Email Address</label>
-                        <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><Mail className="h-4.5 w-4.5" /></span>
-                          <input type="email" required placeholder="your@email.com"
-                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimEmail}
-                            onChange={(e) => setClaimEmail(e.target.value)}
-                          />
-                        </div>
-                      </div>
                       <div>
                         <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Create Password</label>
                         <div className="relative">
@@ -724,11 +676,31 @@ export default function ParticipantLoginPage() {
                           <input type="password" required minLength={6} placeholder="Min 6 characters"
                             className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimPassword}
                             onChange={(e) => setClaimPassword(e.target.value)}
+                            autoComplete="new-password"
                           />
                         </div>
                       </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1" style={{ color: "var(--foreground)" }}>Confirm Password</label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center" style={{ color: "var(--muted-foreground)" }}><KeyRound className="h-4.5 w-4.5" /></span>
+                          <input type="password" required minLength={6} placeholder="Repeat password"
+                            className="theme-input pl-11 pr-4 py-3 rounded-xl" value={claimConfirm}
+                            onChange={(e) => setClaimConfirm(e.target.value)}
+                            autoComplete="new-password"
+                          />
+                        </div>
+                      </div>
+                      {claimAlready && (
+                        <div className="p-3 rounded-xl text-center space-y-2" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--border)" }}>
+                          <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>Already claimed. Please log in.</p>
+                          <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => { setPEmail(claimEmail.trim()); setParticipantMode("login"); }}>
+                            Go to Login
+                          </Button>
+                        </div>
+                      )}
                       <div className="flex gap-3 mt-2">
-                        <Button type="button" variant="outline" onClick={() => setClaimStep("admission")} className="flex-1 py-3 font-bold text-xs uppercase tracking-wider">
+                        <Button type="button" variant="outline" onClick={() => { setClaimStep("verify"); setClaimPassword(""); setClaimConfirm(""); }} className="flex-1 py-3 font-bold text-xs uppercase tracking-wider">
                           Back
                         </Button>
                         <Button type="submit" disabled={loading} size="lg" className="flex-1">
@@ -837,7 +809,7 @@ export default function ParticipantLoginPage() {
                   setCompetitionOptions([]);
                 }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Sign up</button> or <button type="button" onClick={() => {
                   setParticipantMode("claim");
-                  setClaimStep("admission");
+                  resetClaim(true);
                 }} className="hover:underline cursor-pointer font-bold transition-colors" style={{ color: "var(--secondary)" }}>Claim account</button></>
                 : participantMode === "claim"
                 ? <><button type="button" onClick={() => {

@@ -3,6 +3,7 @@ import { ArrowLeftRight, Check, ChevronDown, Trophy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { api, API_ROUTES } from "../../utils/apiClient";
+import toast from "react-hot-toast";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
@@ -95,7 +96,7 @@ export default function CompetitionSwitcher({ collapsed = false, onSwitched = ()
       onSwitched();
       navigate("/dashboard");
     } catch (err) {
-      console.error(err);
+      toast.error(err.message || "Failed to switch competition");
     } finally {
       setSwitchingId(null);
     }

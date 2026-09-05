@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../components/AuthContext";
 import { useCompetition } from "../context/CompetitionContext";
+import { useRealtime } from "../context/RealtimeContext";
 import { apiFetch } from "../utils/apiClient";
-import { getStatusMeta } from "../utils/eventStatus";
+import { getStatusMeta, FINISHED_STATUSES } from "../utils/eventStatus";
 import { FadeIn } from "./AnimateReveal";
 import EventStatusBadge from "./EventStatusBadge";
 import EventDetailModal from "./EventDetailModal";
@@ -11,7 +12,9 @@ import { Calendar, Filter, ChevronRight, Trophy, Palette, BookOpen, Music, Cpu, 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const LIVE_STATUSES = new Set(["ongoing", "judging", "live"]);
-const DONE_STATUSES = new Set(["completed", "published", "locked"]);
+// Published scoresheets mean finished — treat transient published as completed
+// so the card never lags the publish → completed hop.
+const DONE_STATUSES = new Set([...FINISHED_STATUSES, "locked"]);
 const modeLabel = (m) => (m === "onstage" ? "Onstage" : m === "offstage" ? "Off-stage" : m || "—");
 const typeLabel = (t) => (t === "team" ? "Team" : "Individual");
 
@@ -55,6 +58,7 @@ const WINNER_STATUSES = new Set(["approved", "published", "locked"]);
 function RecentEvents() {
   const { token, isAuthReady, competition } = useAuth();
   const { groupLabel } = useCompetition() || {};
+  const { lastUpdate } = useRealtime() || {};
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState([]);
@@ -150,7 +154,7 @@ function RecentEvents() {
       }
     };
     load();
-  }, [token, isAuthReady, competitionId, apiCall]);
+  }, [token, isAuthReady, competitionId, apiCall, lastUpdate]);
 
   const openDetails = async (eventId) => {
     try {

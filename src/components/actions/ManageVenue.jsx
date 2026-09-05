@@ -28,7 +28,11 @@ import {
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const ManageVenue = () => {
-  const { token, competition } = useAuth();
+  const { token, competition, role } = useAuth();
+  // Coordinators get GET /api/venues only (POST/PUT/DELETE are organizer-only).
+  // Render a read-only directory so the sidebar action never hits a 403.
+  const isCoordinator = String(role || "").toLowerCase() === "event_coordinator";
+  const canWriteVenues = !isCoordinator;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -167,13 +171,19 @@ const ManageVenue = () => {
             Auditoriums, halls, classrooms, and grounds.
           </p>
         </div>
-        <Button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="min-h-[44px] w-full bg-accent-amber text-white hover:bg-accent-amber/90 sm:w-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Add Venue
-        </Button>
+        {canWriteVenues ? (
+          <Button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="min-h-[44px] w-full bg-accent-amber text-white hover:bg-accent-amber/90 sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            Add Venue
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground sm:text-right">
+            Read-only for coordinators — contact an organizer to add venues.
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
@@ -185,7 +195,7 @@ const ManageVenue = () => {
           </div>
         )}
 
-        {showForm && (
+        {canWriteVenues && showForm && (
           <div ref={formRef} className="scroll-mt-4 rounded-lg border border-border bg-muted p-4">
             <h3 className="mb-3 text-sm font-semibold text-card-foreground">
               {editing ? "Edit Venue" : "New Venue"}
@@ -295,7 +305,7 @@ const ManageVenue = () => {
                   : "Try a different name, location, or coordinator."}
               </p>
             </div>
-            {venues.length === 0 && !showForm && (
+            {canWriteVenues && venues.length === 0 && !showForm && (
               <Button
                 onClick={() => { resetForm(); setShowForm(true); }}
                 className="min-h-[44px] w-full bg-accent-amber text-white hover:bg-accent-amber/90 sm:w-auto"
@@ -327,28 +337,30 @@ const ManageVenue = () => {
                   <p className="mt-2 truncate text-xs text-muted-foreground">
                     {v.coordinator_id?.name ? `Coordinator: ${v.coordinator_id.name}` : "No coordinator"}
                   </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEdit(v)}
-                      aria-label={`Edit ${v.name}`}
-                      className="min-h-[44px] flex-1"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteTarget(v)}
-                      aria-label={`Delete ${v.name}`}
-                      className="min-h-[44px] flex-1 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
-                  </div>
+                  {canWriteVenues && (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(v)}
+                        aria-label={`Edit ${v.name}`}
+                        className="min-h-[44px] flex-1"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteTarget(v)}
+                        aria-label={`Delete ${v.name}`}
+                        className="min-h-[44px] flex-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -362,7 +374,7 @@ const ManageVenue = () => {
                     <TableHead>Location</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Coordinator</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {canWriteVenues && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -372,28 +384,30 @@ const ManageVenue = () => {
                       <TableCell>{v.location}</TableCell>
                       <TableCell>{v.capacity || "—"}</TableCell>
                       <TableCell>{v.coordinator_id?.name || "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(v)}
-                            title="Edit venue"
-                            aria-label={`Edit ${v.name}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteTarget(v)}
-                            title="Delete venue"
-                            aria-label={`Delete ${v.name}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {canWriteVenues && (
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(v)}
+                              title="Edit venue"
+                              aria-label={`Edit ${v.name}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteTarget(v)}
+                              title="Delete venue"
+                              aria-label={`Delete ${v.name}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
