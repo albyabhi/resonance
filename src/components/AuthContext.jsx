@@ -193,7 +193,21 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleGlobalLogout = () => logout({ redirect: true });
-    const handleTokenUpdate = (event) => setToken(event.detail.token);
+    const handleTokenUpdate = (event) => {
+      const nextToken = event.detail?.token;
+      if (!nextToken) return;
+      setToken(nextToken);
+      // Keep localStorage in sync so apiFetch (storage) and components (state) never diverge
+      try {
+        const saved = getAuthState();
+        if (saved) {
+          saved.token = nextToken;
+          localStorage.setItem("auth", JSON.stringify(saved));
+        }
+      } catch {
+        // no-op — in-memory token still updates
+      }
+    };
 
     window.addEventListener('LOGOUT', handleGlobalLogout);
     window.addEventListener('TOKEN_UPDATED', handleTokenUpdate);

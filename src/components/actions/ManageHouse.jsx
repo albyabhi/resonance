@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../AuthContext";
 import { useCompetition } from "../../context/CompetitionContext";
-import { apiJson, apiFetch } from "../../utils/apiClient";
+import { api, apiFetch, API_ROUTES } from "../../utils/apiClient";
+import toast from "react-hot-toast";
 import { FadeIn } from "../AnimateReveal";
 import { 
   Users, 
   PlusCircle, 
+  Plus,
+  ArrowLeft,
   Search, 
   Edit3, 
   Trash2, 
@@ -30,8 +33,10 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const ManageHouse = () => {
-  const { token } = useAuth();
+  const { token, login } = useAuth();
   const { competition, groupLabel = "Group", groupLabelPlural = "Groups" } = useCompetition();
+  const groupLower = groupLabel.toLowerCase();
+  const groupsLower = groupLabelPlural.toLowerCase();
 
   const [activeTab, setActiveTab] = useState("manage");
   const [groups, setGroups] = useState([]);
@@ -57,46 +62,93 @@ const ManageHouse = () => {
   const fileInputRef = useRef(null);
 
   const [editingGroupId, setEditingGroupId] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState("");
+  const [fieldError, setFieldError] = useState("");
+  const [needsSwitch, setNeedsSwitch] = useState(false);
+  const abortRef = useRef(null);
 
-  const apiCall = useCallback(async (endpoint, options = {}) => {
-    if (!token) throw new Error("No auth token available");
-    return apiJson(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: { 
-        "Content-Type": "application/json", 
-        ...(options.headers || {}) 
+  // Map coded backend errors to actionable UI states. Returns true when handled.
+  const handleGroupError = useCallback((err, context = "save") => {
+    const code = err?.payload?.code || err?.code;
+    if (code === "COMPETITION_MISMATCH") {
+      setNeedsSwitch(true);
+      setError(err.message || "This belongs to a different competition. Switch competition to continue.");
+      return true;
+    }
+    if (code === "ORG_MISMATCH") {
+      setNeedsSwitch(false);
+      setError(err.message || "Session is out of sync. Please log out and back in, then retry.");
+      return true;
+    }
+    if (code === "GROUP_EXISTS" || err?.status === 409) {
+      if (context === "save") {
+        setFieldError(err.message || `A ${groupLower} with this name already exists.`);
+      } else {
+        setError(err.message);
       }
-    });
-  }, [token]);
+      return true;
+    }
+    setError(err.message);
+    return true;
+  }, [groupLower]);
 
+  // Group API always goes through apiFetch (localStorage token + transparent
+  // refresh). Never gate on React token state — it can lag behind storage
+  // after a competition switch or token refresh and falsely block creates.
   const fetchGroups = useCallback(async () => {
     if (!competition?._id) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try { 
-      setLoading(true); 
-      const data = await apiCall(`/api/competition/${competition._id}/groups`);
-      setGroups(data || []); 
+      setListLoading(true); 
+      setError("");
+      setNeedsSwitch(false);
+      const data = await api.get(API_ROUTES.COMPETITIONS.GROUPS(competition._id));
+      if (controller.signal.aborted) return;
+      setGroups(Array.isArray(data) ? data : []); 
     }
     catch (err) { 
-      setError(err.message); 
+      if (controller.signal.aborted || err?.name === "AbortError") return;
+      handleGroupError(err, "load");
     }
     finally { 
-      setLoading(false); 
+      if (!controller.signal.aborted) setListLoading(false); 
     }
-  }, [competition, apiCall]);
+  }, [competition?._id, handleGroupError]);
 
   useEffect(() => { 
     if (token && competition?._id) {
       fetchGroups(); 
     }
+    return () => abortRef.current?.abort();
   }, [token, competition?._id, fetchGroups]);
+
+  const handleSwitchAndRetry = async (retryFn) => {
+    try {
+      const data = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, {
+        competition_id: competition._id,
+      });
+      if (data?.access_token && data?.competition) {
+        login(data.user, data.access_token, data.refresh_token, data.competition);
+        setNeedsSwitch(false);
+        setError("");
+        toast.success("Competition switched. Retrying…");
+        await retryFn();
+      }
+    } catch (switchErr) {
+      toast.error(switchErr.message || "Could not switch competition");
+    }
+  };
 
   const fetchGroupParticipants = useCallback(async (groupId) => {
     if (!competition?._id) return;
     try {
       setParticipantsLoading(true);
-      const data = await apiCall(`/api/competition/${competition._id}/groups/${groupId}/participants`);
+      const data = await api.get(`${API_ROUTES.COMPETITIONS.GROUPS(competition._id)}/${groupId}/participants`);
       const list = Array.isArray(data) ? data : [];
       setParticipants(list);
 
@@ -119,7 +171,7 @@ const ManageHouse = () => {
     } finally {
       setParticipantsLoading(false);
     }
-  }, [competition, apiCall, groups]);
+  }, [competition?._id, groups]);
 
   useEffect(() => {
     if (editingGroupId) {
@@ -150,11 +202,9 @@ const ManageHouse = () => {
       const uploadFd = new FormData();
       uploadFd.append("image", file);
 
+      // apiFetch attaches the fresh token from storage automatically
       const response = await apiFetch(`${API_BASE_URL}/api/competition/upload`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
         body: uploadFd
       });
 
@@ -202,64 +252,92 @@ const ManageHouse = () => {
   };
 
   const handleAddOrEditGroup = async (e) => {
-    e.preventDefault();
-    if (!competition?._id) return;
-    try {
-      setLoading(true);
-      
+    e?.preventDefault?.();
+    if (!competition?._id) {
+      setError("Select a competition first, then add your group.");
+      return;
+    }
+    const trimmedName = String(formData.name || "").trim();
+    if (!trimmedName) {
+      setFieldError(`Please enter a ${groupLower} name.`);
+      return;
+    }
+    const nameTaken = groups.some(
+      (g) => g?._id !== editingGroupId && String(g?.name || "").trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (nameTaken) {
+      setFieldError(`A ${groupLower} with this name already exists.`);
+      return;
+    }
+    const doSave = async () => {
       const payload = {
-        name: formData.name,
+        name: trimmedName,
         logoUrl: logoUrl || null,
         logoPublicId: logoPublicId || null,
-        captain_name: formData.captain_name || null,
-        captain_contact: formData.captain_contact || null
+        captain_name: String(formData.captain_name || "").trim() || null,
+        captain_contact: String(formData.captain_contact || "").trim() || null
       };
+      const base = API_ROUTES.COMPETITIONS.GROUPS(competition._id);
 
       if (editingGroupId) {
-        await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}`, { 
-          method: "PUT", 
-          body: JSON.stringify(payload) 
-        });
+        await api.put(`${base}/${editingGroupId}`, payload);
 
         if (formData.captain_participant_id) {
-          await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}/captain`, {
-            method: "PUT",
-            body: JSON.stringify({ participant_id: formData.captain_participant_id })
-          });
+          await api.put(`${base}/${editingGroupId}/captain`, { participant_id: formData.captain_participant_id });
         } else if (formData.captain_participant_id === "" && captainParticipant === null) {
-          await apiCall(`/api/competition/${competition._id}/groups/${editingGroupId}/captain`, {
-            method: "PUT",
-            body: JSON.stringify({ participant_id: null })
-          });
+          await api.put(`${base}/${editingGroupId}/captain`, { participant_id: null });
         }
 
         await fetchGroups();
+        toast.success(`${groupLabel} updated.`);
       } else {
-        const created = await apiCall(`/api/competition/${competition._id}/groups`, { 
-          method: "POST", 
-          body: JSON.stringify(payload) 
-        });
-        setGroups([created, ...groups]);
+        await api.post(base, payload);
+        // Refetch so the new group always appears under the active competition,
+        // even if the list was filtered or scoped differently before.
+        await fetchGroups();
+        toast.success(`${groupLabel} created.`);
       }
       resetForm();
       setActiveTab("manage");
-    } catch (err) { 
-      setError(err.message); 
+    };
+
+    try {
+      setSaving(true);
+      setFieldError("");
+      setError("");
+      setNeedsSwitch(false);
+      await doSave();
+    } catch (err) {
+      const code = err?.payload?.code || err?.code;
+      if (code === "COMPETITION_MISMATCH") {
+        setNeedsSwitch(true);
+        setError(err.message);
+        toast.error("Competition out of sync — switch and retry.");
+      } else {
+        handleGroupError(err, "save");
+        if ((err?.payload?.code || err?.code) !== "GROUP_EXISTS" && err?.status !== 409) {
+          toast.error(err.message || "Could not save. Please try again.");
+        }
+      }
+      // Switch & Retry button re-invokes this handler after switching,
+      // so no stashed retry is needed here.
     }
     finally { 
-      setLoading(false); 
+      setSaving(false); 
     }
   };
 
   const handleDeleteGroup = async (groupId) => {
     try {
-      setLoading(true);
-      await apiCall(`/api/competition/${competition._id}/groups/${groupId}`, { method: "DELETE" });
-      setGroups(groups.filter(g => g._id !== groupId));
+      setDeletingId(groupId);
+      await api.delete(`${API_ROUTES.COMPETITIONS.GROUPS(competition._id)}/${groupId}`);
+      setGroups((prev) => prev.filter(g => g._id !== groupId));
+      toast.success(`${groupLabel} deleted.`);
     } catch (err) {
-      setError(err.message);
+      handleGroupError(err, "delete");
+      toast.error(err.message || "Could not delete. Please try again.");
     } finally {
-      setLoading(false);
+      setDeletingId(null);
     }
   };
 
@@ -273,13 +351,19 @@ const ManageHouse = () => {
     setParticipantSearch("");
     setShowParticipantPicker(false);
     setError("");
+    setFieldError("");
+    setNeedsSwitch(false);
   };
 
-  const filteredGroups = groups.filter(g => 
-    g.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (g.captain?.name && g.captain.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (g.captain_name && g.captain_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredGroups = groups.filter(g => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      String(g?.name || "").toLowerCase().includes(q) || 
+      (g?.captain?.name && g.captain.name.toLowerCase().includes(q)) ||
+      (g?.captain_name && g.captain_name.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div onPaste={handlePaste} className="space-y-10">
@@ -288,32 +372,49 @@ const ManageHouse = () => {
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-              {groupLabelPlural} Registry
+              {groupLabelPlural}
             </h2>
           </div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-[0.3em] leading-none pl-7">
-            {groupLabel} Management & Active Assets
+          <p className="text-sm font-medium text-muted-foreground leading-none pl-7">
+            Create and manage {groupsLower} for {competition?.name || "this competition"}
           </p>
         </div>
         
-        <div className="flex p-1 rounded-2xl border bg-muted border-border">
-          {["manage", "add"].map(t => (
-            <Button
-              key={t}
-              variant={activeTab === t ? "default" : "ghost"}
-              onClick={() => { setActiveTab(t); if(t==='add') resetForm(); }}
-              className="px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl"
-            >
-              {t === 'manage' ? 'Directory' : editingGroupId ? `Edit ${groupLabel}` : `Initialize ${groupLabel}`}
-            </Button>
-          ))}
-        </div>
+        {activeTab === "manage" ? (
+          <Button
+            onClick={() => { resetForm(); setActiveTab("add"); }}
+            className="min-h-[44px] rounded-2xl px-6 text-xs font-black uppercase tracking-widest"
+            aria-label={`Add ${groupLower}`}
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add {groupLabel}
+          </Button>
+        ) : (
+          <Badge variant="outline" className="self-start md:self-auto text-xs font-black px-4 py-2">
+            {editingGroupId ? `EDIT ${groupLabel.toUpperCase()}` : `NEW ${groupLabel.toUpperCase()}`}
+          </Badge>
+        )}
       </header>
 
       {error && (
-        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center gap-4 text-destructive">
-          <Shield className="w-5 h-5 shrink-0" />
-          <p className="text-xs font-bold uppercase tracking-widest leading-none">{error}</p>
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 text-destructive">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Shield className="w-5 h-5 shrink-0" />
+            <p className="text-sm font-semibold leading-snug">{error}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {needsSwitch && (
+              <Button
+                variant="outline"
+                onClick={() => handleSwitchAndRetry(() => handleAddOrEditGroup())}
+                className="text-xs font-bold rounded-xl"
+              >
+                Switch &amp; retry
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={() => { setError(""); setNeedsSwitch(false); }} aria-label="Dismiss error">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )}
 
@@ -325,26 +426,75 @@ const ManageHouse = () => {
               <Input 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Locate ${groupLabel.toLowerCase()} node...`} 
-                className="pl-12 py-3.5 rounded-2xl"
+                placeholder={`Search ${groupsLower} or captains...`} 
+                className="pl-12 pr-10 py-3.5 rounded-2xl"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <Badge variant="outline" className="text-xs font-black">
-              {filteredGroups.length} {groupLabelPlural.toUpperCase()} ACTIVE
+              {filteredGroups.length} OF {groups.length} {groupLabelPlural.toUpperCase()}
             </Badge>
           </div>
 
+          {listLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Loading groups">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="h-48 bg-muted animate-pulse" />
+                  <CardContent className="p-6 space-y-3">
+                    <div className="h-5 w-2/3 rounded-lg bg-muted animate-pulse" />
+                    <div className="h-14 rounded-xl bg-muted animate-pulse" />
+                    <div className="h-8 rounded-xl bg-muted animate-pulse" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredGroups.length === 0 ? (
+            <Card className="p-12 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-lg font-bold text-foreground">
+                  {groups.length === 0 ? `No ${groupsLower} yet` : "No matches found"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {groups.length === 0
+                    ? `Add your first ${groupLower} to get started.`
+                    : "Try a different search, or clear the search to see everything."}
+                </p>
+              </div>
+              {groups.length === 0 ? (
+                <Button onClick={() => { resetForm(); setActiveTab("add"); }} className="rounded-2xl">
+                  <PlusCircle className="w-4 h-4 mr-2" /> Add {groupLabel}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setSearchQuery("")} className="rounded-2xl">
+                  Clear search
+                </Button>
+              )}
+            </Card>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGroups.map((group, idx) => (
               <FadeIn key={group._id} delay={idx * 0.05}>
                 <Card className="overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-500 hover:-translate-y-1">
                   <div className="relative h-48 bg-muted border-b border-border overflow-hidden">
                     {group.logoUrl ? (
-                      <img src={group.logoUrl} alt={group.name} className="w-full h-full object-contain p-8 transition-transform duration-700 group-hover:scale-105" />
+                      <img src={group.logoUrl} alt={`${group.name} logo`} className="w-full h-full object-contain p-8 transition-transform duration-700 group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center space-y-3 opacity-20">
                         <Camera className="w-12 h-12 text-muted-foreground" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Asset Missing</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No logo yet</p>
                       </div>
                     )}
                   </div>
@@ -361,7 +511,7 @@ const ManageHouse = () => {
                             <User className="w-3.5 h-3.5 text-primary" />
                           )}
                           <p className="text-xs font-semibold text-muted-foreground">
-                            {group.captain?.name || group.captain_name || "No Command Assigned"}
+                            {group.captain?.name || group.captain_name || "No captain assigned"}
                           </p>
                         </div>
                         {(group.captain?.phone || group.captain_contact) && (
@@ -376,11 +526,13 @@ const ManageHouse = () => {
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-border">
-                      <Badge variant="secondary">{group.total_score || 0} PTS</Badge>
+                      <Badge variant="secondary">{group.total_score || 0} pts</Badge>
                       <div className="flex items-center gap-2">
                         <Button 
                           variant="ghost" 
                           size="icon"
+                          title={`Edit ${groupLower}`}
+                          aria-label={`Edit ${group?.name || groupLower}`}
                           onClick={() => { 
                             setFormData({ 
                               name: group.name, 
@@ -392,6 +544,9 @@ const ManageHouse = () => {
                             setEditingGroupId(group._id); 
                             setLogoUrl(group.logoUrl || ""); 
                             setLogoPublicId(group.logoPublicId || "");
+                            setError("");
+                            setFieldError("");
+                            setNeedsSwitch(false);
                             setActiveTab("add"); 
                           }}
                         >
@@ -399,17 +554,21 @@ const ManageHouse = () => {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="w-4 h-4 text-destructive" />
+                            <Button variant="ghost" size="icon" title={`Delete ${groupLower}`} aria-label={`Delete ${group?.name || groupLower}`}>
+                              {deletingId === group._id
+                                ? <Loader2 className="w-4 h-4 animate-spin text-destructive" />
+                                : <Trash2 className="w-4 h-4 text-destructive" />}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Decommission {groupLabel} Infrastructure</AlertDialogTitle>
-                              <AlertDialogDescription>This will remove the team standings node.</AlertDialogDescription>
+                              <AlertDialogTitle>Delete “{group.name}”?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This removes the {groupLower} from {competition?.name || "this competition"}. Members keep their profiles. This cannot be undone.
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteGroup(group._id)}>Decommission</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleDeleteGroup(group._id)}>Delete</AlertDialogAction>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
@@ -419,10 +578,18 @@ const ManageHouse = () => {
               </FadeIn>
             ))}
           </div>
-          {loading && <div className="p-20 text-center text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Syncing Registry...</div>}
+          )}
         </FadeIn>
       ) : (
         <FadeIn className="max-w-4xl mx-auto">
+          <Button
+            variant="outline"
+            onClick={() => { resetForm(); setActiveTab("manage"); }}
+            className="mb-4 min-h-[44px] rounded-full"
+            aria-label={`Back to all ${groupsLower}`}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to All {groupLabelPlural}
+          </Button>
           <Card className="p-10 grid grid-cols-1 lg:grid-cols-12 gap-12 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
               <PlusCircle className="w-48 h-48 text-primary" />
@@ -430,8 +597,8 @@ const ManageHouse = () => {
 
             <div className="lg:col-span-4 space-y-6">
               <div className="space-y-2">
-                <h3 className="text-xl font-bold text-foreground">Visual Asset</h3>
-                <p className="text-sm font-medium text-muted-foreground">Official {groupLabel.toLowerCase()} identification logo.</p>
+                <h3 className="text-xl font-bold text-foreground">{groupLabel} logo</h3>
+                <p className="text-sm font-medium text-muted-foreground">Shown on cards, standings and public views. Optional.</p>
               </div>
 
               <div 
@@ -448,14 +615,14 @@ const ManageHouse = () => {
                 {uploading ? (
                   <div className="text-center p-6 space-y-4">
                     <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Uploading Asset...</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Uploading logo...</p>
                   </div>
                 ) : logoUrl ? (
                   <div className="relative w-full h-full p-4 flex items-center justify-center">
-                    <img src={logoUrl} className="w-full h-full object-contain p-6 transition-transform group-hover:scale-105" alt="Logo Preview" />
+                    <img src={logoUrl} className="w-full h-full object-contain p-6 transition-transform group-hover:scale-105" alt={`${groupLower} logo preview`} />
                     <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl">
                       <Camera className="w-8 h-8 text-background" />
-                      <span className="absolute bottom-6 text-[10px] font-black uppercase tracking-widest text-background/80">Change Asset</span>
+                      <span className="absolute bottom-6 text-[10px] font-black uppercase tracking-widest text-background/80">Change logo</span>
                     </div>
                   </div>
                 ) : (
@@ -464,9 +631,9 @@ const ManageHouse = () => {
                       <Upload className="w-6 h-6 text-primary" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Visual</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload logo</p>
                       <p className="text-[9px] font-medium text-muted-foreground max-w-[150px] mx-auto leading-normal">
-                        Browse, Drag & Drop, or paste screenshot directly here (Max 2MB)
+                        Click to browse, drag &amp; drop, or paste an image (max 2MB)
                       </p>
                     </div>
                   </div>
@@ -480,7 +647,7 @@ const ManageHouse = () => {
                   onClick={() => { setLogoUrl(""); setLogoPublicId(""); }}
                   className="w-full text-[10px] font-black uppercase tracking-widest text-destructive hover:text-destructive bg-destructive/5 hover:bg-destructive/10 rounded-xl"
                 >
-                  Clear Image Asset
+                  Remove logo
                 </Button>
               )}
             </div>
@@ -489,21 +656,30 @@ const ManageHouse = () => {
               <form onSubmit={handleAddOrEditGroup} className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-primary" /> Designation Name
+                    <Shield className="w-3 h-3 text-primary" /> {groupLabel} name
                   </Label>
                   <Input 
                     required 
                     value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    onChange={e => { setFormData({...formData, name: e.target.value}); if (fieldError) setFieldError(""); }}
                     placeholder={`e.g. ${groupLabel === "Department" ? "Computer Science & Engineering" : "Phoenix Prime"}`}
                     className="rounded-2xl px-6 py-4 text-sm font-bold"
+                    aria-invalid={!!fieldError}
                   />
+                  {fieldError && (
+                    <p className="text-xs font-semibold text-destructive" role="alert">{fieldError}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Star className="w-3 h-3 text-accent-amber" /> Captain Assignment
+                    <Star className="w-3 h-3 text-accent-amber" /> Captain (optional)
                   </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {editingGroupId
+                      ? `Pick a captain from this ${groupLower}'s participants, or leave it empty.`
+                      : `Saved with the ${groupLower}. You can assign a participant as captain after creating it.`}
+                  </p>
 
                   {editingGroupId ? (
                     <div className="space-y-3">
@@ -543,7 +719,7 @@ const ManageHouse = () => {
                         onClick={() => setShowParticipantPicker(!showParticipantPicker)}
                         className="w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl"
                       >
-                        {showParticipantPicker ? "Cancel Selection" : captainParticipant ? "Change Captain" : "Assign Captain from Participants"}
+                        {showParticipantPicker ? "Close" : captainParticipant ? "Change captain" : "Choose captain from participants"}
                       </Button>
 
                       {showParticipantPicker && (
@@ -563,17 +739,20 @@ const ManageHouse = () => {
                             {participantsLoading ? null : participants.length === 0 ? (
                               <div className="p-6 text-center">
                                 <Users className="w-6 h-6 text-muted-foreground/30 mx-auto mb-2" />
-                                <p className="text-xs font-semibold text-muted-foreground">No participants in this {groupLabel.toLowerCase()}</p>
-                                <p className="text-[10px] text-muted-foreground mt-1">Add participants first via Manage Participants</p>
+                                <p className="text-xs font-semibold text-muted-foreground">No participants in this {groupLower} yet</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Add participants first via Manage Participants, then pick a captain</p>
                               </div>
                             ) : (
                               participants
-                                .filter(p => 
-                                  !participantSearch || 
-                                  p.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
-                                  p.class.toLowerCase().includes(participantSearch.toLowerCase()) ||
-                                  (p.email && p.email.toLowerCase().includes(participantSearch.toLowerCase()))
-                                )
+                                .filter(p => {
+                                  const pq = participantSearch.trim().toLowerCase();
+                                  if (!pq) return true;
+                                  return (
+                                    String(p?.name || "").toLowerCase().includes(pq) ||
+                                    String(p?.class || "").toLowerCase().includes(pq) ||
+                                    (p?.email && p.email.toLowerCase().includes(pq))
+                                  );
+                                })
                                 .map(p => (
                                   <button
                                     key={p._id}
@@ -635,18 +814,23 @@ const ManageHouse = () => {
                 <div className="pt-4 space-y-3">
                   <Button 
                     type="submit" 
-                    disabled={loading || uploading}
+                    disabled={saving || uploading}
                     className="w-full py-5 text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl"
                   >
-                    {loading ? "Writing Strategy..." : editingGroupId ? `Update ${groupLabel} Node` : `Initialize ${groupLabel} System`}
+                    {saving ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                      </span>
+                    ) : editingGroupId ? `Save ${groupLabel}` : `Create ${groupLabel}`}
                   </Button>
 
                   <Button 
                     variant="ghost"
-                    onClick={() => setActiveTab("manage")}
+                    type="button"
+                    onClick={() => { resetForm(); setActiveTab("manage"); }}
                     className="w-full py-4 text-[10px] font-black uppercase tracking-widest"
                   >
-                    Abort Operation
+                    Cancel
                   </Button>
                 </div>
               </form>

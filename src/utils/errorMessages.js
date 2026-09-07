@@ -73,6 +73,8 @@ export const ERROR_MESSAGES = {
   "Competition not found": "Competition not found.",
   "Already claimed": "Already claimed. Please log in.",
   "Group not found": "Group not found.",
+  "A group with this name already exists": "A group with this name already exists in this competition.",
+  "Name is required": "Please enter a group name.",
   "Participant already in team": "Participant is already in a team for this event.",
   "Maximum teams per group reached": "Maximum teams per group reached for this event.",
   "Cannot change status of cancelled event": "Cannot change status of a cancelled event.",
@@ -112,8 +114,10 @@ export function getFriendlyErrorMessage(error) {
       11001: "This record already exists.",
       121: "Document validation failed.",
       139: "Operation timed out.",
-      ORG_MISMATCH: "This event belongs to a different competition or organization. Switch competition or log out and back in, then retry.",
-      COMPETITION_MISMATCH: "This event belongs to a different competition. Switch competition to register.",
+      ORG_MISMATCH: "This belongs to a different competition or organization. Switch competition or log out and back in, then retry.",
+      COMPETITION_MISMATCH: "This belongs to a different competition. Switch competition to continue.",
+      GROUP_EXISTS: "A group with this name already exists in this competition.",
+      GROUP_NOT_FOUND: "Group not found.",
     };
     if (codeMessages[error.code]) return codeMessages[error.code];
   }

@@ -86,11 +86,12 @@ export default function CompetitionSwitcher({ collapsed = false, onSwitched = ()
     }
     setSwitchingId(compId);
     try {
-      const res = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, {
+      const data = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, {
         competition_id: compId,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to switch competition");
+      if (!data?.access_token || !data?.competition) {
+        throw new Error(data?.message || "Failed to switch competition");
+      }
       login(data.user, data.access_token, data.refresh_token, data.competition);
       setOpen(false);
       onSwitched();
