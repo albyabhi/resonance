@@ -19,6 +19,8 @@ import ParticipantSetupPasswordPage from './pages/entry/ParticipantSetupPassword
 import ParticipateRedirectPage from './components/ParticipateRedirectPage';
 import ParticipantLoginPage from './pages/entry/ParticipantLoginPage';
 import usePermission from './hooks/usePermission';
+import InstallBanner from './components/pwa/InstallBanner';
+import PWAUpdatePrompt from './components/pwa/PWAUpdatePrompt';
 
 function TokenRedirect() {
   const { token } = useParams();
@@ -161,6 +163,11 @@ export default function App() {
           outside. Sibling of <Routes> (not a tree transition) so pages
           still swap instantly underneath per AGENTS.md. */}
       <RouteTransitionVeil />
+
+      {/* PWA: global install affordance + SW update prompt.
+          Siblings of <Routes> so they render on every route. */}
+      <InstallBanner />
+      <PWAUpdatePrompt />
     </>
   );
 }

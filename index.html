@@ -19,8 +19,23 @@
          updates this tag dynamically when the user toggles. -->
     <meta name="theme-color" content="#F7F0DF" />
 
-    <!-- ── Phase 6 – PWA manifest link ─────────────────────────── -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- ── PWA ─────────────────────────────────────────────────── -->
+    <!-- Manifest + service worker are injected by vite-plugin-pwa at build time
+         (see vite.config.js → VitePWA). No manual <link rel="manifest"> here
+         to avoid dual-source drift with the old public/manifest.json. -->
+    <meta name="description" content="Resonance — Inter-house competition management dashboard" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Resonance" />
+    <!-- App icons (generated from public/icons/resonance icon.png):
+         - icons/pwa-192x192.png (any)
+         - icons/pwa-512x512.png (any)
+         - icons/pwa-maskable-512x512.png (maskable)
+         - icons/apple-touch-icon-180x180.png
+         - icons/favicon-32x32.png -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180x180.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

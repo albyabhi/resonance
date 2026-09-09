@@ -8,6 +8,22 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { CompetitionProvider } from "./context/CompetitionContext";
 import { RealtimeProvider } from "./context/RealtimeContext";
 import { Toaster } from "react-hot-toast";
+import { registerSW } from "virtual:pwa-register";
+
+// PWA: register the Workbox service worker (autoUpdate).
+// Update UI is handled in React by <PWAUpdatePrompt /> (listens for
+// "pwa:need-refresh"); keep main.jsx free of JSX/toast logic.
+if ("serviceWorker" in navigator) {
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      window.dispatchEvent(new CustomEvent("pwa:need-refresh"));
+    },
+    onOfflineReady() {
+      window.dispatchEvent(new CustomEvent("pwa:offline-ready"));
+    },
+  });
+}
 
 // Fire-and-forget wake ping — hits backend as early as possible so cold
 // starts begin before providers mount and auth validation runs.
