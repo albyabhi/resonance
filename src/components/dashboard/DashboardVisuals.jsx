@@ -64,6 +64,30 @@ const groupNameFromResult = (result) =>
   result?.house?.name ||
   "Group";
 
+const winnerMembersFromResult = (result) => {
+  const members = result?.team_id?.members || result?.members || [];
+  return Array.isArray(members) ? members.filter(Boolean) : [];
+};
+
+const winnerNamesFromResult = (result) => {
+  const members = winnerMembersFromResult(result);
+  const names = members
+    .map((member) => member?.name || member?.participant_id?.name)
+    .filter(Boolean);
+  if (names.length) return names;
+  const teamName = result?.team_id?.name;
+  if (teamName) return [teamName];
+  const chestNo = result?.team_id?.chest_no;
+  if (chestNo) return [`Chest #${chestNo}`];
+  return [];
+};
+
+const formatWinnerNames = (names) => {
+  if (!names.length) return "";
+  if (names.length <= 2) return names.join(", ");
+  return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+};
+
 const eventFromResult = (result) => result?.event_id || result?.event || {};
 
 const getDateValue = (item) => {
@@ -152,11 +176,18 @@ function RecentWinners({ results = [] }) {
     <div className="divide-y rounded-lg border" style={{ borderColor: "var(--border-divider)" }}>
       {winners.map((result, index) => {
         const event = eventFromResult(result);
+        const winnerNames = winnerNamesFromResult(result);
+        const winnerLabel = formatWinnerNames(winnerNames);
         return (
           <div key={result._id || index} className="flex items-center justify-between gap-4 px-4 py-3" style={{ borderColor: "var(--border-divider)" }}>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold" style={{ color: "var(--card-fg)" }}>{eventName(event)}</p>
               <p className="mt-0.5 truncate text-xs" style={{ color: "var(--chart-axis)" }}>{groupNameFromResult(result)} won Round {result.round_no || 1}</p>
+              {winnerLabel && (
+                <p className="mt-0.5 truncate text-xs font-medium" style={{ color: "var(--card-fg)" }} title={winnerNames.join(", ")}>
+                  {winnerLabel}
+                </p>
+              )}
             </div>
             <div className="shrink-0 text-right">
               <p className="text-sm font-semibold" style={{ color: "var(--card-fg)" }}>{Number(result.points || 0).toLocaleString()}</p>
