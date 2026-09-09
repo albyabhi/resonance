@@ -1,117 +1,129 @@
 import React from "react";
-import { Trophy, Medal, Award, TrendingDown } from "lucide-react";
-import { MEDAL_STYLES } from "../../lib/publicUtils";
+import { TrendingDown } from "lucide-react";
 
-export default function PublicStandings({ standings, groupLabel = "Group", primaryColor = "var(--primary)" }) {
-  const podium = standings.slice(0, 3);
+function positionBadgeClass(position) {
+  if (position === 1) return "bg-warning text-white";
+  if (position === 2) return "bg-muted-foreground text-white";
+  if (position === 3) return "bg-accent-amber text-white";
+  return "bg-muted text-muted-foreground";
+}
+
+// Standings render as tappable-feel cards on phones and a real table on
+// larger screens. One accent for the leader; everything else stays neutral
+// so the ranking — not the chrome — carries the hierarchy.
+export default function PublicStandings({ standings, groupLabel = "Group" }) {
+  if (standings.length === 0) {
+    return (
+      <div className="text-center py-12 border border-dashed border-border rounded-xl">
+        <p className="font-semibold text-foreground">No standings yet</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Points appear here as soon as results are published.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-6">
-        <Trophy className="w-5 h-5" style={{ color: primaryColor }} />
-        <h2 className="text-xl font-bold text-foreground">Standings</h2>
-        <span className="text-xs text-muted-foreground font-medium ml-1">Overall {groupLabel} rankings</span>
-      </div>
+    <div>
+      <ol className="sm:hidden space-y-2.5" aria-label={`${groupLabel} standings`}>
+        {standings.map((group) => (
+          <li
+            key={group._id}
+            className={`flex items-center gap-3 bg-card border rounded-xl px-3.5 py-3 min-h-16 ${
+              group.position === 1 ? "border-primary/40 bg-primary/5" : "border-border"
+            }`}
+          >
+            <span
+              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold tabular shrink-0 ${positionBadgeClass(group.position)}`}
+              aria-label={`Rank ${group.position}`}
+            >
+              {group.position}
+            </span>
+            <span className="flex items-center gap-2.5 min-w-0 flex-1">
+              {group.logoUrl && (
+                <img src={group.logoUrl} alt="" className="w-7 h-7 object-contain rounded shrink-0" />
+              )}
+              <span className="min-w-0">
+                <span className="block font-semibold text-foreground truncate leading-tight">
+                  {group.name}
+                </span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {group.points_behind > 0 ? `${group.points_behind} behind leader` : "Leading"}
+                </span>
+              </span>
+            </span>
+            <span className="text-right shrink-0">
+              <span className="block text-xl font-bold text-foreground tabular leading-none">
+                {group.total_score}
+              </span>
+              <span className="block text-[11px] text-muted-foreground mt-0.5">pts</span>
+            </span>
+          </li>
+        ))}
+      </ol>
 
-      {standings.length === 0 ? (
-        <div className="text-center text-muted-foreground py-16 border border-dashed border-border rounded-2xl">
-          No standings available yet.
-        </div>
-      ) : (
-        <>
-          {/* Podium */}
-          {podium.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 items-end">
-              {podium.map((group, idx) => {
-                const medal = MEDAL_STYLES[idx] || MEDAL_STYLES[2];
-                const isLeader = idx === 0;
-                return (
-                  <div
-                    key={group._id}
-                    className={`relative bg-card border rounded-2xl p-4 sm:p-6 text-center shadow-[var(--shadow-card)] ${medal.border} ${medal.glow} ${
-                      isLeader ? "scale-105 z-10 -translate-y-2" : ""
-                    }`}
-                  >
-                    {isLeader && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-warning bg-card border border-warning/40 rounded-full px-2 py-0.5">
-                          Leader
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className={`mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-gradient-to-br ${medal.ring} mb-3`}
+      <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-130">
+            <caption className="sr-only">Overall {groupLabel} rankings</caption>
+            <thead>
+              <tr className="border-b border-border text-muted-foreground text-xs">
+                <th scope="col" className="text-left px-4 py-3 font-semibold w-14">
+                  Rank
+                </th>
+                <th scope="col" className="text-left px-4 py-3 font-semibold">
+                  {groupLabel}
+                </th>
+                <th scope="col" className="text-right px-4 py-3 font-semibold">
+                  Points
+                </th>
+                <th scope="col" className="text-right px-4 py-3 font-semibold">
+                  Behind leader
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((group) => (
+                <tr
+                  key={group._id}
+                  className={`border-b border-border/60 last:border-0 hover:bg-muted/40 transition-colors ${
+                    group.position === 1 ? "bg-primary/5" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold tabular ${positionBadgeClass(group.position)}`}
                     >
-                      {idx === 0 ? (
-                        <Trophy className="w-5 h-5 text-white" />
-                      ) : idx === 1 ? (
-                        <Medal className="w-5 h-5 text-white" />
-                      ) : (
-                        <Award className="w-5 h-5 text-white" />
+                      {group.position}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      {group.logoUrl && (
+                        <img src={group.logoUrl} alt="" className="w-6 h-6 object-contain rounded shrink-0" />
                       )}
-                    </div>
-                    <div className="font-bold text-foreground text-sm sm:text-base truncate">{group.name}</div>
-                    <div className="text-2xl sm:text-4xl font-black mt-1 text-foreground">
-                      {group.total_score}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">pts</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Full table */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-[var(--shadow-card)]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground uppercase tracking-wider text-xs">
-                  <th className="text-left px-4 py-3 font-semibold w-12">#</th>
-                  <th className="text-left px-4 py-3 font-semibold">{groupLabel}</th>
-                  <th className="text-right px-4 py-3 font-semibold">Points</th>
-                  <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold">Behind Leader</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((group) => (
-                  <tr key={group._id} className="border-b border-border/60 last:border-0 hover:bg-muted/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black ${
-                          group.position <= 3
-                            ? `bg-gradient-to-br ${MEDAL_STYLES[group.position - 1]?.ring || MEDAL_STYLES[2].ring} text-white`
-                            : "text-muted-foreground bg-muted"
-                        }`}
-                      >
-                        {group.position}
+                      <span className="font-semibold text-foreground truncate">{group.name}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-foreground tabular">
+                    {group.total_score}
+                  </td>
+                  <td className="px-4 py-3 text-right text-muted-foreground">
+                    {group.points_behind > 0 ? (
+                      <span className="inline-flex items-center justify-end gap-1 tabular">
+                        <TrendingDown className="w-3.5 h-3.5" aria-hidden="true" />
+                        {group.points_behind}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {group.logoUrl && (
-                          <img src={group.logoUrl} alt="" className="w-6 h-6 object-contain rounded" />
-                        )}
-                        <span className="font-semibold text-foreground">{group.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-foreground">{group.total_score}</td>
-                    <td className="hidden sm:table-cell px-4 py-3 text-right text-muted-foreground">
-                      {group.points_behind > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <TrendingDown className="w-3.5 h-3.5" />
-                          {group.points_behind}
-                        </span>
-                      ) : (
-                        <span className="text-success font-semibold">Leader</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </section>
+                    ) : (
+                      <span className="text-success font-semibold">Leader</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }

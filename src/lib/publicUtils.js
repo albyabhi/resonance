@@ -94,3 +94,60 @@ export const MEDAL_STYLES = [
 ];
 
 export const LIVE_STATUSES = ["ongoing", "judging"];
+
+// Token-safe tint for competition branding.
+// The old `${primaryColor}22` hex hack broke when primaryColor was
+// `var(--primary)`; color-mix works for hex + var() + named colors.
+export const tintedBackground = (primaryColor) => {
+  if (!primaryColor) return undefined;
+  try {
+    return `color-mix(in srgb, ${primaryColor} 12%, transparent)`;
+  } catch {
+    return undefined;
+  }
+};
+
+// Competition statuses are upcoming | live | completed | archived
+// (Competition model enum). Map to a small human badge, not event statuses.
+export const COMPETITION_STATUS_META = {
+  upcoming: { label: "Upcoming", pulse: false },
+  live: { label: "Live now", pulse: true },
+  completed: { label: "Completed", pulse: false },
+  archived: { label: "Archived", pulse: false },
+};
+
+export const competitionStatusMeta = (status) =>
+  COMPETITION_STATUS_META[status] || COMPETITION_STATUS_META.upcoming;
+
+// Winner members shared by PublicWinners + ResultsTable (single-scroll page
+// shows placements in three places: Winners cards, Events accordion, detail
+// modal). Backend attaches additive `team: {_id, name, members[]}` with
+// name + class only — no contact/PII ever reaches guests.
+export const winnerMembersFromPublic = (entry) => {
+  const members = entry?.team?.members;
+  return Array.isArray(members) ? members.filter(Boolean) : [];
+};
+
+// One member renders as "Name · Class"; missing class renders bare name.
+export const formatMemberLine = (members) => {
+  const list = Array.isArray(members) ? members.filter(Boolean) : [];
+  return list
+    .map((member) => {
+      const name = member?.name?.trim();
+      if (!name) return "";
+      const className = member?.class?.trim();
+      return className ? `${name} · ${className}` : name;
+    })
+    .filter(Boolean)
+    .join(", ");
+};
+
+// Fallback chain when a result predates member enrichment:
+// members → team name → group name (never blank, never chest numbers).
+export const winnerFallbackLabel = (entry) => {
+  const memberLine = formatMemberLine(winnerMembersFromPublic(entry));
+  if (memberLine) return memberLine;
+  const teamName = entry?.team?.name?.trim();
+  if (teamName) return teamName;
+  return entry?.group?.name || "Unknown";
+};

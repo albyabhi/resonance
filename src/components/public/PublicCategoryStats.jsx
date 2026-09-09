@@ -1,57 +1,89 @@
 import React from "react";
-import { BarChart3, CheckCircle2, Circle } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 
-export default function PublicCategoryStats({ stats, primaryColor = "var(--primary)" }) {
+// Category breakdown as a real chart (Recharts is already a dependency).
+// Falls back to a calm empty state instead of an empty card.
+export default function PublicCategoryStats({ stats }) {
   const categories = stats?.categories || [];
 
   if (categories.length === 0) {
     return (
-      <div className="text-center text-muted-foreground py-16 border border-dashed border-border rounded-2xl">
-        No category data available yet.
+      <div className="bg-card border border-border rounded-xl p-6">
+        <h3 className="font-semibold text-foreground">Events by category</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Category totals will appear once events are scheduled.
+        </p>
       </div>
     );
   }
 
-  const maxTotal = Math.max(...categories.map((c) => c.total), 1);
+  const chartData = categories.map((cat) => ({
+    name: cat.name.length > 12 ? `${cat.name.slice(0, 12)}…` : cat.name,
+    fullName: cat.name,
+    total: cat.total,
+    completed: cat.completed,
+  }));
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6">
-      <div className="flex items-center gap-2 mb-5">
-        <BarChart3 className="w-5 h-5" style={{ color: primaryColor }} />
-        <h3 className="font-bold text-foreground">Events by Category</h3>
+    <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
+      <h3 className="font-semibold text-foreground">Events by category</h3>
+      <p className="text-sm text-muted-foreground mt-0.5">
+        Scheduled vs completed per category
+      </p>
+
+      <div className="h-64 mt-4" role="img" aria-label="Bar chart of events by category">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: -12 }} barGap={3}>
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={36}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--muted)" }}
+              contentStyle={{
+                backgroundColor: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                color: "var(--popover-foreground)",
+                fontSize: "12px",
+              }}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ""}
+            />
+            <Bar dataKey="total" name="Scheduled" fill="var(--chart-bar-default)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="completed" name="Completed" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      <div className="space-y-4">
-        {categories.map((cat) => {
-          const pct = Math.round((cat.total / maxTotal) * 100);
-          const completedPct = cat.total > 0 ? Math.round((cat.completed / cat.total) * 100) : 0;
-          return (
-            <div key={cat.name}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-semibold text-foreground">{cat.name}</span>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-success" />
-                    {cat.completed}
-                  </span>
-                  <span>/</span>
-                  <span>{cat.total}</span>
-                </div>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{
-                    width: `${pct}%`,
-                    backgroundColor: primaryColor,
-                    opacity: 0.8 + (completedPct / 100) * 0.2,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <ul className="mt-3 space-y-1.5">
+        {categories.map((cat) => (
+          <li key={cat.name} className="flex items-center justify-between text-sm">
+            <span className="text-foreground font-medium truncate">{cat.name}</span>
+            <span className="text-muted-foreground tabular shrink-0 ml-3">
+              {cat.completed}/{cat.total} done
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

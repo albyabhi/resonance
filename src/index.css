@@ -481,6 +481,24 @@
     );
   }
 
+  /* ── Public page layout ─────────────────────────── */
+  .container-public {
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-public {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ── Hero background radial treatment ───────────────── */
   .hero-bg {
     position: relative;
