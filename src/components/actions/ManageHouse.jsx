@@ -51,6 +51,7 @@ const ManageHouse = () => {
   
   const [participants, setParticipants] = useState([]);
   const [captainParticipant, setCaptainParticipant] = useState(null);
+  const [captainTouched, setCaptainTouched] = useState(false);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantSearch, setParticipantSearch] = useState("");
   const [showParticipantPicker, setShowParticipantPicker] = useState(false);
@@ -158,6 +159,7 @@ const ManageHouse = () => {
         const match = list.find(p => p.email?.toLowerCase() === captainUser.email.toLowerCase());
         if (match) {
           setCaptainParticipant(match);
+          setCaptainTouched(false);
           setFormData(prev => ({
             ...prev,
             captain_name: match.name,
@@ -179,6 +181,7 @@ const ManageHouse = () => {
     } else {
       setParticipants([]);
       setCaptainParticipant(null);
+      setCaptainTouched(false);
       setParticipantSearch("");
       setShowParticipantPicker(false);
     }
@@ -270,28 +273,40 @@ const ManageHouse = () => {
       return;
     }
     const doSave = async () => {
-      const payload = {
-        name: trimmedName,
-        logoUrl: logoUrl || null,
-        logoPublicId: logoPublicId || null,
-        captain_name: String(formData.captain_name || "").trim() || null,
-        captain_contact: String(formData.captain_contact || "").trim() || null
-      };
       const base = API_ROUTES.COMPETITIONS.GROUPS(competition._id);
 
       if (editingGroupId) {
+        const payload = {
+          name: trimmedName,
+          logoUrl: logoUrl || null,
+          logoPublicId: logoPublicId || null,
+          captain_name: String(formData.captain_name || "").trim() || null,
+          captain_contact: String(formData.captain_contact || "").trim() || null
+        };
         await api.put(`${base}/${editingGroupId}`, payload);
 
-        if (formData.captain_participant_id) {
+        // Captain linkage is opt-in: only touch PUT .../captain when the user
+        // explicitly picked or removed a captain in this edit session.
+        // Untouched saves (name/logo only, or failed email recovery) skip it
+        // so we never clear a valid captain by accident.
+        if (captainTouched && formData.captain_participant_id) {
           await api.put(`${base}/${editingGroupId}/captain`, { participant_id: formData.captain_participant_id });
-        } else if (formData.captain_participant_id === "" && captainParticipant === null) {
+        } else if (captainTouched && formData.captain_participant_id === null && captainParticipant === null) {
           await api.put(`${base}/${editingGroupId}/captain`, { participant_id: null });
         }
 
         await fetchGroups();
         toast.success(`${groupLabel} updated.`);
       } else {
-        await api.post(base, payload);
+        // Create is name + logo only. No captain step here: a new group has
+        // no participants yet, so participant search would always be empty
+        // (and backend rejects cross-group links). Assign via Edit or
+        // Manage Users → Captain Setup after adding participants.
+        await api.post(base, {
+          name: trimmedName,
+          logoUrl: logoUrl || null,
+          logoPublicId: logoPublicId || null
+        });
         // Refetch so the new group always appears under the active competition,
         // even if the list was filtered or scoped differently before.
         await fetchGroups();
@@ -347,6 +362,7 @@ const ManageHouse = () => {
     setLogoPublicId("");
     setEditingGroupId(null);
     setCaptainParticipant(null);
+    setCaptainTouched(false);
     setParticipants([]);
     setParticipantSearch("");
     setShowParticipantPicker(false);
@@ -541,6 +557,7 @@ const ManageHouse = () => {
                               captain_participant_id: ""
                             }); 
                             setCaptainParticipant(null);
+                            setCaptainTouched(false);
                             setEditingGroupId(group._id); 
                             setLogoUrl(group.logoUrl || ""); 
                             setLogoPublicId(group.logoPublicId || "");
@@ -671,17 +688,15 @@ const ManageHouse = () => {
                   )}
                 </div>
 
+                  {editingGroupId && (
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <Star className="w-3 h-3 text-accent-amber" /> Captain (optional)
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {editingGroupId
-                      ? `Pick a captain from this ${groupLower}'s participants, or leave it empty.`
-                      : `Saved with the ${groupLower}. You can assign a participant as captain after creating it.`}
+                    {`Pick a captain from this ${groupLower}'s participants, or leave it empty.`}
                   </p>
 
-                  {editingGroupId ? (
                     <div className="space-y-3">
                       {captainParticipant ? (
                         <div className="flex items-center justify-between p-4 rounded-2xl border bg-accent-amber/5 border-accent-amber/20">
@@ -700,13 +715,20 @@ const ManageHouse = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            type="button"
                             onClick={() => {
                               setCaptainParticipant(null);
-                              setFormData(prev => ({ ...prev, captain_name: "", captain_contact: "", captain_participant_id: "" }));
+                              setCaptainTouched(true);
+                              setFormData(prev => ({ ...prev, captain_name: "", captain_contact: "", captain_participant_id: null }));
                             }}
                           >
                             <X className="w-4 h-4 text-accent-amber" />
                           </Button>
+                        </div>
+                      ) : formData.captain_name && formData.captain_participant_id !== null ? (
+                        <div className="p-4 rounded-2xl border bg-muted border-border">
+                          <p className="text-xs font-bold text-foreground truncate">{formData.captain_name}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">Current captain kept. Choose below to change, or clear to remove on save.</p>
                         </div>
                       ) : (
                         <div className="p-4 rounded-2xl border border-dashed bg-muted border-border text-center">
@@ -716,6 +738,7 @@ const ManageHouse = () => {
 
                       <Button
                         variant="outline"
+                        type="button"
                         onClick={() => setShowParticipantPicker(!showParticipantPicker)}
                         className="w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl"
                       >
@@ -759,6 +782,7 @@ const ManageHouse = () => {
                                     type="button"
                                     onClick={() => {
                                       setCaptainParticipant(p);
+                                      setCaptainTouched(true);
                                       setFormData(prev => ({
                                         ...prev,
                                         captain_name: p.name,
@@ -793,23 +817,8 @@ const ManageHouse = () => {
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input 
-                        value={formData.captain_name} 
-                        onChange={e => setFormData({...formData, captain_name: e.target.value})}
-                        placeholder="Captain name"
-                        className="rounded-2xl px-6 py-4 text-sm font-bold"
-                      />
-                      <Input 
-                        value={formData.captain_contact} 
-                        onChange={e => setFormData({...formData, captain_contact: e.target.value})}
-                        placeholder="Captain contact"
-                        className="rounded-2xl px-6 py-4 text-sm font-bold"
-                      />
-                    </div>
-                  )}
                 </div>
+                )}
 
                 <div className="pt-4 space-y-3">
                   <Button 
