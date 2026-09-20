@@ -1,18 +1,43 @@
-# Node modules
+# Dependencies
 node_modules/
-dist/
-.vercel/
+.npm-cache/
+.npm-global/
 
-# Environment files
+# Build output
+dist/
+dist-ssr/
+*.tsbuildinfo
+coverage/
+
+# Environment files (keep .env.example tracked, never real secrets)
 .env
 .env.local
 .env.*.local
+*.local
 
-# Optional logs
+# Vercel
+.vercel/
+
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Local npm tooling/cache used in sandboxed setup
-.npm-cache/
-.npm-global/
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# AI agent skills — local only, never publish
+.agent/
+.claude/
+.cursor/
+__pycache__/
+*.py[cod]
