@@ -10,7 +10,7 @@ import PublicHero from "../../components/public/PublicHero";
 import PublicStats from "../../components/public/PublicStats";
 import PublicStandings from "../../components/public/PublicStandings";
 import PublicResultsByEvent from "../../components/public/PublicResultsByEvent";
-import PublicTicker from "../../components/public/PublicTicker";
+import PublicTopParticipants from "../../components/public/PublicTopParticipants";
 import PublicWinners from "../../components/public/PublicWinners";
 import PublicCategoryStats from "../../components/public/PublicCategoryStats";
 import PublicParticipationStats from "../../components/public/PublicParticipationStats";
@@ -84,6 +84,7 @@ export default function PublicViewPage() {
   const {
     dashboard,
     winners,
+    topParticipants,
     detailedStats,
     selectedEvent,
     eventDetailLoading,
@@ -194,7 +195,7 @@ export default function PublicViewPage() {
     return <PublicErrorPage status={error?.status} message={error?.message || "Competition not found."} />;
   }
 
-  const { competition, stats, standings, events, results, ticker } = dashboard;
+  const { competition, stats, standings, events, results } = dashboard;
   const primaryColor = competition.branding?.primary_color || "var(--primary)";
   const groupLabel = competition.group_label || "Group";
   const statsForSections = detailedStats || stats;
@@ -206,7 +207,6 @@ export default function PublicViewPage() {
       <PublicKiosk
         competition={competition}
         standings={standings}
-        ticker={ticker}
         lastUpdate={lastUpdate}
       />
     );
@@ -232,10 +232,6 @@ export default function PublicViewPage() {
             />
           </div>
           <PublicStandings standings={standings} groupLabel={groupLabel} />
-          <div className="mt-8">
-            <h3 className="text-base font-bold text-foreground mb-3">Recent updates</h3>
-            <PublicTicker ticker={ticker} />
-          </div>
         </section>
 
         <section id="winners" aria-labelledby="winners-heading" className="scroll-mt-20" onMouseEnter={celebrateWinnersOnce}>
@@ -250,6 +246,25 @@ export default function PublicViewPage() {
             <PublicWinners winners={winners} primaryColor={primaryColor} />
           ) : (
             <div className="space-y-2.5" aria-label="Loading winners">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-xl" />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section id="participants" aria-labelledby="participants-heading" className="scroll-mt-20">
+          <div id="participants-heading">
+            <SectionHeading
+              title="Top Participants"
+              sub="Top contributors overall, updated live as results publish."
+              count={topParticipants?.overall?.topPerformers?.length ?? undefined}
+            />
+          </div>
+          {topParticipants ? (
+            <PublicTopParticipants data={topParticipants} slug={slug} primaryColor={primaryColor} />
+          ) : (
+            <div className="space-y-2.5" aria-label="Loading top participants">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 rounded-xl" />
               ))}

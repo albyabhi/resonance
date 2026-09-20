@@ -4,6 +4,7 @@ import { Wifi } from "lucide-react";
 const SECTIONS = [
   { id: "standings", label: "Standings" },
   { id: "winners", label: "Winners" },
+  { id: "participants", label: "Top Participants" },
   { id: "events", label: "Events" },
   { id: "statistics", label: "Statistics" },
 ];

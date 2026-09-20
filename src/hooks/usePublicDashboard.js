@@ -11,11 +11,12 @@ function toPublicError(status, fallbackMessage) {
 }
 
 // Single place that owns every public fetch for /view/:slug.
-// Dashboard is critical; winners + detailed stats prefetch on idle so the
-// single-scroll page never shows a per-section spinner after mount.
+// Dashboard is critical; winners + top participants + detailed stats prefetch
+// on idle so the single-scroll page never shows a per-section spinner after mount.
 export default function usePublicDashboard(slug) {
   const [dashboard, setDashboard] = useState(null);
   const [winners, setWinners] = useState(null);
+  const [topParticipants, setTopParticipants] = useState(null);
   const [detailedStats, setDetailedStats] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [eventDetailLoading, setEventDetailLoading] = useState(false);
@@ -61,13 +62,18 @@ export default function usePublicDashboard(slug) {
   const prefetchSecondary = useCallback(async () => {
     if (!slug || !dashboard) return;
     try {
-      const [winnersRes, statsRes] = await Promise.all([
+      const [winnersRes, participantsRes, statsRes] = await Promise.all([
         apiFetch(`${API_BASE_URL}/api/public/${slug}/winners`),
+        apiFetch(`${API_BASE_URL}/api/public/${slug}/participants/top`),
         apiFetch(`${API_BASE_URL}/api/public/${slug}/stats`),
       ]);
       if (winnersRes.ok) {
         const winnersJson = await winnersRes.json();
         setWinners(winnersJson.winners || {});
+      }
+      if (participantsRes.ok) {
+        const participantsJson = await participantsRes.json();
+        setTopParticipants(participantsJson.data || null);
       }
       if (statsRes.ok) {
         const statsJson = await statsRes.json();
@@ -102,12 +108,14 @@ export default function usePublicDashboard(slug) {
   const refreshSilent = useCallback(() => {
     fetchDashboard({ silent: true });
     setWinners(null);
+    setTopParticipants(null);
     setDetailedStats(null);
   }, [fetchDashboard]);
 
   useEffect(() => {
     setDashboard(null);
     setWinners(null);
+    setTopParticipants(null);
     setDetailedStats(null);
     setSelectedEvent(null);
     setError(null);
@@ -130,6 +138,7 @@ export default function usePublicDashboard(slug) {
   return {
     dashboard,
     winners,
+    topParticipants,
     detailedStats,
     selectedEvent,
     eventDetailLoading,

@@ -416,6 +416,11 @@ export const API_ROUTES = {
     RESULTS: '/api/public/results',
     TICKER: '/api/public/ticker',
     STATS: '/api/public/stats',
+    PARTICIPANTS_TOP: (slug, params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return `/api/public/${slug}/participants/top${q ? `?${q}` : ''}`;
+    },
+    PARTICIPANT_DETAIL: (slug, participantId) => `/api/public/${slug}/participants/${participantId}`,
   },
 
   // Live

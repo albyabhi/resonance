@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Wifi, Zap } from "lucide-react";
-import { ordinal } from "../../lib/publicUtils";
+import React from "react";
+import { Wifi } from "lucide-react";
 
 function formatLastUpdate(lastUpdate) {
   if (!lastUpdate) return null;
@@ -18,19 +17,8 @@ function formatLastUpdate(lastUpdate) {
 // Full-screen HUD for venue displays (?display=kiosk).
 // Fluid type via clamp() so TV landscape and tablet portrait both fit
 // without the old fixed text-6xl / px-10 overflow.
-export default function PublicKiosk({ competition, standings, ticker, lastUpdate }) {
-  const [tickerIndex, setTickerIndex] = useState(0);
+export default function PublicKiosk({ competition, standings, lastUpdate }) {
   const lastUpdateLabel = formatLastUpdate(lastUpdate);
-
-  useEffect(() => {
-    if (!ticker || ticker.length <= 1) return;
-    const timer = setInterval(() => {
-      setTickerIndex((prev) => (prev + 1) % Math.min(ticker.length, 8));
-    }, 8000);
-    return () => clearInterval(timer);
-  }, [ticker]);
-
-  const visibleTicker = (ticker || []).slice(0, 8);
 
   return (
     <div className="min-h-screen font-sans bg-background text-foreground overflow-hidden flex flex-col">
@@ -64,7 +52,7 @@ export default function PublicKiosk({ competition, standings, ticker, lastUpdate
       <main className="flex-1 px-5 sm:px-8 pb-6 grid gap-5 lg:grid-cols-12 min-h-0">
         <section
           aria-label={`${competition.group_label} standings`}
-          className="lg:col-span-8 bg-card border border-border rounded-2xl p-5 sm:p-6 flex flex-col shadow-2xl shadow-primary/10 min-h-0"
+          className="lg:col-span-12 bg-card border border-border rounded-2xl p-5 sm:p-6 flex flex-col shadow-2xl shadow-primary/10 min-h-0"
         >
           <h2
             className="font-bold text-foreground mb-4"
@@ -109,39 +97,6 @@ export default function PublicKiosk({ competition, standings, ticker, lastUpdate
                       pts
                     </span>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section
-          aria-label="Recent updates"
-          className="lg:col-span-4 bg-card border border-border rounded-2xl p-5 sm:p-6 flex flex-col overflow-hidden min-h-0"
-        >
-          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2 text-xl sm:text-2xl">
-            <Zap className="w-5 h-5 text-primary" aria-hidden="true" />
-            Recent updates
-          </h2>
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
-            {visibleTicker.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6">No recent results.</p>
-            ) : (
-              visibleTicker.map((item, itemIndex) => (
-                <div
-                  key={item._id}
-                  className={`border-l-2 pl-4 py-2 transition-opacity ${
-                    itemIndex === tickerIndex ? "border-primary opacity-100" : "border-border opacity-70"
-                  }`}
-                >
-                  <p className="text-primary font-semibold uppercase tracking-wider text-sm truncate">
-                    {item.event?.title || "Event"}
-                  </p>
-                  <p className="text-foreground font-medium leading-snug mt-0.5">
-                    <span className="text-muted-foreground">{ordinal(item.position)} place: </span>
-                    {item.group?.name || "Unknown"}
-                  </p>
-                  <p className="text-success font-bold mt-1 tabular-nums">+{item.points} points</p>
                 </div>
               ))
             )}
