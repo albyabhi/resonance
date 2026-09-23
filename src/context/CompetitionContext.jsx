@@ -16,6 +16,10 @@ export const CompetitionProvider = ({ children }) => {
   const value = {
     competition,
     setCompetition,
+    // Canonical competition id — the only supported read. Producers disagree
+    // on shape (setup maps `{id}`, select/login return `{_id}`), so never
+    // read `competition._id` directly in components.
+    competitionId: competition?._id || competition?.id || competition?.competition_id || "",
     groupLabel: competition?.group_label || 'Group',
     groupLabelPlural: competition?.group_label_plural || 'Groups',
   };

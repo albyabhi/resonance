@@ -265,6 +265,46 @@ export default function SchedulePointsStep({
           ))}
         </div>
       </div>
+      {!isRank && (
+        <div className="rounded-xl border border-border p-3 sm:p-4">
+          <h3 className="text-[15px] font-semibold">Negative marks</h3>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Staff-only deduction applied on results (judges still enter 0..100). Net points go live at publish.
+          </p>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(eventForm.enable_negative_marks)}
+              onChange={(e) => onChange("enable_negative_marks", e.target.checked)}
+              className="h-4 w-4 accent-amber-500"
+            />
+            <span className="font-medium">Enable negative marks for this event</span>
+          </label>
+          {Boolean(eventForm.enable_negative_marks) && (
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <Label className="mb-1.5 block text-xs text-muted-foreground">Max deduction per result</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={eventForm.negative_max_deduction ?? ""}
+                  onChange={(e) => onChange("negative_max_deduction", e.target.value)}
+                  className="min-h-[44px] max-w-[160px]"
+                />
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={eventForm.negative_require_reason ?? true}
+                  onChange={(e) => onChange("negative_require_reason", e.target.checked)}
+                  className="h-4 w-4 accent-amber-500"
+                />
+                <span>Require reason for deduction</span>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

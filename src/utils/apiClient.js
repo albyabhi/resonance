@@ -209,7 +209,7 @@ export const API_ROUTES = {
     BULK: '/api/participants/bulk',
     UPDATE: (id) => `/api/participants/${id}`,
     DELETE: (id) => `/api/participants/${id}`,
-    BULK_DELETE: '/api/participants/bulk',
+    BULK_DELETE: '/api/participants/bulk/remove',
     SETUP_LINKS_BULK: '/api/participants/setup-links/bulk',
     SETUP_LINK_REGENERATE: (id) => `/api/participants/${id}/setup-link/regenerate`,
     STATUS: (id) => `/api/participants/${id}/status`,
@@ -292,6 +292,8 @@ export const API_ROUTES = {
     BULK_LOCK: '/api/results/lock',
     REVERT: (id) => `/api/results/${id}/revert`,
     BULK_REVERT: '/api/results/revert',
+    DEDUCTION: (id) => `/api/results/${id}/deduction`,
+    BULK_DEDUCTIONS: '/api/results/deductions',
   },
 
   // Competitions

@@ -58,6 +58,8 @@ const ScoreReview = () => {
   const [, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState({ open: false, title: "", description: "", onConfirm: null });
+  // Staff negative-mark inputs keyed by result id
+  const [deductionForms, setDeductionForms] = useState({});
 
   const showConfirm = (title, description, onConfirm) => {
     setConfirm({ open: true, title, description, onConfirm });
@@ -429,6 +431,31 @@ const ScoreReview = () => {
       });
       toast.success("All results locked");
       if (data.selectedRound) loadEventResults(eventId, data.selectedRound);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyDeduction = async (result, eventId) => {
+    const data = eventData[eventId];
+    const form = deductionForms[result._id] || {};
+    const deduction = form.deduction !== undefined && form.deduction !== "" ? Number(form.deduction) : Number(result.deduction || 0);
+    const deduction_reason = form.reason !== undefined ? form.reason : result.deduction_reason || "";
+    try {
+      setLoading(true);
+      await apiCall(`/api/results/${result._id}/deduction`, {
+        method: "PATCH",
+        body: JSON.stringify({ deduction, deduction_reason }),
+      });
+      toast.success(`Deduction applied to position ${result.position}`);
+      setDeductionForms((prev) => {
+        const next = { ...prev };
+        delete next[result._id];
+        return next;
+      });
+      if (data?.selectedRound) loadEventResults(eventId, data.selectedRound);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -834,6 +861,7 @@ const ScoreReview = () => {
                         <TableHead className="text-muted-foreground uppercase text-xs">Team</TableHead>
                         <TableHead className="text-muted-foreground uppercase text-xs">Group</TableHead>
                         <TableHead className="text-muted-foreground uppercase text-xs">Points</TableHead>
+                        <TableHead className="text-muted-foreground uppercase text-xs">Deduction</TableHead>
                         <TableHead className="text-muted-foreground uppercase text-xs">Submitted By</TableHead>
                         <TableHead className="text-muted-foreground uppercase text-xs">Status</TableHead>
                         <TableHead className="text-muted-foreground uppercase text-xs">Actions</TableHead>
@@ -842,17 +870,22 @@ const ScoreReview = () => {
                     <TableBody>
                       {allResults.length === 0 ? (
                         <TableRow>
-                          <TableCell className="text-muted-foreground" colSpan={7}>No results for this round</TableCell>
+                          <TableCell className="text-muted-foreground" colSpan={8}>No results for this round</TableCell>
                         </TableRow>
                       ) : (
                         allResults.map((r) => {
                           const team = r.team_id || {};
                           const house = team.group_id || {};
                           const status = r.status;
+                          const gross = r.gross_points ?? r.points;
+                          const ded = r.deduction || 0;
                           const ptsDisplay = r.points != null
                             ? (r.multiplier != null && r.multiplier !== 1 ? `${r.points} × ${r.multiplier}` : r.points)
                             : "—";
                           const sp = statusBadgeProps(status);
+                          const negativeOn = Boolean(evt.enable_negative_marks);
+                          const deductionEditable = negativeOn && canApprove && !["locked", "rejected"].includes(status);
+                          const form = deductionForms[r._id] || {};
                           return (
                             <TableRow key={r._id} className="border-t border-border">
                               <TableCell className="text-card-foreground">{r.position}</TableCell>
@@ -863,7 +896,56 @@ const ScoreReview = () => {
                                 )}
                               </TableCell>
                               <TableCell className="text-card-foreground">{house.name || ""}</TableCell>
-                              <TableCell className="font-medium text-card-foreground">{ptsDisplay}</TableCell>
+                              <TableCell className="font-medium text-card-foreground">
+                                {ptsDisplay}
+                                {ded > 0 && (
+                                  <span className="ml-1 block text-[11px] font-normal text-muted-foreground">
+                                    {gross} − {ded}{r.deduction_reason ? ` (${r.deduction_reason})` : ""}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-card-foreground">
+                                {!negativeOn ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : !deductionEditable ? (
+                                  <span className="text-xs">{ded > 0 ? `−${ded}` : "—"}</span>
+                                ) : (
+                                  <div className="flex min-w-[180px] flex-col gap-1">
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={evt.negative_config?.max_deduction ?? 5}
+                                        placeholder="0"
+                                        value={form.deduction ?? r.deduction ?? 0}
+                                        onChange={(e) => setDeductionForms((prev) => ({
+                                          ...prev,
+                                          [r._id]: { ...prev[r._id], deduction: e.target.value },
+                                        }))}
+                                        className="h-8 w-16 rounded-md border border-border bg-card px-2 text-xs"
+                                      />
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleApplyDeduction(r, evt._id)}
+                                        className="h-8 text-xs"
+                                      >
+                                        Apply
+                                      </Button>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      placeholder="Reason (required)"
+                                      value={form.reason ?? r.deduction_reason ?? ""}
+                                      onChange={(e) => setDeductionForms((prev) => ({
+                                        ...prev,
+                                        [r._id]: { ...prev[r._id], reason: e.target.value },
+                                      }))}
+                                      className="h-8 rounded-md border border-border bg-card px-2 text-xs"
+                                    />
+                                  </div>
+                                )}
+                              </TableCell>
                               <TableCell className="text-card-foreground">{r.submitted_by?.name || "-"}</TableCell>
                               <TableCell>
                                 <Badge variant={sp.variant} className={sp.className}>{status}</Badge>

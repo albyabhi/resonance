@@ -52,7 +52,7 @@ const visibilityOptions = [
 ];
 
 export default function ManageCompetition() {
-  const { competition, setCompetition } = useCompetition();
+  const { competition, competitionId, setCompetition } = useCompetition();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -97,7 +97,7 @@ export default function ManageCompetition() {
     setSuccess("");
 
     try {
-      if (!competition?._id) throw new Error("No active competition");
+      if (!competitionId) throw new Error("No active competition");
 
       const fd = new FormData();
       fd.append('name', formData.name);
@@ -117,7 +117,7 @@ export default function ManageCompetition() {
         fd.append('removeLogo', 'true');
       }
 
-      const response = await apiJson(`${API_BASE_URL}/api/competition/${competition._id}`, {
+      const response = await apiJson(`${API_BASE_URL}/api/competition/${competitionId}`, {
         method: "PATCH",
         body: fd
       });
@@ -140,9 +140,9 @@ export default function ManageCompetition() {
     setError("");
     setSuccess("");
     try {
-      if (!competition?._id) throw new Error("No active competition");
+      if (!competitionId) throw new Error("No active competition");
 
-      const response = await apiJson(`${API_BASE_URL}/api/competition/${competition._id}/regenerate-slug`, {
+      const response = await apiJson(`${API_BASE_URL}/api/competition/${competitionId}/regenerate-slug`, {
         method: "POST",
       });
 

@@ -188,6 +188,7 @@ export function useEventForm({ apiCall, competition, groupLabel, onSaved }) {
           "max_team_size",
           "rounds",
           "max_per_group",
+          "negative_max_deduction",
         ]);
         const next = { ...prev };
         if (numericFields.has(field)) {
@@ -246,6 +247,8 @@ export function useEventForm({ apiCall, competition, groupLabel, onSaved }) {
           // Rank events allow only one judge — keep the first selection.
           setAssignedJudgeIds((prev) => (prev.length > 1 ? prev.slice(0, 1) : prev));
           setAssignedJudges((prev) => (prev.length > 1 ? prev.slice(0, 1) : prev));
+          // Negative marks are score-mode only.
+          next.enable_negative_marks = false;
         }
         validateFields(next);
         return next;
@@ -397,6 +400,9 @@ export function useEventForm({ apiCall, competition, groupLabel, onSaved }) {
             event.coordinator_id?._id || event.coordinator_id || "",
           venue_id: event.venue_id?._id || event.venue_id || "",
           scoring_type: event.scoring_type || "score",
+          enable_negative_marks: Boolean(event.enable_negative_marks),
+          negative_max_deduction: event.negative_config?.max_deduction ?? 5,
+          negative_require_reason: event.negative_config?.require_reason ?? true,
         });
         const roundsData = (schedules || [])
           .sort((a, b) => (a.round_no || 0) - (b.round_no || 0))
@@ -489,6 +495,13 @@ export function useEventForm({ apiCall, competition, groupLabel, onSaved }) {
           : null,
         points_config: pointsConfig,
         scoring_type,
+        enable_negative_marks: scoring_type === "rank" ? false : Boolean(eventForm.enable_negative_marks),
+        negative_config: scoring_type === "rank"
+          ? null
+          : {
+              max_deduction: Math.max(0, Number(eventForm.negative_max_deduction ?? 5) || 0),
+              require_reason: eventForm.negative_require_reason ?? true,
+            },
         coordinator_id: sanitizedEventForm.coordinator_id,
         venue_id: sanitizedEventForm.venue_id,
         volunteers: sanitizedEventForm.volunteers,

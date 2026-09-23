@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CaptainsDirectory() {
   const { token, isAuthReady } = useAuth();
-  const { competition, groupLabel } = useCompetition();
+  const { competitionId, groupLabel } = useCompetition();
   const [captains, setCaptains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -18,11 +18,11 @@ export default function CaptainsDirectory() {
 
   useEffect(() => {
     const fetchCaptains = async () => {
-      if (!token || !isAuthReady || !competition?._id) return;
+      if (!token || !isAuthReady || !competitionId) return;
       try {
         setLoading(true);
         setError("");
-        const resp = await apiFetch(`${API_BASE_URL}/api/competition/${competition._id}/groups`, {
+        const resp = await apiFetch(`${API_BASE_URL}/api/competition/${competitionId}/groups`, {
           headers: { "Content-Type": "application/json" },
         });
 
@@ -47,7 +47,7 @@ export default function CaptainsDirectory() {
       }
     };
     fetchCaptains();
-  }, [token, isAuthReady, competition?._id]);
+  }, [token, isAuthReady, competitionId]);
 
   if (loading) {
     return (

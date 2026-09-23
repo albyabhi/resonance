@@ -34,7 +34,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"
 
 const ManageHouse = () => {
   const { token, login } = useAuth();
-  const { competition, groupLabel = "Group", groupLabelPlural = "Groups" } = useCompetition();
+  const { competition, competitionId, groupLabel = "Group", groupLabelPlural = "Groups" } = useCompetition();
   const groupLower = groupLabel.toLowerCase();
   const groupsLower = groupLabelPlural.toLowerCase();
 
@@ -100,7 +100,7 @@ const ManageHouse = () => {
   // refresh). Never gate on React token state — it can lag behind storage
   // after a competition switch or token refresh and falsely block creates.
   const fetchGroups = useCallback(async () => {
-    if (!competition?._id) return;
+    if (!competitionId) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -108,7 +108,7 @@ const ManageHouse = () => {
       setListLoading(true); 
       setError("");
       setNeedsSwitch(false);
-      const data = await api.get(API_ROUTES.COMPETITIONS.GROUPS(competition._id));
+      const data = await api.get(API_ROUTES.COMPETITIONS.GROUPS(competitionId));
       if (controller.signal.aborted) return;
       setGroups(Array.isArray(data) ? data : []); 
     }
@@ -119,19 +119,19 @@ const ManageHouse = () => {
     finally { 
       if (!controller.signal.aborted) setListLoading(false); 
     }
-  }, [competition?._id, handleGroupError]);
+  }, [competitionId, handleGroupError]);
 
   useEffect(() => { 
-    if (token && competition?._id) {
+    if (token && competitionId) {
       fetchGroups(); 
     }
     return () => abortRef.current?.abort();
-  }, [token, competition?._id, fetchGroups]);
+  }, [token, competitionId, fetchGroups]);
 
   const handleSwitchAndRetry = async (retryFn) => {
     try {
       const data = await api.post(API_ROUTES.AUTH.SELECT_COMPETITION, {
-        competition_id: competition._id,
+        competition_id: competitionId,
       });
       if (data?.access_token && data?.competition) {
         login(data.user, data.access_token, data.refresh_token, data.competition);
@@ -146,10 +146,10 @@ const ManageHouse = () => {
   };
 
   const fetchGroupParticipants = useCallback(async (groupId) => {
-    if (!competition?._id) return;
+    if (!competitionId) return;
     try {
       setParticipantsLoading(true);
-      const data = await api.get(`${API_ROUTES.COMPETITIONS.GROUPS(competition._id)}/${groupId}/participants`);
+      const data = await api.get(`${API_ROUTES.COMPETITIONS.GROUPS(competitionId)}/${groupId}/participants`);
       const list = Array.isArray(data) ? data : [];
       setParticipants(list);
 
@@ -173,7 +173,7 @@ const ManageHouse = () => {
     } finally {
       setParticipantsLoading(false);
     }
-  }, [competition?._id, groups]);
+  }, [competitionId, groups]);
 
   useEffect(() => {
     if (editingGroupId) {
@@ -256,7 +256,7 @@ const ManageHouse = () => {
 
   const handleAddOrEditGroup = async (e) => {
     e?.preventDefault?.();
-    if (!competition?._id) {
+    if (!competitionId) {
       setError("Select a competition first, then add your group.");
       return;
     }
@@ -273,7 +273,7 @@ const ManageHouse = () => {
       return;
     }
     const doSave = async () => {
-      const base = API_ROUTES.COMPETITIONS.GROUPS(competition._id);
+      const base = API_ROUTES.COMPETITIONS.GROUPS(competitionId);
 
       if (editingGroupId) {
         const payload = {
@@ -345,7 +345,7 @@ const ManageHouse = () => {
   const handleDeleteGroup = async (groupId) => {
     try {
       setDeletingId(groupId);
-      await api.delete(`${API_ROUTES.COMPETITIONS.GROUPS(competition._id)}/${groupId}`);
+      await api.delete(`${API_ROUTES.COMPETITIONS.GROUPS(competitionId)}/${groupId}`);
       setGroups((prev) => prev.filter(g => g._id !== groupId));
       toast.success(`${groupLabel} deleted.`);
     } catch (err) {

@@ -19,7 +19,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
   const { token } = useAuth();
-  const { competition } = useCompetition();
+  const { competitionId } = useCompetition();
 
   const [mode, setMode] = useState("all");
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -43,7 +43,7 @@ function ExportParticipantsDialog({ open, onOpenChange, groups, groupLabel }) {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "X-Competition-ID": competition?._id || "",
+          "X-Competition-ID": competitionId || "",
         },
       });
 

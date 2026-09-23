@@ -30,7 +30,7 @@ const EMPTY_FORM = { name: "", username: "", password: "", role: "participant", 
 
 const ManageUser = () => {
   const { token } = useAuth();
-  const { competition, groupLabel, groupLabelPlural } = useCompetition();
+  const { competitionId, groupLabel, groupLabelPlural } = useCompetition();
   const [activeTab, setActiveTab] = useState("manage");
   const [users, setUsers] = useState([]);
   const [houses, setHouses] = useState([]);
@@ -70,13 +70,13 @@ const ManageUser = () => {
 
   const fetchHouses = useCallback(async () => {
     try {
-      if (!competition?._id) return;
-      const resp = await apiCall(`/api/competition/${competition._id}/groups`);
+      if (!competitionId) return;
+      const resp = await apiCall(`/api/competition/${competitionId}/groups`);
       setHouses(Array.isArray(resp) ? resp : []);
     } catch (err) {
       console.error("Failed to fetch houses:", err);
     }
-  }, [competition, apiCall]);
+  }, [competitionId, apiCall]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -97,7 +97,7 @@ const ManageUser = () => {
       fetchUsers();
       fetchHouses();
     }
-  }, [token, competition?._id, fetchUsers, fetchHouses]);
+  }, [token, competitionId, fetchUsers, fetchHouses]);
 
   useEffect(() => {
     if (houses.length === 0) {
@@ -106,10 +106,10 @@ const ManageUser = () => {
   }, [houses.length]);
 
   const fetchGroupParticipants = useCallback(async (groupId) => {
-    if (!groupId || !isCaptainRole(formData.role) || !competition?._id) return;
+    if (!groupId || !isCaptainRole(formData.role) || !competitionId) return;
     setFetchingGroupParticipants(true);
     try {
-      const resp = await apiCall(`/api/competition/${competition._id}/groups/${groupId}/participants`);
+      const resp = await apiCall(`/api/competition/${competitionId}/groups/${groupId}/participants`);
       const participants = Array.isArray(resp) ? resp : [];
       setGroupParticipants(participants);
       setFilteredGroupParticipants(participants);
@@ -118,7 +118,7 @@ const ManageUser = () => {
     } finally {
       setFetchingGroupParticipants(false);
     }
-  }, [apiCall, formData.role, competition]);
+  }, [apiCall, formData.role, competitionId]);
 
   useEffect(() => {
     if (formData.house && isCaptainRole(formData.role)) {

@@ -278,6 +278,7 @@ export default function SetupPage() {
       
       const newComp = {
         id: data.competition_id,
+        _id: data.competition_id,
         name: data.name,
         slug: data.slug,
         group_label: data.group_label,

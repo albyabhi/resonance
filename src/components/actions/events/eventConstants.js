@@ -74,6 +74,9 @@ export const DEFAULT_EVENT_FORM = {
   coordinator_id: "",
   venue_id: "",
   scoring_type: "score",
+  enable_negative_marks: false,
+  negative_max_deduction: 5,
+  negative_require_reason: true,
 };
 
 export const DEFAULT_ROUND = {

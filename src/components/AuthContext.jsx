@@ -83,16 +83,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Migrate old format (competition stored at top level) to new format (inside user)
+  // + backfill `_id` for sessions stored with the setup-shaped `{id}` object
+  // (fresh competitions before central login() normalization existed).
   useEffect(() => {
     try {
       const saved = getAuthState();
       if (saved) {
+        let dirty = false;
         // Old format: competition was at root, user didn't have it
         if (saved.competition && saved.user && !saved.user.competition) {
           saved.user.competition = saved.competition;
           delete saved.competition;
-          localStorage.setItem("auth", JSON.stringify(saved));
+          dirty = true;
         }
+        const storedComp = saved.user?.competition;
+        if (storedComp && !storedComp._id && (storedComp.id || storedComp.competition_id)) {
+          storedComp._id = storedComp.id || storedComp.competition_id;
+          dirty = true;
+        }
+        if (dirty) localStorage.setItem("auth", JSON.stringify(saved));
       }
     } catch {
       // no-op
@@ -150,8 +159,17 @@ export function AuthProvider({ children }) {
   const login = (serverUser, jwtToken, rToken, competitionData) => {
     resetApiLogoutGuard();
     const nextRole = serverUser?.role || "viewer";
-    const nextUser = competitionData
-      ? { ...serverUser, role: nextRole, competition: competitionData }
+    // Canonicalize the competition id shape: producers disagree (setup maps
+    // `{id}`, select/login return `{_id}`), so backfill `_id` once here and
+    // every `competition._id` consumer stays correct. Original keys are kept.
+    const normalizedCompetition = competitionData
+      ? {
+          ...competitionData,
+          _id: competitionData._id || competitionData.id || competitionData.competition_id,
+        }
+      : competitionData;
+    const nextUser = normalizedCompetition
+      ? { ...serverUser, role: nextRole, competition: normalizedCompetition }
       : { ...serverUser, role: nextRole };
     setUser(nextUser);
     setRole(nextRole);
